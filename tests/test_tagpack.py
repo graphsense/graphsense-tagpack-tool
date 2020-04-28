@@ -1,5 +1,6 @@
 import datetime
 import pytest
+import yaml
 
 from tagpack.tagpack_schema import TagPackSchema
 from tagpack.tagpack import TagPack, Tag, fields_to_timestamp, TagPackFileError
@@ -11,9 +12,20 @@ TEST_TAGPACK = 'tests/testfiles/tagpack_ok.yaml'
 
 @pytest.fixture
 def schema(monkeypatch):
+
+    def mock_load_schema(*args, **kwargs):
+        pass
+
+    monkeypatch.setattr(TagPackSchema, "load_schema", mock_load_schema)
     monkeypatch.setattr('tagpack.tagpack_schema.TAGPACK_SCHEMA_FILE',
-                        TEST_SCHEMA)
-    return TagPackSchema()
+                         TEST_SCHEMA)
+
+    schema = yaml.safe_load(open(TEST_SCHEMA, 'r'))
+
+    tagpack_schema = TagPackSchema()
+    tagpack_schema.schema = schema
+
+    return tagpack_schema
 
 
 @pytest.fixture
