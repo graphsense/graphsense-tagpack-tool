@@ -120,7 +120,6 @@ def test_tag_to_json(tagpack):
 def test_tag_to_str(tagpack):
     for tag in tagpack.tags:
         tag_string = tag.__str__()
-        assert '1562104800' in tag_string
         if tag.fields['address'] == '1bacdeddg32dsfk5692dmn23':
             assert '1bacdeddg32dsfk5692dmn23' in tag_string
         elif tag.fields['address'] == '3bacadsfg3sdfafd2deddg32':
