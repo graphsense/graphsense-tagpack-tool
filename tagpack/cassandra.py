@@ -2,16 +2,23 @@
 import json
 import re
 
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
+
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent
 
+from . import db
 
 CONCURRENCY = 100
 DEFAULT_TIMEOUT = 60
 
 LABEL_NORM_PATTERN = re.compile(r'[\W_]+', re.UNICODE)
 
-SCHEMA_FILE = 'tagpack/db/tagpack_schema.cql'
+SCHEMA_FILE = 'tagpack_schema.cql'
 KEYPACE_PACEHOLDER = 'KEYSPACE_NAME'
 
 
@@ -56,8 +63,8 @@ class Cassandra(object):
         """Setup keyspace and tables"""
         if not self.session:
             raise StorageError("Session not availble. Call connect() first")
-        with open(SCHEMA_FILE, 'r') as file:
-            schema = file.read().replace('\n', ' ')
+        
+        schema = pkg_resources.read_text(db, SCHEMA_FILE)
 
         # Replace keyspace name placeholder in CQL schema script
         schema = schema.replace(KEYPACE_PACEHOLDER, keyspace)

@@ -4,8 +4,16 @@ import os
 import sys
 import yaml
 
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
 
-TAGPACK_SCHEMA_FILE = 'tagpack/conf/tagpack_schema.yaml'
+
+from . import conf
+
+TAGPACK_SCHEMA_FILE = 'tagpack_schema.yaml'
 
 
 class ValidationError(Exception):
@@ -23,10 +31,8 @@ class TagPackSchema(object):
         self.definition = TAGPACK_SCHEMA_FILE
 
     def load_schema(self):
-        if not os.path.isfile(TAGPACK_SCHEMA_FILE):
-            sys.exit("This program requires a schema config file in {}"
-                     .format(TAGPACK_SCHEMA_FILE))
-        self.schema = yaml.safe_load(open(TAGPACK_SCHEMA_FILE, 'r'))
+        schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)        
+        self.schema = yaml.safe_load(schema)
 
     @property
     def header_fields(self):
