@@ -2,11 +2,7 @@
 import json
 import re
 
-try:
-    import importlib.resources as pkg_resources
-except (ImportError, ModuleNotFoundError):
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as pkg_resources
+import importlib.resources as pkg_resources
 
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent
