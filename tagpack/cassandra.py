@@ -76,7 +76,6 @@ class Cassandra(object):
         if not self.session:
             raise StorageError("Session not availble. Call connect() first")
         try:
-            self.session.set_keyspace(keyspace)
             query = 'SELECT keyspace_name FROM system_schema.keyspaces'
             result = self.session.execute(query)
             keyspaces = [row.keyspace_name for row in result]

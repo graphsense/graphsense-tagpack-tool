@@ -46,5 +46,7 @@ def print_success(text, **args):
     print(f"{bcolors.OKGREEN}{text}{bcolors.ENDC}")
 
 
-def print_fail(text, exception):
-    print(f"{bcolors.FAIL}{text}{bcolors.ENDC}", exception)
+def print_fail(text, exception=None):
+    print(f"{bcolors.FAIL}{text}{bcolors.ENDC}")
+    if exception:
+        print(exception)

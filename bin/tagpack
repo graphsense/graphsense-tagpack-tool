@@ -67,18 +67,17 @@ def insert_taxonomy(args):
     print_line("Taxonomy insert starts")
     print(f"Taxonomy: {args.taxonomy}")
 
-    print(f"Cassandra nodes: {args.db_nodes}")
+    print(f"Cassandra node: {args.db_node}")
     print(f"Cassandra keyspace: {args.keyspace}\n")
 
-    cassandra = Cassandra(args.db_nodes)
+    cassandra = Cassandra(args.db_node)
     try:
         cassandra.connect()
         if args.setup_keyspace:
-            print_info(f"Setup keyspace {args.keyspace} in {args.db_nodes}")
+            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
             cassandra.setup_keyspace(args.keyspace)
         if not cassandra.has_keyspace(args.keyspace):
-            print(f"Keyspace {args.keyspace} does not exist. \
-                  Please create manually first")
+            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
             sys.exit()
 
         taxonomy = remote_load_taxonomy(args.taxonomy)
@@ -163,17 +162,16 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    print(f"Cassandra nodes: {args.db_nodes}")
+    print(f"Cassandra node: {args.db_node}")
     print(f"Cassandra keyspace: {args.keyspace}")
-    cassandra = Cassandra(args.db_nodes)
+    cassandra = Cassandra(args.db_node)
     try:
         cassandra.connect()
         if args.setup_keyspace:
-            print_info(f"Setup keyspace {args.keyspace} in {args.db_nodes}")
+            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
             cassandra.setup_keyspace(args.keyspace)
         if not cassandra.has_keyspace(args.keyspace):
-            print(f"Keyspace {args.keyspace} does not exist. \
-                  Please create manually first")
+            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
             sys.exit()
     except StorageError as e:
         print_fail(e)
@@ -235,9 +233,9 @@ def main():
         'insert', help='insert taxonomy into GraphSense')
     parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
                             help='the selected taxonomy')
-    parser_t_i.add_argument('-d', '--db_nodes',
-                            default=['localhost'], metavar='DB_NODE',
-                            help='Cassandra nodes; default "localhost")')
+    parser_t_i.add_argument('-d', '--db_node',
+                            default='localhost', metavar='DB_NODE',
+                            help='Cassandra node; default "localhost")')
     parser_t_i.add_argument('-k', '--keyspace',
                             default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
                             help="Cassandra keyspace for taxonomy tables")
@@ -267,9 +265,9 @@ def main():
     parser_i.add_argument('path', nargs='+', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
-    parser_i.add_argument('-d', '--db_nodes',
-                          default=['localhost'], metavar='DB_NODE',
-                          help='Cassandra nodes; default "localhost")')
+    parser_i.add_argument('-d', '--db_node',
+                          default='localhost', metavar='DB_NODE',
+                          help='Cassandra node; default "localhost")')
     parser_i.add_argument('-k', '--keyspace',
                           default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
                           help="Cassandra keyspace for taxonomy tables")
