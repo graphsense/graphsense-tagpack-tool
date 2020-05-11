@@ -85,14 +85,21 @@ class Cassandra(object):
 
     def insert_taxonomy(self, taxonomy, keyspace):
         """Insert a taxonomy into a given keyspace"""
-        query = "INSERT INTO taxonomy_by_key JSON '{}';".format(
-            taxonomy.to_json())
-        self.session.execute(query)
-        for concept in taxonomy.concepts:
-            concept_json = concept.to_json()
-            query = "INSERT INTO concept_by_taxonomy_id JSON '{}';".format(
-                concept_json.replace("'", ""))
+        if not self.session:
+            raise StorageError("Session not available. Call connect() first")
+        try:  
+            self.session.set_keyspace(keyspace)
+            query = "INSERT INTO taxonomy_by_key JSON '{}';".format(
+                taxonomy.to_json())
             self.session.execute(query)
+            for concept in taxonomy.concepts:
+                concept_json = concept.to_json()
+                query = "INSERT INTO concept_by_taxonomy_id JSON '{}';".format(
+                    concept_json.replace("'", ""))
+                self.session.execute(query)
+        except Exception as e:
+            raise StorageError("Taxonomy insertion error", e)
+
 
     def _add_normalized_label(self, tag_json):
         """Enrich JSON Tag representation by normalized labels"""
