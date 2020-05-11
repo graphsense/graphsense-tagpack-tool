@@ -214,7 +214,7 @@ def show_version():
 def main():
     parser = ArgumentParser(
         description='TagPack validation and ingest tool',
-        epilog='GraphSense TagPack Tool v{}- https://graphsense.info'
+        epilog='GraphSense TagPack Tool v{} - https://graphsense.info'
         .format(version))
     parser.add_argument('-v', '--version', action='version',
                         version=show_version())
