@@ -3,7 +3,8 @@
 
 # GraphSense TagPack Management Tool
  
-This repository defines a common structure (schema) for TagPacks and provides a tool for validating and ingesting TagPacks into [Apache Cassandra][cassandra].
+This repository defines a common structure (schema) for TagPacks and provides a
+tool for validating and ingesting TagPacks into [Apache Cassandra][cassandra].
 
 ## TagPack Structure
 
@@ -66,7 +67,7 @@ version control and fine-grained recording of modifications.
 
 A TagPack defines a **header** with a number of mandatory and optional fields and a
 **body** containing a list of tags. In the above example, `title` and `creator` are
-part of the TagPack header, the list of `tags` represent the body.
+part of the TagPack header, the list of `tags` represents the body.
 
 Please note that allowed properties are defined in the TagPack schema, which defines
 **mandatory** and **optional** fields for the TagPack header and body. In the above
@@ -74,8 +75,8 @@ example, `label`, `address`, and `source` are mandatory properties as they
 describes where a certain piece of information is coming from (either in the form
 of a URI or a textual description).
 
-The range of defined properties is defined in `tagpack/conf/tagpack_schema.yaml` and looks
-like this:
+The range of defined properties is defined in
+`tagpack/conf/tagpack_schema.yaml` and looks like this:
 
     header:
       title:
@@ -117,12 +118,13 @@ like this:
 
 #### Property inheritance
 
-In the above example, the same `lastmod` and `currency` property values are repeated
-for both tags, which represents an unnecessary repetition of the same information.
+In the above example, the same `lastmod` and `currency` property values are
+repeated for both tags, which represents an unnecessary repetition of the same
+information.
 
-To avoid this, body fields can also be added to the header and then apply to all
-tags in the body. Thus, they are *abstracted* into the header and then inherited by all
-body elements, as shown in the following example.
+To avoid this, body fields can also be added to the header and then apply to
+all tags in the body. Thus, they are *abstracted* into the header and then
+inherited by all body elements, as shown in the following example.
 
     ---
     title: Second TagPack Example
@@ -139,14 +141,15 @@ body elements, as shown in the following example.
 
 #### Property override
 
-It is also possible to override abstracted fields in the body. This could be relevant if
-someone creates a TagPacks comprising several tags and then adds additional tags later
-on, which then, of course, have different `lastmod` property values.
+It is also possible to override abstracted fields in the body. This could be
+relevant if someone creates a TagPacks comprising several tags and then adds
+additional tags later on, which then, of course, have different `lastmod`
+property values.
 
 The following example shows several tags associating addresses from various
 cryptocurrencies with the label `Internet Archive`. Most of them were collected
-at the same time (2019-03-15), except the Zcash tag that has been collected
-and added later (2019-03-20).
+at the same time (2019-03-15), except the Zcash tag that has been collected and
+added later (2019-03-20).
 
 
     ---
@@ -179,18 +182,19 @@ Since TagPacks are essentially files pushed to some Git repository, they can be
 uniquely identified by their Git URI
 (e.g., `https://github.com/graphsense/graphsense-tagpacks/blob/master/packs/demo.yaml`).
 
-Within a TagPack, tags are treated as **first-class objects** that are identified by
-the combination the mandatory body fields `address`, `label`, `source`.
+Within a TagPack, tags are treated as **first-class objects** that are
+identified by the combination the mandatory body fields `address`, `label`,
+`source`.
 
-That implies that the same label (e.g., `Internet Archive`) can be assigned several
-times to the same address (e.g., `1Archive1n2C579dMsAu3iC6tWzuQJz8dN`),
+That implies that the same label (e.g., `Internet Archive`) can be assigned
+several times to the same address (e.g., `1Archive1n2C579dMsAu3iC6tWzuQJz8dN`),
 typically by different parties.
 
 #### Using Concepts from Public Taxonomies
 
-The use of a common terminology is essential for data sharing and establishing interoperability
-across tools. Therefore, the TagPack schema defines two properties that take concepts from
-agreed upon taxonomies as values:
+The use of a common terminology is essential for data sharing and establishing
+interoperability across tools. Therefore, the TagPack schema defines two
+properties that take concepts from agreed upon taxonomies as values:
 
 * `category`: defines the type of real-world entity that is in control of a given address. Possible
 concepts (e.g., Exchange, Marketplace) are defined in the
@@ -215,9 +219,7 @@ Each TagPack repository must have a file `config.yaml`, which defines the TagPac
 
 The TagPack management tool supports validation of TagPacks and ingestion into
 an [Apache Cassandra database][cassandra], which is required before running
-the [graphsense-transformation](https://github.com/graphsense/graphsense-transformation)
-pipeline.
-
+the [GraphSense transformation][graphsense-transformation] pipeline.
 It is made available as a Python package.
 
 ### Local Installation
@@ -271,7 +273,8 @@ Create a keyspace and insert all TagPacks from a given folder
 
     tagpack insert -s -k dummy_keyspace packs/
 
-Optionally, you can specify the level of `concurrency` (default: 100) by using the `-c` parameter.
+Optionally, you can specify the level of `concurrency` (default: 100) by using
+the `-c` parameter.
 
     tagpack insert -c 500 -s -k dummy_keyspace packs/
     
@@ -294,6 +297,7 @@ Check test coverage
     coverage run -m pytest
     coverage report
 
-[cassandra]: https://cassandra.apache.org/
+[cassandra]: https://cassandra.apache.org
+[graphsense-transformation]: https://github.com/graphsense/graphsense-transformation
 [yaml]: [https://yaml.org/]
 [dw-va]: https://github.com/INTERPOL-Innovation-Centre/DW-VA-Taxonomy
