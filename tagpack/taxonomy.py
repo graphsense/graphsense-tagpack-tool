@@ -1,4 +1,4 @@
-"""Taxonomy - A proxy for a remote taxonomy defintion"""
+"""Taxonomy - A proxy for a remote taxonomy definition"""
 
 import csv
 from io import StringIO
@@ -9,7 +9,7 @@ import requests
 class Concept(object):
     """Concept Definition.
 
-    This class represents serves as a proxy for a concept that is defined
+    This class serves as a proxy for a concept that is defined
     in some remote taxonomy. It just provides the most essential properties.
 
     A concept can be viewed as an idea or notion; a unit of thought.

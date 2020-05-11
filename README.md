@@ -192,7 +192,7 @@ The use of a common terminology is essential for data sharing and establishing i
 across tools. Therefore, the TagPack schema defines two properties that take concepts from
 agreed upon taxonomies as values:
 
-* `category`: defines the type of real-world entity that is control of a given address. Possible
+* `category`: defines the type of real-world entity that is in control of a given address. Possible
 concepts (e.g., Exchange, Marketplace) are defined in the
 [INTERPOL Darkweb and Cryptoassets Entity Taxonomy][dw-va].
 
@@ -213,7 +213,7 @@ Each TagPack repository must have a file `config.yaml`, which defines the TagPac
 
 ## TagPack Management Tool
 
-The TagPack management tools supports validation of TagPacks and ingestion into
+The TagPack management tool supports validation of TagPacks and ingestion into
 an [Apache Cassandra database][cassandra], which is required before running
 the [graphsense-transformation](https://github.com/graphsense/graphsense-transformation)
 pipeline.
@@ -297,5 +297,3 @@ Check test coverage
 [cassandra]: https://cassandra.apache.org/
 [yaml]: [https://yaml.org/]
 [dw-va]: https://github.com/INTERPOL-Innovation-Centre/DW-VA-Taxonomy
-
-
