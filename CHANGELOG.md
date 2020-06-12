@@ -1,6 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.4.3] - Ongoing
+## [0.4.4] - 2020-06-12
+### Fixed
+- Fixed PEP8 warnings (`flake8`)
+
+## [0.4.3] - 2020-05-11
 ### Changed
 - Separated TagPack Management Tool from public TagPacks
 - Refactored scripts into TagPack Management tool
