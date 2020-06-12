@@ -1,7 +1,5 @@
 """TagPack - A wrappers TagPack Schema"""
 import datetime
-import os
-import sys
 import yaml
 
 import importlib.resources as pkg_resources
@@ -26,7 +24,7 @@ class TagPackSchema(object):
         self.definition = TAGPACK_SCHEMA_FILE
 
     def load_schema(self):
-        schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)        
+        schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
 
     @property

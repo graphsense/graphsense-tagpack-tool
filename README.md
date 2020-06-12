@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/graphsense/graphsense-tagpack-tool.svg?branch=master )](https://travis-ci.org/graphsense/graphsense-tagpack-tool)
+[![Build Status](https://travis-ci.org/graphsense/graphsense-tagpack-tool.svg?branch=master)](https://travis-ci.org/graphsense/graphsense-tagpack-tool)
 [![Coverage Status](https://coveralls.io/repos/github/graphsense/graphsense-tagpack-tool/badge.svg?branch=master)](https://coveralls.io/github/graphsense/graphsense-tagpack-tool?branch=master)
 
 # GraphSense TagPack Management Tool
