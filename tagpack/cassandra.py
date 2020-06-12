@@ -59,7 +59,7 @@ class Cassandra(object):
         """Setup keyspace and tables"""
         if not self.session:
             raise StorageError("Session not availble. Call connect() first")
-        
+
         schema = pkg_resources.read_text(db, SCHEMA_FILE)
 
         # Replace keyspace name placeholder in CQL schema script
@@ -87,7 +87,7 @@ class Cassandra(object):
         """Insert a taxonomy into a given keyspace"""
         if not self.session:
             raise StorageError("Session not available. Call connect() first")
-        try:  
+        try:
             self.session.set_keyspace(keyspace)
             query = "INSERT INTO taxonomy_by_key JSON '{}';".format(
                 taxonomy.to_json())
@@ -99,7 +99,6 @@ class Cassandra(object):
                 self.session.execute(query)
         except Exception as e:
             raise StorageError("Taxonomy insertion error", e)
-
 
     def _add_normalized_label(self, tag_json):
         """Enrich JSON Tag representation by normalized labels"""
