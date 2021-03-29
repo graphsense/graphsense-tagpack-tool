@@ -59,11 +59,14 @@ class TagPackSchema(object):
         return self.all_fields[field].get('taxonomy')
 
     def _check_types(self, field, value):
-        """Checks whether a field's type matches the defintion"""
+        """Checks whether a field's type matches the definition"""
         schema_type = self.field_type(field)
         if schema_type == 'text':
             if not isinstance(value, str):
                 raise ValidationError("Field {} must be of type text"
+                                      .format(field))
+            if not len(value) >= 1:
+                raise ValidationError("Empty value in text field {}"
                                       .format(field))
         elif schema_type == 'datetime':
             if not isinstance(value, datetime.date):

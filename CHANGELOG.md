@@ -1,6 +1,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.4.5] - 2020-11-16
+## [Unreleased]
+### Changed
+- moved TagPack documentation to TagPack rep
+
+### Added
+- additional tagpack validation tests
+
 
 ## [0.4.4] - 2020-06-12
 ### Fixed

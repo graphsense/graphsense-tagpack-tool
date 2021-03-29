@@ -16,7 +16,7 @@ def schema(monkeypatch):
 
     monkeypatch.setattr(TagPackSchema, "load_schema", mock_load_schema)
     monkeypatch.setattr('tagpack.tagpack_schema.TAGPACK_SCHEMA_FILE',
-                         TEST_SCHEMA)
+                        TEST_SCHEMA)
 
     schema = yaml.safe_load(open(TEST_SCHEMA, 'r'))
 
@@ -173,3 +173,12 @@ def test_validate_ok_generic_field(schema, taxonomies):
     tagpack = TagPack('http://example.com',
                       'tests/testfiles/tagpack_ok_generic_field.yaml', schema)
     schema.validate(tagpack, taxonomies)
+
+
+def test_validate_fail_empty_label(schema, taxonomies):
+    tagpack = TagPack('http://example.com',
+                      'tests/testfiles/tagpack_fail_empty_label.yaml',
+                      schema)
+    with pytest.raises(ValidationError):
+        schema.validate(tagpack, taxonomies)
+    assert "Empty value in text field label"
