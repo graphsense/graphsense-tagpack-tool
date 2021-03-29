@@ -2,3 +2,4 @@ tagpack.egg-info/
 /venv
 /.pytest_cache
 **__pycache__
+.coverage
