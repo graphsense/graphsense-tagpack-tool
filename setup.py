@@ -34,9 +34,9 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        "requests>=2.23.0",
-        "pyyaml>=5.3.1",
-        "tabulate>=0.8.7",
+        "requests>=2.25.1",
+        "pyyaml>=5.4",
+        "tabulate>=0.8.9",
         "cassandra-driver>=3.25.0"
     ],
     test_suite="tests"
