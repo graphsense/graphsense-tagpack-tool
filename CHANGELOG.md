@@ -2,11 +2,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Changed
-- moved TagPack documentation to TagPack rep
+- Move TagPack documentation to TagPack rep
+- Update package dependencies
 
 ### Added
-- additional tagpack validation tests
+- Add additional tagpack validation tests
+- Add support for Entity Tags
 
+### Removed
+- Removed unnecessary lookup tables
 
 ## [0.4.4] - 2020-06-12
 ### Fixed

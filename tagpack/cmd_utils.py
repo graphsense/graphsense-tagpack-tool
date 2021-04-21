@@ -1,4 +1,4 @@
-"""Utils for a more beautiful CMD interface"""
+"""Utilities for a more beautiful CMD interface"""
 import os
 
 

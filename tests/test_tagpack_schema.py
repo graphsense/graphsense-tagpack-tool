@@ -1,11 +1,10 @@
+from datetime import date
 import pytest
-import yaml
 
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.tagpack import TagPack
 from tagpack.taxonomy import Taxonomy
 
-TEST_SCHEMA = 'tests/testfiles/schema_1.yaml'
+# TEST_SCHEMA = 'conf/tagpack_schema.yaml'
 
 
 @pytest.fixture
@@ -14,14 +13,14 @@ def schema(monkeypatch):
     def mock_load_schema(*args, **kwargs):
         pass
 
-    monkeypatch.setattr(TagPackSchema, "load_schema", mock_load_schema)
-    monkeypatch.setattr('tagpack.tagpack_schema.TAGPACK_SCHEMA_FILE',
-                        TEST_SCHEMA)
+    # monkeypatch.setattr(TagPackSchema, "load_schema", mock_load_schema)
+    # monkeypatch.setattr('tagpack.tagpack_schema.TAGPACK_SCHEMA_FILE',
+    #                     TEST_SCHEMA)
 
-    schema = yaml.safe_load(open(TEST_SCHEMA, 'r'))
+    # schema = yaml.safe_load(open(TEST_SCHEMA, 'r'))
 
     tagpack_schema = TagPackSchema()
-    tagpack_schema.schema = schema
+    # tagpack_schema.schema = schema
 
     return tagpack_schema
 
@@ -42,11 +41,12 @@ def taxonomies():
 
 def test_init(schema):
     assert isinstance(schema, TagPackSchema)
-    assert schema.definition == TEST_SCHEMA
+    assert schema.definition == 'tagpack_schema.yaml'
 
 
 def test_header_fields(schema):
     assert isinstance(schema.header_fields, dict)
+    assert 'tags' in schema.header_fields
     assert 'title' in schema.header_fields
     assert 'type' in schema.header_fields['title']
     assert 'text' in schema.header_fields['title']['type']
@@ -57,32 +57,74 @@ def test_header_fields(schema):
 def test_mandatory_header_fields(schema):
     assert isinstance(schema.mandatory_header_fields, dict)
     assert 'title' in schema.mandatory_header_fields
+    assert 'tags' in schema.mandatory_header_fields
     assert 'notmandatory' not in schema.mandatory_header_fields
 
 
-def test_tag_fields(schema):
-    assert isinstance(schema.tag_fields, dict)
-    assert 'address' in schema.tag_fields
-    assert 'type' in schema.tag_fields['address']
-    assert 'mandatory' in schema.tag_fields['address']
+def test_generic_tag_fields(schema):
+    assert isinstance(schema.generic_tag_fields, dict)
+    assert 'label' in schema.generic_tag_fields
+    assert 'type' in schema.generic_tag_fields['label']
+    assert 'mandatory' in schema.generic_tag_fields['label']
 
 
-def test_mandatory_tag_fields(schema):
-    assert isinstance(schema.mandatory_tag_fields, dict)
-    assert 'address' in schema.mandatory_tag_fields
-    assert 'lastmod' not in schema.mandatory_tag_fields
+def test_address_tag_fields(schema):
+    assert 'address' in schema.address_tag_fields
+    assert 'label' in schema.address_tag_fields
+    assert 'entity' not in schema.address_tag_fields
+    assert isinstance(schema.address_tag_fields, dict)
+
+
+def test_mandatory_address_tag_fields(schema):
+    assert isinstance(schema.mandatory_address_tag_fields, dict)
+    assert 'address' in schema.mandatory_address_tag_fields
+    assert 'label' in schema.mandatory_address_tag_fields
+    assert 'lastmod' not in schema.mandatory_address_tag_fields
+
+
+def test_entity_tag_fields(schema):
+    assert 'entity' in schema.entity_tag_fields
+    assert 'label' in schema.entity_tag_fields
+    assert 'address' not in schema.entity_tag_fields
+    assert isinstance(schema.entity_tag_fields, dict)
+
+
+def test_mandatory_entity_tag_fields(schema):
+    assert isinstance(schema.mandatory_entity_tag_fields, dict)
+    assert 'entity' in schema.mandatory_entity_tag_fields
+    assert 'label' in schema.mandatory_entity_tag_fields
+    assert 'lastmod' not in schema.mandatory_entity_tag_fields
+
+
+def test_all_tag_fields(schema):
+    assert isinstance(schema.all_tag_fields, dict)
+    assert 'address' in schema.all_tag_fields
+    assert 'entity' in schema.all_tag_fields
+    assert 'label' in schema.all_tag_fields
+
+
+def test_all_address_tag_fields(schema):
+    assert isinstance(schema.all_address_tag_fields, dict)
+    assert 'address' in schema.all_address_tag_fields
+    assert 'entity' not in schema.all_address_tag_fields
+
+
+def test_all_entity_tag_fields(schema):
+    assert isinstance(schema.all_entity_tag_fields, dict)
+    assert 'entity' in schema.all_entity_tag_fields
+    assert 'address' not in schema.all_entity_tag_fields
 
 
 def test_all_fields(schema):
     assert isinstance(schema.all_fields, dict)
     assert all(field in schema.all_fields
-               for field in ['title', 'notmandatory',
-                             'address', 'lastmod', 'category'])
+               for field in ['title', 'label', 'address', 'entity'])
 
 
 def test_field_type(schema):
     assert schema.field_type('title') == 'text'
     assert schema.field_type('lastmod') == 'datetime'
+    assert schema.field_type('entity') == 'int'
 
 
 def test_field_taxonomy(schema):
@@ -93,92 +135,35 @@ def test_field_no_taxonomy(schema):
     assert schema.field_taxonomy('title') is None
 
 
-def test_validate(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_ok.yaml', schema)
-    schema.validate(tagpack, None)
-
-
-def test_validate_undefined_field(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_undefined_field.yaml',
-                      schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, None)
-    assert "Field failfield not allowed in header" in str(e.value)
-
-
-def test_validate_fail_type_text(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_type_text.yaml', schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, None)
+def test_check_type(schema):
+    assert schema.check_type('title', 'some test string')
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_type('title', 5)
     assert "Field title must be of type text" in str(e.value)
 
-
-def test_validate_fail_type_date(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_type_date.yaml', schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, None)
+    assert schema.check_type('lastmod', date.fromisoformat('2021-04-21'))
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_type('lastmod', 5)
     assert "Field lastmod must be of type datetime" in str(e.value)
 
+    assert schema.check_type('entity', 5)
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_type('entity', '56abc')
+    assert "Field entity must be of type integer" in str(e.value)
 
-def test_validate_ok_type_datetime(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_ok_type_datetime.yaml', schema)
-    schema.validate(tagpack, None)
-
-
-def test_validate_fail_missing(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_missing.yaml', schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, None)
-    assert "Mandatory field creator missing" in str(e.value)
+    assert schema.check_type('tags', [{'a': 1}, {'b': 2}])
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_type('tags', '56abc')
+    assert "Field tags must be of type list" in str(e.value)
 
 
-def test_validate_fail_missing_body(schema):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_missing_body.yaml', schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, None)
-    assert "Mandatory field address missing" in str(e.value)
+def test_check_taxonomies(schema, taxonomies):
+    assert schema.check_taxonomies('category', 'exchange', taxonomies)
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_taxonomies('category', 'test', taxonomies)
+    assert "Undefined concept test in field category" in str(e.value)
 
-
-def test_validate_ok_taxonomy(schema, taxonomies):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_ok_taxonomy.yaml', schema)
-    schema.validate(tagpack, taxonomies)
-
-
-def test_validate_fail_taxonomy(schema, taxonomies):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_taxonomy.yaml', schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, taxonomies)
-    assert "Undefined concept unknown in field category" in str(e.value)
-
-
-def test_validate_fail_taxonomy_header(schema, taxonomies):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_taxonomy_header.yaml',
-                      schema)
-    with pytest.raises(ValidationError) as e:
-        schema.validate(tagpack, taxonomies)
-    assert "Undefined concept unknown in field category" in str(e.value)
-
-
-def test_validate_ok_generic_field(schema, taxonomies):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_ok_generic_field.yaml', schema)
-    schema.validate(tagpack, taxonomies)
-
-
-def test_validate_fail_empty_label(schema, taxonomies):
-    tagpack = TagPack('http://example.com',
-                      'tests/testfiles/tagpack_fail_empty_label.yaml',
-                      schema)
-    with pytest.raises(ValidationError):
-        schema.validate(tagpack, taxonomies)
-    assert "Empty value in text field label"
+    schema.schema['generic_tag']['dummy'] = {'taxonomy': 'test'}
+    with(pytest.raises(ValidationError)) as e:
+        assert schema.check_taxonomies('dummy', 'test', taxonomies)
+    assert "Unknown taxonomy test" in str(e.value)

@@ -17,10 +17,23 @@ from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
 
 CONFIG_FILE = "config.yaml"
 
+DEFAULT_CONFIG = {
+    'baseURI': 'uri:test',
+    'taxonomies': {
+        'entity': 'https://interpol-innovation-centre.github.io/' +
+                  'DW-VA-Taxonomy/assets/data/entities.csv',
+        'abuse': 'https://interpol-innovation-centre.github.io/' +
+                  'DW-VA-Taxonomy/assets/data/abuses.csv'
+    }
+}
+
+
 DEFAULT_KEYSPACE = "tagpacks"
 
 
 def remote_load_taxonomies():
+    if 'taxonomies' not in CONFIG:
+        return None
     taxonomies = {}
     for key in CONFIG['taxonomies']:
         taxonomy = remote_load_taxonomy(key)
@@ -29,6 +42,8 @@ def remote_load_taxonomies():
 
 
 def remote_load_taxonomy(key):
+    if 'taxonomies' not in CONFIG:
+        return None
     uri = CONFIG['taxonomies'][key]
     taxonomy = Taxonomy(key, uri)
     taxonomy.load_from_remote()
@@ -37,16 +52,21 @@ def remote_load_taxonomy(key):
 
 def list_taxonomies(args=None):
     print_line("Show configured taxonomies")
-    print(f"Configuration: {CONFIG_FILE}\n")
+    print_line(f"Configuration: {CONFIG_FILE}\n", 'info')
     count = 0
-    for key, value in CONFIG['taxonomies'].items():
-        print_info(key, end='\t| ')
-        print(value)
-        count += 1
-    print_line(f"{count} configured taxonomies", 'success')
+    if 'taxonomies' not in CONFIG:
+        print_line("No configured taxonomies", 'fail')
+    else:
+        for key, value in CONFIG['taxonomies'].items():
+            print_line(value)
+            count += 1
+        print_line(f"{count} configured taxonomies", 'success')
 
 
 def show_taxonomy_concepts(args):
+    if 'taxonomies' not in CONFIG:
+        print_line("No taxonomies configured", 'fail')
+        return
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
     print("Remote URI: ", CONFIG['taxonomies'][args.taxonomy], "\n")
     taxonomy = remote_load_taxonomy(args.taxonomy)
@@ -63,6 +83,9 @@ def show_taxonomy_concepts(args):
 
 
 def insert_taxonomy(args):
+    if 'taxonomies' not in CONFIG:
+        print_line("No taxonomies configured", 'fail')
+        return
     t0 = time.time()
     print_line("Taxonomy insert starts")
     print(f"Taxonomy: {args.taxonomy}")
@@ -84,7 +107,7 @@ def insert_taxonomy(args):
         cassandra.insert_taxonomy(taxonomy, args.keyspace)
 
         print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
-        print_success(f"INSERTED")
+        print_success("INSERTED")
 
         duration = round(time.time() - t0, 2)
         print_line(
@@ -100,8 +123,15 @@ def insert_taxonomy(args):
 
 def load_config():
     if not os.path.isfile(CONFIG_FILE):
-        sys.exit("This program requires a repository config file in {}"
-                 .format(os.getcwd()))
+        print_line(
+            "Could not find TagPack repository configuration file.", 'fail')
+        new = input("Create a new default configuration? (y/n) ")
+        if new == 'y':
+            with open('config.yaml', 'a') as the_file:
+                yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
+        else:
+            sys.exit("This program requires a repository config file in {}"
+                     .format(os.getcwd()))
     return yaml.safe_load(open(CONFIG_FILE, 'r'))
 
 
@@ -112,16 +142,16 @@ def show_config(args):
         list_taxonomies()
 
 
-def collect_tagpacks(paths):
+def collect_tagpack_files(paths):
     """Collect Tagpack YAML files from given paths"""
-    tagpacks = []
+    tagpack_files = []
     for path in paths:
         if os.path.isdir(path):
             files = glob.glob(path + '/**/*.yaml', recursive=True)
-            tagpacks = tagpacks + files
+            tagpack_files = tagpack_files + files
         elif os.path.isfile(path):
-            tagpacks.append(path)
-    return tagpacks
+            tagpack_files.append(path)
+    return tagpack_files
 
 
 def validate_tagpack(args):
@@ -133,28 +163,30 @@ def validate_tagpack(args):
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    schema = schema = TagPackSchema()
+    schema = TagPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    tagpacks = collect_tagpacks(args.path)
-    print_info(f"Collected TagPacks: {len(tagpacks)}\n")
+    tagpack_files = collect_tagpack_files(args.path)
+    print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
-    for tagpack in tagpacks:
-        tagPack = TagPack(CONFIG['baseURI'], tagpack, schema)
-        print(f'{tagpack}: ', end='')
+    for tagpack_file in tagpack_files:
+        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+                                         schema, taxonomies)
+
+        print(f'{tagpack_file}: ', end='')
         try:
-            schema.validate(tagPack, taxonomies)
+            tagpack.validate()
             print_success("PASSED")
             no_passed += 1
         except (ValidationError, TagPackFileError) as e:
             print_fail("FAILED", e)
 
-    status = 'fail' if no_passed < len(tagpacks) else 'success'
+    status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
     duration = round(time.time() - t0, 2)
     print_line("{}/{} TagPacks passed in {}s"
-               .format(no_passed, len(tagpacks), duration), status)
+               .format(no_passed, len(tagpack_files), duration), status)
 
 
 def insert_tagpack(args):
@@ -179,16 +211,22 @@ def insert_tagpack(args):
         print_line("Aborted ingest", 'fail')
         sys.exit()
 
-    schema = schema = TagPackSchema()
+    schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
 
-    tagpacks = collect_tagpacks(args.path)
-    print_info(f"Collected TagPacks: {len(tagpacks)}\n")
+    taxonomies = remote_load_taxonomies()
+    taxonomy_keys = [key for key in taxonomies.keys()]
+    print(f"Loaded taxonomies: {taxonomy_keys}")
+
+    tagpack_files = collect_tagpack_files(args.path)
+    print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
     no_tags = 0
-    for tagpack_file in tagpacks:
-        tagpack = TagPack(CONFIG['baseURI'], tagpack_file, schema)
+    for tagpack_file in tagpack_files:
+        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+                                         schema, taxonomies)
+
         print(f'{tagpack_file}: ', end='')
         try:
             cassandra.insert_tagpack(tagpack, args.keyspace, args.concurrency)
@@ -200,11 +238,12 @@ def insert_tagpack(args):
 
     cassandra.close()
 
-    status = 'fail' if no_passed < len(tagpacks) else 'success'
+    status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
     duration = round(time.time() - t0, 2)
     print_line("Inserted {}/{} TagPacks with {} Tags in {}s"
-               .format(no_passed, len(tagpacks), no_tags, duration), status)
+               .format(no_passed, len(tagpack_files), no_tags, duration),
+               status)
 
 
 def show_version():

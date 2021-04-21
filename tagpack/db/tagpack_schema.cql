@@ -13,43 +13,28 @@ CREATE TABLE tagpack_by_uri (
     creator             text
 );
 
-CREATE TABLE tag_by_address (
+CREATE TABLE address_tag_by_address (
     address             text,
     currency            text,
     label               text,
     source              text,
     tagpack_uri         text,
-    lastmod             int,
+    lastmod             date,
     category            text,
     abuse               text,
     PRIMARY KEY (address, currency, label, source, tagpack_uri)
 );
 
-CREATE TABLE tag_by_category (
-    category            text,
+CREATE TABLE entity_tag_by_id (
+    entity              int,
     currency            text,
-    abuse               text,
-    label_norm          text,
     label               text,
-    address             text,
     source              text,
     tagpack_uri         text,
-    lastmod             int,
-    PRIMARY KEY (category, currency, address, source, tagpack_uri)
-);
-
-CREATE TABLE tag_by_label (
-    label_norm_prefix   text,
-    label_norm          text,
-    label               text,
-    address             text,
-    currency            text,
-    source              text,
-    tagpack_uri         text,
-    lastmod             int,
+    lastmod             date,
     category            text,
     abuse               text,
-    PRIMARY KEY (label_norm_prefix, label_norm, label, address, currency, source, tagpack_uri)
+    PRIMARY KEY (entity, currency, label, source, tagpack_uri)
 );
 
 CREATE TABLE taxonomy_by_key (

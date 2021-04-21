@@ -5,15 +5,9 @@ import yaml
 import importlib.resources as pkg_resources
 
 from . import conf
+from tagpack import ValidationError
 
 TAGPACK_SCHEMA_FILE = 'tagpack_schema.yaml'
-
-
-class ValidationError(Exception):
-    """Class for schema validation errors"""
-
-    def __init__(self, message):
-        super().__init__("Schema Validation Error: " + message)
 
 
 class TagPackSchema(object):
@@ -37,20 +31,55 @@ class TagPackSchema(object):
                 if v['mandatory']}
 
     @property
-    def tag_fields(self):
-        return {k: v for k, v in self.schema['tag'].items()}
+    def generic_tag_fields(self):
+        return {k: v for k, v in self.schema['generic_tag'].items()}
 
     @property
-    def mandatory_tag_fields(self):
-        return {k: v for k, v in self.schema['tag'].items()
+    def address_tag_fields(self):
+        explicit_fields = {k: v for k, v in self.schema['address_tag'].items()}
+        inherited_fields = self.generic_tag_fields
+        return {**explicit_fields, **inherited_fields}
+
+    @property
+    def mandatory_address_tag_fields(self):
+        return {k: v for k, v in self.address_tag_fields.items()
                 if v['mandatory']}
 
     @property
+    def entity_tag_fields(self):
+        explicit_fields = {k: v for k, v in self.schema['entity_tag'].items()}
+        inherited_fields = self.generic_tag_fields
+        return {**explicit_fields, **inherited_fields}
+
+    @property
+    def mandatory_entity_tag_fields(self):
+        return {k: v for k, v in self.entity_tag_fields.items()
+                if v['mandatory']}
+
+    @property
+    def all_tag_fields(self):
+        addr_tags = {k: v for k, v in self.schema['address_tag'].items()}
+        entity_tags = {k: v for k, v in self.schema['entity_tag'].items()}
+        generic_tags = {k: v for k, v in self.schema['generic_tag'].items()}
+        return {**addr_tags, **entity_tags, **generic_tags}
+
+    @property
+    def all_address_tag_fields(self):
+        """Returns all address tag header and body fields"""
+        return {**self.header_fields, **self.address_tag_fields}
+
+    @property
+    def all_entity_tag_fields(self):
+        """Returns all address tag header and body fields"""
+        return {**self.header_fields, **self.entity_tag_fields}
+
+    @property
     def all_fields(self):
-        """Returns all TagPack header and Tag fields"""
-        header_tag_fields = dict(list(self.schema['header'].items()) +
-                                 list(self.schema['tag'].items()))
-        return header_tag_fields
+        """Returns all address tag header and body fields"""
+        return {**self.header_fields,
+                **self.generic_tag_fields,
+                **self.entity_tag_fields,
+                **self.address_tag_fields}
 
     def field_type(self, field):
         return self.all_fields[field]['type']
@@ -58,7 +87,7 @@ class TagPackSchema(object):
     def field_taxonomy(self, field):
         return self.all_fields[field].get('taxonomy')
 
-    def _check_types(self, field, value):
+    def check_type(self, field, value):
         """Checks whether a field's type matches the definition"""
         schema_type = self.field_type(field)
         if schema_type == 'text':
@@ -72,15 +101,21 @@ class TagPackSchema(object):
             if not isinstance(value, datetime.date):
                 raise ValidationError("Field {} must be of type datetime"
                                       .format(field))
+        elif schema_type == 'int':
+            if not isinstance(value, int):
+                raise ValidationError("Field {} must be of type integer"
+                                      .format(field))
         elif schema_type == 'list':
             if not isinstance(value, list):
-                raise ValidationError("Field {} must be of type list")
+                raise ValidationError("Field {} must be of type list"
+                                      .format(field))
         else:
             raise ValidationError("Unsupported schema type {}"
                                   .format(schema_type))
+        return True
 
-    def _check_taxonomies(self, field, value, taxonomies):
-        """Checks whether a field uses values from a given taxonomy"""
+    def check_taxonomies(self, field, value, taxonomies):
+        """Checks whether a field uses values from given taxonomies"""
         if taxonomies and self.field_taxonomy(field):
             expected_taxonomy_id = self.field_taxonomy(field)
             expected_taxonomy = taxonomies.get(expected_taxonomy_id)
@@ -92,42 +127,4 @@ class TagPackSchema(object):
             if value not in expected_taxonomy.concept_ids:
                 raise ValidationError("Undefined concept {} in field {}"
                                       .format(value, field))
-
-    def validate(self, tagpack, taxonomies):
-        """Validates a tagpack against this schema and used taxonmomies"""
-
-        # check if mandatory header fields are used by a tagpack
-        for schema_field in self.mandatory_header_fields:
-            if schema_field not in tagpack.header_fields:
-                raise ValidationError("Mandatory field {} missing"
-                                      .format(schema_field))
-
-        # check header fields' types, taxonomy and mandatory use
-        for field, value in tagpack.all_header_fields.items():
-            # check a field is defined
-            if field not in self.all_fields:
-                raise ValidationError("Field {} not allowed in header"
-                                      .format(field))
-
-            self._check_types(field, value)
-            self._check_taxonomies(field, value, taxonomies)
-
-        # iterate over all tags and check types, taxonomy and mandatory use
-        for tag in tagpack.tags:
-
-            # check if mandatory tag fields are defined
-            for schema_field in self.mandatory_tag_fields:
-                if schema_field not in tag.explicit_fields and \
-                   schema_field not in tagpack.generic_tag_fields:
-                    raise ValidationError("Mandatory field {} missing"
-                                          .format(schema_field))
-
-            for field, value in tag.explicit_fields.items():
-                # check whether field is defined as body field
-                if field not in self.tag_fields:
-                    raise ValidationError("Field {} not allowed in tag"
-                                          .format(field))
-
-                # check types and taxomomy use
-                self._check_types(field, value)
-                self._check_taxonomies(field, value, taxonomies)
+        return True

@@ -26,45 +26,47 @@ Install package and dependencies in local environment
 
 List configured taxonomy keys and URIs
 
-    tagpack taxonomy
+    tagpack-tool taxonomy
 
 Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
-    tagpack taxonomy show entity
+    tagpack-tool taxonomy show entity
 
 Insert concepts from a remote taxonomy into Cassandra
 
-    tagpack taxonomy insert abuse
+    tagpack-tool taxonomy insert abuse
 
 Use the `-s / --setup-keyspace` (and `-k`) option to (re-)create the keyspace
 
-    tagpack taxonomy insert -s -k my_keyspace abuse
+    tagpack-tool taxonomy insert -s -k tagpacks abuse
 
 ### Validate a TagPack
 
 Validate a single TagPack file
 
-    tagpack validate packs/demo.yaml
+    tagpack-tool validate tests/testfiles/ex_addr_tagpack.yaml
+    tagpack-tool validate tests/testfiles/ex_entity_tagpack.yaml
 
 Recursively validate all TagPacks in (a) given folder(s).
 
-    tagpack validate packs/
+    tagpack-tool validate tests/testfiles/
 
 ### Insert a TagPack into Cassandra
 
 Insert a single TagPack file or all TagPacks from a given folder
 
-    tagpack insert packs/demo.yaml
-    tagpack insert packs/
+    tagpack-tool insert tests/testfiles/ex_addr_tagpack.yaml
+    tagpack-tool insert tests/testfiles/ex_entity_tagpack.yaml
+    tagpack-tool insert tests/testfiles/
 
 Create a keyspace and insert all TagPacks from a given folder
 
-    tagpack insert -s -k dummy_keyspace packs/
+    tagpack-tool insert -s -k tagpacks tests/testfiles/
 
 Optionally, you can specify the level of `concurrency` (default: 100) by using
 the `-c` parameter.
 
-    tagpack insert -c 500 -s -k dummy_keyspace packs/
+    tagpack-tool insert -c 500 -s -k tagpacks tests/testfiles
     
 ## Development / Testing
 
