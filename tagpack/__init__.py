@@ -3,6 +3,10 @@
 from tagpack._version import __version__
 
 
+def get_version():
+    return __version__
+
+
 class TagPackFileError(Exception):
     """Class for TagPack file (structure) errors"""
 

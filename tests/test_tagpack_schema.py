@@ -4,8 +4,6 @@ import pytest
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.taxonomy import Taxonomy
 
-# TEST_SCHEMA = 'conf/tagpack_schema.yaml'
-
 
 @pytest.fixture
 def schema(monkeypatch):
@@ -13,14 +11,7 @@ def schema(monkeypatch):
     def mock_load_schema(*args, **kwargs):
         pass
 
-    # monkeypatch.setattr(TagPackSchema, "load_schema", mock_load_schema)
-    # monkeypatch.setattr('tagpack.tagpack_schema.TAGPACK_SCHEMA_FILE',
-    #                     TEST_SCHEMA)
-
-    # schema = yaml.safe_load(open(TEST_SCHEMA, 'r'))
-
     tagpack_schema = TagPackSchema()
-    # tagpack_schema.schema = schema
 
     return tagpack_schema
 
