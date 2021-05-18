@@ -1,7 +1,7 @@
 ![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
 
 # GraphSense TagPack Management Tool
- 
+
 This repository defines a common structure (schema) for TagPacks and provides a
 tool for validating and ingesting TagPacks into [Apache Cassandra][cassandra].
 
@@ -66,7 +66,7 @@ Optionally, you can specify the level of `concurrency` (default: 100) by using
 the `-c` parameter.
 
     tagpack-tool insert -c 500 -s -k tagpacks tests/testfiles
-    
+
 ## Development / Testing
 
 Use the `-e` option for linking package to sources (for development purposes)
