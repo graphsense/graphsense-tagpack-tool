@@ -1,4 +1,4 @@
-"""Utils for a more beautiful CMD interface"""
+"""Utilities for a more beautiful CMD interface"""
 import os
 
 
@@ -14,8 +14,10 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-rows, columns = os.popen('stty size', 'r').read().split()
-columns = int(columns)
+try:
+    rows, columns = os.get_terminal_size(0)
+except OSError:  # if running as GitHub Action
+    rows, columns = 24, 80
 
 
 def print_separator(symbol, text, colour=None):

@@ -1,6 +1,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.4.5] - 2020-11-16
+## [0.5.0] 2021-05-31
+### Changed
+- Switched to GitHub action workflows
+- Added support for entity tags
+- Move TagPack documentation to TagPack rep
+- Update package dependencies
+
+### Added
+- Add additional TagPack validation tests
+- Add support for Entity Tags
+
+### Removed
+- Removed unnecessary lookup tables
 
 ## [0.4.4] - 2020-06-12
 ### Fixed
