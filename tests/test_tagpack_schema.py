@@ -70,6 +70,7 @@ def test_mandatory_address_tag_fields(schema):
     assert isinstance(schema.mandatory_address_tag_fields, dict)
     assert 'address' in schema.mandatory_address_tag_fields
     assert 'label' in schema.mandatory_address_tag_fields
+    assert 'created' not in schema.mandatory_address_tag_fields
     assert 'lastmod' not in schema.mandatory_address_tag_fields
 
 
@@ -116,6 +117,7 @@ def test_field_type(schema):
     assert schema.field_type('title') == 'text'
     assert schema.field_type('lastmod') == 'datetime'
     assert schema.field_type('entity') == 'int'
+    assert schema.field_type('is_cluster_definer') == 'boolean'
 
 
 def test_field_taxonomy(schema):
