@@ -15,7 +15,8 @@ It is made available as a Python package.
 Create and activate a python environment for required dependencies
 
     python3 -m venv venv
-    . venv/bin/activate
+    source venv/bin/activate
+    python -m pip install -U pip wheel setuptools
 
 Install package and dependencies in local environment
 
@@ -69,6 +70,10 @@ the `-c` parameter.
 
 ## Development / Testing
 
+Speed-up building of [cassandra-driver](https://docs.datastax.com/en/developer/python-driver/3.25/installation/) from source.
+
+    CASS_DRIVER_BUILD_CONCURRENCY=8
+
 Use the `-e` option for linking package to sources (for development purposes)
 
     pip install -e .
@@ -81,10 +86,15 @@ Run tests
 
     pytest
 
-Check test coverage
+Check test coverage (optional)
+    
+    pip install coverage
 
     coverage run -m pytest
     coverage report
 
+Use [act][act] to check if test via [Github action](https://github.com/features/actions) pass.
+
+[act]: https://github.com/nektos/act
 [cassandra]: https://cassandra.apache.org
 [graphsense-transformation]: https://github.com/graphsense/graphsense-transformation
