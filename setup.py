@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 VERSIONFILE = "tagpack/_version.py"
 verfilestr = open(VERSIONFILE, "rt").read()
-match = re.search(r"^__version__ = '(\d\.\d.\d+(\.\d+)?)'",
+match = re.search(r"^__version__ = '(\d\.\d.\d+(\.\w+)?)'",
                   verfilestr,
                   re.MULTILINE)
 if match:
