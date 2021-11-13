@@ -51,4 +51,4 @@ def print_success(text, **args):
 def print_fail(text, exception=None):
     print(f"{bcolors.FAIL}{text}{bcolors.ENDC}")
     if exception:
-        print(exception)
+        print(f"{bcolors.FAIL}{exception}{bcolors.ENDC}")
