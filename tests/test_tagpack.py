@@ -232,6 +232,14 @@ def test_validate_fail_missing_address(tagpack):
     assert "Tag must be assigned to address or entity" in str(e.value)
 
 
+def test_validate_fail_is_cluster_definer(tagpack):
+    tagpack.contents['is_cluster_definer'] = 3
+
+    with pytest.raises(ValidationError) as e:
+        tagpack.validate()
+    assert "Field is_cluster_definer must be of type boolean" in str(e.value)
+
+
 def test_validate_fail_taxonomy(tagpack):
     tagpack.contents['tags'][0]['category'] = 'unknown'
 

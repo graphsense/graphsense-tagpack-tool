@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 from argparse import ArgumentParser
 import glob
 import os
@@ -20,9 +21,9 @@ CONFIG_FILE = "config.yaml"
 DEFAULT_CONFIG = {
     'baseURI': 'uri:test',
     'taxonomies': {
-        'entity': 'https://interpol-innovation-centre.github.io/' +
+        'entity': 'https://graphsense.info/' +
                   'DW-VA-Taxonomy/assets/data/entities.csv',
-        'abuse': 'https://interpol-innovation-centre.github.io/' +
+        'abuse': 'https://graphsense.info/' +
                   'DW-VA-Taxonomy/assets/data/abuses.csv'
     }
 }
@@ -52,7 +53,7 @@ def remote_load_taxonomy(key):
 
 def list_taxonomies(args=None):
     print_line("Show configured taxonomies")
-    print_line(f"Configuration: {CONFIG_FILE}\n", 'info')
+    print_line(f"Configuration: {CONFIG_FILE}", 'info')
     count = 0
     if 'taxonomies' not in CONFIG:
         print_line("No configured taxonomies", 'fail')
@@ -247,12 +248,12 @@ def insert_tagpack(args):
 
 
 def show_version():
-    return "TagPack management tool v" + version
+    return "GraphSense TagPack management tool v" + version
 
 
 def main():
     parser = ArgumentParser(
-        description='TagPack validation and ingest tool',
+        description='GraphSense TagPack validation and ingest tool',
         epilog='GraphSense TagPack Tool v{} - https://graphsense.info'
         .format(version))
     parser.add_argument('-v', '--version', action='version',

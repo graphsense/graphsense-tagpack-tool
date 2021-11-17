@@ -10,7 +10,9 @@ CREATE TABLE tagpack_by_uri (
     uri                 text PRIMARY KEY,
     title               text,
     description         text,
-    creator             text
+    owner               text,
+    creator             text,
+    is_public           boolean
 );
 
 CREATE TABLE address_tag_by_address (
@@ -19,6 +21,9 @@ CREATE TABLE address_tag_by_address (
     label               text,
     source              text,
     tagpack_uri         text,
+    confidence          int,
+    is_cluster_definer  boolean,
+    created             date,
     lastmod             date,
     category            text,
     abuse               text,
@@ -31,6 +36,8 @@ CREATE TABLE entity_tag_by_id (
     label               text,
     source              text,
     tagpack_uri         text,
+    confidence          int,
+    created             date,
     lastmod             date,
     category            text,
     abuse               text,

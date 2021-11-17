@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 VERSIONFILE = "tagpack/_version.py"
 verfilestr = open(VERSIONFILE, "rt").read()
-match = re.search(r"^__version__ = '(\d\.\d.\d+(\.\d+)?)'",
+match = re.search(r"^__version__ = '(\d\.\d.\d+(\.\w+)?)'",
                   verfilestr,
                   re.MULTILINE)
 if match:
@@ -34,8 +34,8 @@ setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "requests>=2.25.1",
-        "pyyaml>=5.4.1",
+        "requests>=2.26.0",
+        "pyyaml>=6.0",
         "tabulate>=0.8.9",
         "cassandra-driver>=3.25.0"
     ],

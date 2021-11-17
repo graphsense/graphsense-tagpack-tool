@@ -105,6 +105,10 @@ class TagPackSchema(object):
             if not isinstance(value, int):
                 raise ValidationError("Field {} must be of type integer"
                                       .format(field))
+        elif schema_type == 'boolean':
+            if not isinstance(value, bool):
+                raise ValidationError("Field {} must be of type boolean"
+                                      .format(field))
         elif schema_type == 'list':
             if not isinstance(value, list):
                 raise ValidationError("Field {} must be of type list"

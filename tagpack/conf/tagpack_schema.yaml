@@ -5,8 +5,14 @@ header:
   creator:
     type: text
     mandatory: true
+  owner:
+    type: text
+    mandatory: false
   description:
     type: text
+    mandatory: false
+  is_public:
+    type: boolean
     mandatory: false
   tags:
     type: list
@@ -17,13 +23,25 @@ generic_tag:
     mandatory: true
   source:
     type: text
-    mandatory: true    
+    mandatory: true
   currency:
     type: text
-    mandatory: true    
+    mandatory: true
+  context:
+    type: text
+    mandatory: false
+  confidence:
+    type: int
+    mandatory: false
+  is_cluster_definer:
+    type: boolean
+    mandatory: false
+  created:
+    type: datetime
+    mandatory: false
   lastmod:
     type: datetime
-    mandatory: false    
+    mandatory: false
   category:
     type: text
     mandatory: false
@@ -31,7 +49,7 @@ generic_tag:
   abuse:
     type: text
     mandatory: false
-    taxonomy: abuse  
+    taxonomy: abuse
 address_tag:
   address:
     type: text

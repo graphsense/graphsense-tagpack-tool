@@ -21,6 +21,8 @@ class TagPack(object):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
         contents = yaml.safe_load(open(pathname, 'r'))
+        if not baseuri.endswith(os.path.sep):
+            baseuri = baseuri + os.path.sep
         uri = baseuri + pathname
         return TagPack(uri, contents, schema, taxonomies)
 
