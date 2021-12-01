@@ -9,18 +9,17 @@ DROP TABLE IF EXISTS address;
 -- Taxonomy & Concept Tables
 
 CREATE TABLE taxonomy (
-	id 					SERIAL 		PRIMARY KEY,
-	label 				VARCHAR 	NOT NULL,
-	source 				VARCHAR		DEFAULT NULL,
-	description			VARCHAR		NOT NULL
+	id 				    VARCHAR 	PRIMARY KEY,
+	source 				VARCHAR		NOT NULL,
+	description			VARCHAR		DEFAULT NULL
 );
 
 CREATE TABLE concept (
 	id 					VARCHAR 	PRIMARY KEY,
 	label 				VARCHAR 	NOT NULL,
-	source 				VARCHAR		DEFAULT NULL,
+	source 				VARCHAR		NOT NULL,
 	description			VARCHAR		NOT NULL,
-	taxonomy			INTEGER		REFERENCES taxonomy(id) ON DELETE CASCADE
+	taxonomy			VARCHAR		NOT NULL REFERENCES taxonomy(id) ON DELETE CASCADE
 );
 
 -- Agreed-upon Confidence Levels
