@@ -55,18 +55,19 @@ INSERT INTO confidence (level, label, description)
 -- Tag & TagPack tables
 
 CREATE TABLE address (
-	id 					SERIAL		PRIMARY KEY,
-	currency			VARCHAR		NOT NULL,
-	address				VARCHAR		NOT NULL,
+    currency			VARCHAR		,
+	address				VARCHAR		,
+	id 					SERIAL		,
 	created				TIMESTAMP 	NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	UNIQUE(currency, address)
+	PRIMARY KEY(currency, address),
+	UNIQUE(id)
 );
 
 CREATE INDEX curr_addr_index ON address (currency, address);
 
 CREATE TABLE tagpack (
-	id 					SERIAL 		PRIMARY KEY,
-	title				VARCHAR		NOT NULL,
+	id				    VARCHAR		PRIMARY KEY,
+	title               VARCHAR     NOT NULL,
 	description			VARCHAR		NOT NULL,
 	source 				VARCHAR		DEFAULT NULL,
 	creator				VARCHAR		NOT NULL,
@@ -84,11 +85,13 @@ CREATE TABLE tag (
 	is_cluster_definer	BOOLEAN		DEFAULT NULL,
 	created				TIMESTAMP	NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	lastmod				TIMESTAMP	NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	address				INTEGER		REFERENCES address(id),
+	address				VARCHAR		NOT NULL,
+	currency		    VARCHAR		NOT NULL,
 	confidence			INTEGER		REFERENCES confidence(id),
 	abuse				VARCHAR		REFERENCES concept(id),
 	category			VARCHAR		REFERENCES concept(id),
-	tagpack				INTEGER		REFERENCES tagpack(id) ON DELETE CASCADE
+	tagpack				VARCHAR		REFERENCES tagpack(id) ON DELETE CASCADE,
+	FOREIGN KEY (currency, address) REFERENCES address (currency, address)
 );
 
 CREATE INDEX label_index ON tag (label);
@@ -97,12 +100,14 @@ CREATE INDEX label_index ON tag (label);
 -- GraphSense mapping table
 
 CREATE TABLE address_cluster_mapping (
-	address_id			INTEGER		REFERENCES address(id),
+	address 			INTEGER		NOT NULL,
+	currency            VARCHAR     NOT NULL,
 	gs_cluster_id 		INTEGER		NOT NULL,
 	gs_cluster_def_addr	VARCHAR		NOT NULL,
 	gs_cluster_no_addr	INTEGER		DEFAULT NULL,
 	gs_cluster_in_degr	INTEGER		DEFAULT NULL,
 	gs_cluster_out_degr INTEGER		DEFAULT NULL,
+	FOREIGN KEY (currency, address) REFERENCES address (currency, address)
 );
 
 
