@@ -11,6 +11,7 @@ from tabulate import tabulate
 
 from tagpack import __version__ as version
 from tagpack.cassandra import Cassandra, CONCURRENCY, StorageError
+from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
 from tagpack.tagpack import TagPack, TagPackFileError
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
@@ -27,9 +28,6 @@ DEFAULT_CONFIG = {
                   'DW-VA-Taxonomy/assets/data/abuses.csv'
     }
 }
-
-
-DEFAULT_KEYSPACE = "tagpacks"
 
 
 def remote_load_taxonomies():
@@ -91,21 +89,10 @@ def insert_taxonomy(args):
     print_line("Taxonomy insert starts")
     print(f"Taxonomy: {args.taxonomy}")
 
-    print(f"Cassandra node: {args.db_node}")
-    print(f"Cassandra keyspace: {args.keyspace}\n")
-
-    cassandra = Cassandra(args.db_node)
+    tagstore = TagStore(args.url)
     try:
-        cassandra.connect()
-        if args.setup_keyspace:
-            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
-            cassandra.setup_keyspace(args.keyspace)
-        if not cassandra.has_keyspace(args.keyspace):
-            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
-            sys.exit()
-
         taxonomy = remote_load_taxonomy(args.taxonomy)
-        cassandra.insert_taxonomy(taxonomy, args.keyspace)
+        tagstore.insert_taxonomy(taxonomy)
 
         print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
         print_success("INSERTED")
@@ -114,12 +101,9 @@ def insert_taxonomy(args):
         print_line(
             f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
             'success')
-    except StorageError as e:
+    except Exception as e:
         print_fail(e)
         print_line("Aborted insert", 'fail')
-    finally:
-        cassandra.close()
-        sys.exit()
 
 
 def load_config():
@@ -195,22 +179,7 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    print(f"Cassandra node: {args.db_node}")
-    print(f"Cassandra keyspace: {args.keyspace}")
-    cassandra = Cassandra(args.db_node)
-    try:
-        cassandra.connect()
-        if args.setup_keyspace:
-            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
-            cassandra.setup_keyspace(args.keyspace)
-        if not cassandra.has_keyspace(args.keyspace):
-            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
-            sys.exit()
-    except StorageError as e:
-        print_fail(e)
-        cassandra.close()
-        print_line("Aborted ingest", 'fail')
-        sys.exit()
+    tagstore = TagStore(args.url)
 
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
@@ -230,14 +199,12 @@ def insert_tagpack(args):
 
         print(f'{tagpack_file}: ', end='')
         try:
-            cassandra.insert_tagpack(tagpack, args.keyspace, args.concurrency)
+            tagstore.insert_tagpack(tagpack)
             print_success(f"INSERTED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
-        except StorageError as e:
+        except Exception as e:
             print_fail("FAILED", e)
-
-    cassandra.close()
 
     status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
@@ -273,12 +240,10 @@ def main():
         'insert', help='insert taxonomy into GraphSense')
     parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
                             help='the selected taxonomy')
-    parser_t_i.add_argument('-d', '--db_node',
-                            default='localhost', metavar='DB_NODE',
-                            help='Cassandra node; default "localhost")')
-    parser_t_i.add_argument('-k', '--keyspace',
-                            default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-                            help="Cassandra keyspace for taxonomy tables")
+    #parser_t_i.add_argument('-k', '--keyspace',
+    #                        default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
+    #                        help="Cassandra keyspace for taxonomy tables")
+    parser_t_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
     parser_t_i.add_argument('-s', '--setup-keyspace', action='store_true',
                             help="(Re-create) keyspace for TagPacks")
     parser_t_i.set_defaults(func=insert_taxonomy)
@@ -305,15 +270,13 @@ def main():
     parser_i.add_argument('path', nargs='+', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
-    parser_i.add_argument('-d', '--db_node',
-                          default='localhost', metavar='DB_NODE',
-                          help='Cassandra node; default "localhost")')
-    parser_i.add_argument('-k', '--keyspace',
-                          default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-                          help="Cassandra keyspace for taxonomy tables")
-    parser_i.add_argument('-c', '--concurrency', nargs='?', type=int,
-                          default=CONCURRENCY,
-                          help='Concurrent execution threshold)')
+    #parser_i.add_argument('-k', '--keyspace',
+    #                      default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
+    #                      help="Cassandra keyspace for taxonomy tables")
+    parser_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_i.add_argument('-b', '--batch_size', nargs='?', type=int,
+                          default=1000,
+                          help='batch size for insert)')
     parser_i.add_argument('-s', '--setup-keyspace', action='store_true',
                           help="(Re-create) keyspace for TagPacks")
     parser_i.set_defaults(func=insert_tagpack)

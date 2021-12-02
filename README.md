@@ -2,15 +2,48 @@
 
 # GraphSense TagPack Management Tool
 
-This repository defines a common structure (schema) for TagPacks and provides a
-tool for validating and ingesting TagPacks into [Apache Cassandra][cassandra].
 
-The TagPack management tool supports validation of TagPacks and ingestion into
-an [Apache Cassandra database][cassandra], which is required before running
-the [GraphSense transformation][graphsense-transformation] pipeline.
-It is made available as a Python package.
 
-## Local Installation
+This repository 
+* provides a tool for ingesting taxonomies and concepts
+* defines a common structure (schema) for TagPacks 
+* provides a tool for validating TagPacks 
+* provides a tool for ingesting TagPacks into a PostgreSQL database.
+
+
+## Prerequisites: database
+
+### Optional: Dockerised Postgres database
+
+- [Docker][docker], see e.g. https://docs.docker.com/engine/install/
+- Docker Compose: https://docs.docker.com/compose/install/
+
+Setup and start a PostgreSQL instance. First, copy `env.template` to `.env`
+and fill in all parameters:
+
+`LOCAL_DATA_DIR`, the persisted PostgreSQL data directory on the local machine,
+and all PostgreSQL connection parameters
+- `POSTGRES_HOST`
+- `POSTGRES_USER`
+- `POSTGRES_DB`
+- `POSTGRES_PASSWORD`
+
+Start an PostgreSQL instance using Docker Compose:
+
+    docker-compose up -d
+
+This will automatically create the database schema as defined
+in `scripts/tagstore_schema.sql`.
+
+### Or create the tables in an existing PostgreSQL    
+
+
+Based on 
+
+    tagpack/db
+
+
+## Install tagpack-tools
 
 Create and activate a python environment for required dependencies
 
@@ -22,7 +55,11 @@ Install package and dependencies in local environment
 
     pip install .
 
-### Handling Taxonomies
+## Handling Taxonomies
+
+Create a default config.yaml (interactively)
+
+    tagpack-tool config
 
 List configured taxonomy keys and URIs
 
@@ -32,15 +69,12 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
     tagpack-tool taxonomy show entity
 
-Insert concepts from a remote taxonomy into Cassandra
+Insert concepts from a remote taxonomy into DB (using the DB .env file created earlier)
 
-    tagpack-tool taxonomy insert abuse
+    tagpack-tool taxonomy insert abuse -e /path/to/.env
 
-Use the `-s / --setup-keyspace` (and `-k`) option to (re-)create the keyspace
 
-    tagpack-tool taxonomy insert -s -k tagpacks abuse
-
-### Validate a TagPack
+## Validate a TagPack
 
 Validate a single TagPack file
 
@@ -51,7 +85,7 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool validate tests/testfiles/
 
-### Insert a TagPack into Cassandra
+## Insert a TagPack into database
 
 Insert a single TagPack file or all TagPacks from a given folder
 
@@ -68,15 +102,13 @@ the `-c` parameter.
 
     tagpack-tool insert -c 500 -s -k tagpacks tests/testfiles
 
+## Insert GraphSense cluster mappings into database
+
+TODO
+    
+    tagpack-tool cluster -k btc_transformed 
+
 ## Development / Testing
-
-Speed-up building of [cassandra-driver](https://docs.datastax.com/en/developer/python-driver/3.25/installation/) from source.
-
-    CASS_DRIVER_BUILD_CONCURRENCY=8
-
-Use the `-e` option for linking package to sources (for development purposes)
-
-    pip install -e .
 
 OR install packages via `requirements.txt`
 
@@ -96,5 +128,5 @@ Check test coverage (optional)
 Use [act][act] to check if test via [Github action](https://github.com/features/actions) pass.
 
 [act]: https://github.com/nektos/act
-[cassandra]: https://cassandra.apache.org
+[docker]: https://www.docker.com
 [graphsense-transformation]: https://github.com/graphsense/graphsense-transformation

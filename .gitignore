@@ -6,3 +6,4 @@ tagpack_tool.egg-info/
 *.sublime-project
 *.sublime-workspace
 config.yaml
+/.env
