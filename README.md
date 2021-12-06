@@ -4,21 +4,21 @@
 
 
 
-This repository 
-* provides a tool for ingesting taxonomies and concepts
-* defines a common structure (schema) for TagPacks 
-* provides a tool for validating TagPacks 
-* provides a tool for ingesting TagPacks into a PostgreSQL database.
+This repository defines a common structure (schema) for TagPacks and provides a tool for  
+* ingesting taxonomies and concepts
+* validating TagPacks 
+* ingesting TagPacks into a PostgreSQL database.
+* ingesting GraphSense cluster mappings  
 
 
-## Prerequisites: database
+## Prerequisites: PostgreSQL database
 
-### Optional: Dockerised Postgres database
+### Option 1: dockerised database
 
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
 
-Setup and start a PostgreSQL instance. First, copy `env.template` to `.env`
+Setup and start a PostgreSQL instance. First, copy `tagpack/conf/env.template` to `.env`
 and fill in all parameters:
 
 `LOCAL_DATA_DIR`, the persisted PostgreSQL data directory on the local machine,
@@ -35,12 +35,9 @@ Start an PostgreSQL instance using Docker Compose:
 This will automatically create the database schema as defined
 in `scripts/tagstore_schema.sql`.
 
-### Or create the tables in an existing PostgreSQL    
+### Option 2: create the schema and tables in a PostgreSQL instance of your choice    
 
-
-Based on 
-
-    tagpack/db
+    psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
 
 ## Install tagpack-tools
@@ -69,9 +66,9 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
     tagpack-tool taxonomy show entity
 
-Insert concepts from a remote taxonomy into DB (using the DB .env file created earlier)
+Insert concepts from a remote taxonomy into database
 
-    tagpack-tool taxonomy insert abuse -e /path/to/.env
+    tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 
 ## Validate a TagPack
@@ -104,9 +101,11 @@ the `-c` parameter.
 
 ## Insert GraphSense cluster mappings into database
 
-TODO
+Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to suit your setup.
+
+Then copy the required cluster mappings 
     
-    tagpack-tool cluster -k btc_transformed 
+    tagpack-tool cluster -d localhost -k ks_map.json
 
 ## Development / Testing
 
