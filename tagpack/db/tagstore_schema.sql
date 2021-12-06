@@ -100,7 +100,7 @@ CREATE INDEX label_index ON tag (label);
 -- GraphSense mapping table
 
 CREATE TABLE address_cluster_mapping (
-	address 			INTEGER		NOT NULL,
+	address 			VARCHAR		NOT NULL,
 	currency            VARCHAR     NOT NULL,
 	gs_cluster_id 		INTEGER		NOT NULL,
 	gs_cluster_def_addr	VARCHAR		NOT NULL,
