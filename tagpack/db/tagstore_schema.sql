@@ -1,10 +1,9 @@
-DROP TABLE IF EXISTS tag;
-DROP TABLE IF EXISTS confidence;
-DROP TABLE IF EXISTS concept;
-DROP TABLE IF EXISTS taxonomy;
-DROP TABLE IF EXISTS tagpack;
-DROP TABLE IF EXISTS address_cluster_mapping;
-DROP TABLE IF EXISTS address;
+DROP SCHEMA IF EXISTS tagstore;
+
+CREATE SCHEMA tagstore;
+
+SET search_path to tagstore;
+
 
 -- Taxonomy & Concept Tables
 

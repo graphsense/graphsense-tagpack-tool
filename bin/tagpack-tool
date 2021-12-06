@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import json
 from argparse import ArgumentParser
 import glob
 import os
@@ -10,7 +10,7 @@ import yaml
 from tabulate import tabulate
 
 from tagpack import __version__ as version
-from tagpack.cassandra import Cassandra, CONCURRENCY, StorageError
+from tagpack.graphsenselib import GraphSense
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
 from tagpack.tagpack import TagPack, TagPackFileError
@@ -28,6 +28,9 @@ DEFAULT_CONFIG = {
                   'DW-VA-Taxonomy/assets/data/abuses.csv'
     }
 }
+
+
+_DEFAULT_SCHEMA = "tagstore"
 
 
 def remote_load_taxonomies():
@@ -89,7 +92,7 @@ def insert_taxonomy(args):
     print_line("Taxonomy insert starts")
     print(f"Taxonomy: {args.taxonomy}")
 
-    tagstore = TagStore(args.url)
+    tagstore = TagStore(args.url, args.schema)
     try:
         taxonomy = remote_load_taxonomy(args.taxonomy)
         tagstore.insert_taxonomy(taxonomy)
@@ -179,7 +182,7 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    tagstore = TagStore(args.url)
+    tagstore = TagStore(args.url, args.schema)
 
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
@@ -240,12 +243,12 @@ def main():
         'insert', help='insert taxonomy into GraphSense')
     parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
                             help='the selected taxonomy')
-    #parser_t_i.add_argument('-k', '--keyspace',
-    #                        default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-    #                        help="Cassandra keyspace for taxonomy tables")
+    parser_t_i.add_argument('--schema',
+                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                            help="PostgreSQL schema for taxonomy tables")
     parser_t_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
-    parser_t_i.add_argument('-s', '--setup-keyspace', action='store_true',
-                            help="(Re-create) keyspace for TagPacks")
+    #parser_t_i.add_argument('-s', '--setup-keyspace', action='store_true',
+    #                        help="(Re-create) keyspace for TagPacks")
     parser_t_i.set_defaults(func=insert_taxonomy)
 
     # parser for taxonomy show command
@@ -270,15 +273,15 @@ def main():
     parser_i.add_argument('path', nargs='+', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
-    #parser_i.add_argument('-k', '--keyspace',
-    #                      default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-    #                      help="Cassandra keyspace for taxonomy tables")
+    parser_i.add_argument('--schema',
+                          default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                          help="PostgreSQL schema for tagpack tables")
     parser_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
     parser_i.add_argument('-b', '--batch_size', nargs='?', type=int,
                           default=1000,
                           help='batch size for insert)')
-    parser_i.add_argument('-s', '--setup-keyspace', action='store_true',
-                          help="(Re-create) keyspace for TagPacks")
+    #parser_i.add_argument('-s', '--setup-keyspace', action='store_true',
+    #                      help="(Re-create) keyspace for TagPacks")
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
@@ -287,6 +290,20 @@ def main():
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
     parser_v.set_defaults(func=validate_tagpack)
+
+    # parser for cluster command
+    parser_cl = subparsers.add_parser("cluster",
+                                     help="insert cluster mappings")
+    parser_cl.add_argument('-d', '--db_nodes',
+                          default='localhost', metavar='DB_NODE',
+                          help='Cassandra node(s); default "localhost")')
+    parser_cl.add_argument('-f', '--ks_file',
+                          metavar='KEYSPACE_FILE',
+                          help="JSON file with Cassandra keyspaces that contain GraphSense cluster mappings")
+    parser_cl.add_argument('--schema',
+                          default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                          help="PostgreSQL schema for GraphSense cluster mapping table")
+    # parser_cl.set_defaults(func=insert_cluster_mapping)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
