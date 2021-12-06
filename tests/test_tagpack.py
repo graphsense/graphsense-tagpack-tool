@@ -43,6 +43,9 @@ def tagpack(schema, taxonomies):
                     'tags': [
                         {'label': 'Some attribution tag',
                          'address': '123Bitcoin45'
+                         },
+                        {'label': 'Another attribution tag',
+                         'address': '123Bitcoin66'
                          }
                     ]},
                    schema,
@@ -104,7 +107,7 @@ def test_generic_tag_fields(tagpack):
 
 
 def test_tags(tagpack):
-    assert len(tagpack.tags) == 1
+    assert len(tagpack.tags) == 2
     assert isinstance(tagpack.tags[0], AddressTag)
     tagpack.contents['tags'] = [
         {'label': 'Some attribution tag',
@@ -129,7 +132,7 @@ def test_tags_from_contents(tagpack):
 
 
 def test_tags_explicit_fields(tagpack):
-    assert len(tagpack.tags) == 1
+    assert len(tagpack.tags) == 2
     all(x in ['label', 'address'] for x in tagpack.tags[0].explicit_fields)
     tagpack.contents['tags'] = [
         {'label': 'Some attribution tag',
@@ -139,7 +142,7 @@ def test_tags_explicit_fields(tagpack):
 
 
 def test_tags_all_fields(tagpack):
-    assert len(tagpack.tags) == 1
+    assert len(tagpack.tags) == 2
     all(x in ['label', 'address', 'lastmod']
         for x in tagpack.tags[0].all_fields)
     tagpack.contents['tags'] = [
@@ -241,11 +244,11 @@ def test_validate_fail_is_cluster_definer(tagpack):
 
 
 def test_validate_fail_taxonomy(tagpack):
-    tagpack.contents['tags'][0]['category'] = 'unknown'
+    tagpack.contents['tags'][1]['category'] = 'UNKNOWN'
 
     with pytest.raises(ValidationError) as e:
         tagpack.validate()
-    assert "Undefined concept unknown in field category" in str(e.value)
+    assert "Undefined concept UNKNOWN in field category" in str(e.value)
 
 
 def test_validate_fail_taxonomy_header(tagpack):

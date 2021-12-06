@@ -120,7 +120,7 @@ class TagPack(object):
                 self.schema.check_type(field, value)
                 self.schema.check_taxonomies(field, value, self.taxonomies)
 
-            return True
+        return True
 
     def to_json(self):
         """Returns a JSON representation of a TagPack's header"""
