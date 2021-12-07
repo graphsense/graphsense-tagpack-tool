@@ -105,11 +105,13 @@ Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to s
 
 Then copy the required cluster mappings 
     
-    tagpack-tool cluster -d localhost -k ks_map.json
+    tagpack-tool cluster -d $CASSANDRA_HOST -k ks_map.json -u  postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
+
 
 ## Development / Testing
 
-OR install packages via `requirements.txt`
+Install packages via `requirements.txt`
 
     pip install -r requirements.txt
 

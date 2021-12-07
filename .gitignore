@@ -7,3 +7,4 @@ tagpack_tool.egg-info/
 *.sublime-workspace
 config.yaml
 /.env
+/ks_map.json

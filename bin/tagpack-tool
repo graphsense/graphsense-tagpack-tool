@@ -1,21 +1,22 @@
 #!/usr/bin/env python
-import json
-from argparse import ArgumentParser
 import glob
+import json
 import os
-import time
 import sys
-import yaml
+import time
+from argparse import ArgumentParser
 
+import pandas as pd
+import yaml
 from tabulate import tabulate
 
 from tagpack import __version__ as version
-from tagpack.graphsenselib import GraphSense
-from tagpack.tagstore import TagStore
-from tagpack.taxonomy import Taxonomy
+from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
+from tagpack.graphsense import GraphSense
 from tagpack.tagpack import TagPack, TagPackFileError
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
+from tagpack.tagstore import TagStore
+from tagpack.taxonomy import Taxonomy
 
 CONFIG_FILE = "config.yaml"
 
@@ -217,6 +218,30 @@ def insert_tagpack(args):
                status)
 
 
+def insert_cluster_mapping(args):
+    tagstore = TagStore(args.url, args.schema)
+    df = pd.DataFrame(tagstore.get_addresses(), columns=['address', 'currency'])
+
+    ks_mapping = json.load(open(args.ks_file))
+    gs = GraphSense(args.db_nodes, ks_mapping)
+
+    processed_currencies = []
+    t0 = time.time()
+    for currency, data in df.groupby('currency'):
+        if gs.contains_keyspace_mapping(currency):
+            try:
+                clusters = gs.get_address_clusters(data, currency)
+                clusters['currency'] = currency
+                tagstore.insert_cluster_mappings(clusters)
+                print_success(f"INSERTED {len(clusters)} {currency} cluster mappings")
+                processed_currencies.append(currency)
+            except Exception as e:
+                print_fail("FAILED", e)
+
+    duration = round(time.time() - t0, 2)
+    print_line(f"Inserted cluster mappings for {processed_currencies} in {duration}s", "success")
+
+
 def show_version():
     return "GraphSense TagPack management tool v" + version
 
@@ -294,8 +319,8 @@ def main():
     # parser for cluster command
     parser_cl = subparsers.add_parser("cluster",
                                      help="insert cluster mappings")
-    parser_cl.add_argument('-d', '--db_nodes',
-                          default='localhost', metavar='DB_NODE',
+    parser_cl.add_argument('-d', '--db_nodes', nargs='+',
+                          default=['localhost'], metavar='DB_NODE',
                           help='Cassandra node(s); default "localhost")')
     parser_cl.add_argument('-f', '--ks_file',
                           metavar='KEYSPACE_FILE',
@@ -303,7 +328,8 @@ def main():
     parser_cl.add_argument('--schema',
                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                           help="PostgreSQL schema for GraphSense cluster mapping table")
-    # parser_cl.set_defaults(func=insert_cluster_mapping)
+    parser_cl.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_cl.set_defaults(func=insert_cluster_mapping)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

@@ -2,8 +2,12 @@
 import os
 from datetime import datetime
 
+import numpy as np
 from psycopg2 import connect
-from  psycopg2.extras import execute_batch
+from psycopg2.extensions import register_adapter, AsIs
+from psycopg2.extras import execute_batch
+
+register_adapter(np.int64, AsIs)
 
 
 class TagStore(object):
@@ -45,6 +49,20 @@ class TagStore(object):
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
 
+        self.conn.commit()
+
+    def get_addresses(self):
+        self.cursor.execute("SELECT address, currency FROM address")
+        for record in self.cursor:
+            yield record
+
+    def insert_cluster_mappings(self, clusters):
+        q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr , gs_cluster_in_degr , gs_cluster_out_degr)" \
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)"
+
+        data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses', 'in_degree', 'out_degree']].to_records(index=False)
+
+        execute_batch(self.cursor, q, data)
         self.conn.commit()
 
 
