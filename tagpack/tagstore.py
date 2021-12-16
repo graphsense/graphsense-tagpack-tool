@@ -31,7 +31,7 @@ class TagStore(object):
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
-        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, confidence, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         tag_data = []
         address_data = []
@@ -49,6 +49,7 @@ class TagStore(object):
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
 
+        self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.conn.commit()
 
     def get_addresses(self):
@@ -58,7 +59,7 @@ class TagStore(object):
 
     def insert_cluster_mappings(self, clusters):
         q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr , gs_cluster_in_degr , gs_cluster_out_degr)" \
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING"
 
         data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses', 'in_degree', 'out_degree']].to_records(index=False)
 
@@ -68,7 +69,8 @@ class TagStore(object):
 
 def _get_tag(tag, tagpack_id):
     return (tag.all_fields.get('label'), tag.all_fields.get('source'), tag.all_fields.get('category', None),
-            tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'), tag.all_fields.get('is_cluster_definer'), tagpack_id)
+            tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
+            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), tagpack_id)
 
 
 def _get_address(tag):
