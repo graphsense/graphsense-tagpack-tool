@@ -31,7 +31,7 @@ class TagStore(object):
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
-        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, confidence, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, confidence, lastmod, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         tag_data = []
         address_data = []
@@ -70,7 +70,7 @@ class TagStore(object):
 def _get_tag(tag, tagpack_id):
     return (tag.all_fields.get('label'), tag.all_fields.get('source'), tag.all_fields.get('category', None),
             tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
-            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), tagpack_id)
+            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), tag.all_fields.get('lastmod'), tagpack_id)
 
 
 def _get_address(tag):
