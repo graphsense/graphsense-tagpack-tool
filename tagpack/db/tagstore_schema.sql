@@ -25,31 +25,31 @@ CREATE TABLE concept (
 -- see https://github.com/graphsense/graphsense-tagpacks/blob/master/README.md#attribution-tag-confidence-score
 
 CREATE TABLE confidence (
-    id                  SERIAL      PRIMARY KEY,
-	level				INTEGER		NOT NULL,
+    id                  VARCHAR      PRIMARY KEY,
 	label 				VARCHAR		NOT NULL,
 	description			VARCHAR		NOT NULL,
-	examples			VARCHAR		DEFAULT NULL
+	level				INTEGER		NOT NULL
 );
 
-INSERT INTO confidence (level, label, description)
-	VALUES(100, 'Proven ownership', 'Known private key owner for a given address');
-INSERT INTO confidence (level, label, description)
-	VALUES(90, 'Manual transaction', 'Self-executed transaction and known involved entities');
-INSERT INTO confidence (level, label, description, examples)
-	VALUES(80, 'Service API', 'Data retrieved from API of a known service', 'Bitpanda API');
-INSERT INTO confidence (level, label, description, examples)
-	VALUES(60, 'Authority data', 'Data retrieved from public authorities', 'OFAC');
-INSERT INTO confidence (level, label, description, examples)
-	VALUES(50, 'Trusted data providers', 'Data retrieved from trusted third parties', 'Darknet crawl, Spam trap');
-INSERT INTO confidence (level, label, description, examples)
-	VALUES(50, 'Service data', 'Data retrieved from a known service', 'CSV file received from exchange');
-INSERT INTO confidence (level, label, description, examples)
-	VALUES(50, 'Forensic reports', 'Data retrieved from somehow trusted reports', 'Academic papers');
-INSERT INTO confidence (level, label, description)
-	VALUES(40, 'Untrusted transaction', 'Transaction executed by third parties');
-INSERT INTO confidence (level, label, description)
-	VALUES(20, 'Web Crawls', 'Data retrieved from Web of data dump crawls');
+
+INSERT INTO confidence (id, label, description, level)
+	VALUES('ownership', 'Proven address ownership', 'Known private key owner for a given address', 100);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('manual_transaction', 'Manual transaction', 'Self-executed transaction and known involved entities', 90);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('service_api', 'Service API', 'Data retrieved from API of a known service (e.g. Bitpanda API)', 80);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('authority_data', 'Authority data', 'Data retrieved from public authorities (e.g. OFAC)', 60);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('trusted_provider', 'Trusted data providers', 'Data retrieved from trusted third parties (e.g. Darknet crawl or Spam trap)', 50);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('service_data', 'Service data', 'Data retrieved from a known service (e.g. CSV file received from exchange)', 50);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('forensic', 'Forensic reports', 'Data retrieved from somehow trusted reports (e.g. academic papers)', 50);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('untrusted_transaction', 'Untrusted transaction', 'Transaction executed by third parties', 40);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('web_crawl', 'Web Crawls', 'Data retrieved from Web or data dump crawls', 20);
 
 -- Tag & TagPack tables
 
@@ -82,7 +82,7 @@ CREATE TABLE tag (
 	lastmod				TIMESTAMP	NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	address				VARCHAR		NOT NULL,
 	currency		    VARCHAR		NOT NULL,
-	confidence			INTEGER		, --REFERENCES confidence(id),
+	confidence			VARCHAR		REFERENCES confidence(id),
 	abuse				VARCHAR		REFERENCES concept(id),
 	category			VARCHAR		REFERENCES concept(id),
 	tagpack				VARCHAR		REFERENCES tagpack(id) ON DELETE CASCADE,

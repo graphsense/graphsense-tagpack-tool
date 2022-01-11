@@ -31,7 +31,7 @@ generic_tag:
     type: text
     mandatory: false
   confidence:
-    type: int
+    type: text
     mandatory: false
   is_cluster_definer:
     type: boolean
