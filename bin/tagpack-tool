@@ -218,7 +218,11 @@ def insert_tagpack(args):
                status)
 
 
-def insert_cluster_mapping(args):
+def split_into_chunks(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+
+def insert_cluster_mapping(args, batch_size=5_000):
     tagstore = TagStore(args.url, args.schema)
     df = pd.DataFrame(tagstore.get_addresses(), columns=['address', 'currency'])
 
@@ -230,10 +234,15 @@ def insert_cluster_mapping(args):
     for currency, data in df.groupby('currency'):
         if gs.contains_keyspace_mapping(currency):
             try:
-                clusters = gs.get_address_clusters(data, currency)
-                clusters['currency'] = currency
-                tagstore.insert_cluster_mappings(clusters)
-                print_success(f"INSERTED {len(clusters)} {currency} cluster mappings")
+                print(currency)
+                mappings_count = 0
+                for batch in split_into_chunks(data, batch_size):
+                    clusters = gs.get_address_clusters(batch, currency)
+                    clusters['currency'] = currency
+                    tagstore.insert_cluster_mappings(clusters)
+                    mappings_count += len(clusters)
+
+                print_success(f"INSERTED {mappings_count} {currency} cluster mappings")
                 processed_currencies.append(currency)
             except Exception as e:
                 print_fail("FAILED", e)
