@@ -1,4 +1,4 @@
-
+DROP SCHEMA IF EXISTS tagstore;
 
 CREATE SCHEMA tagstore;
 
