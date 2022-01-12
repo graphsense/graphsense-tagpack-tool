@@ -1,4 +1,4 @@
-DROP SCHEMA IF EXISTS tagstore;
+
 
 CREATE SCHEMA tagstore;
 
@@ -117,8 +117,8 @@ CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (gs_cluster_id);
 
 
 -- setup fuzzy search resources
-CREATE EXTENSION fuzzystrmatch;
-CREATE EXTENSION pg_trgm;
+CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE MATERIALIZED VIEW label AS SELECT DISTINCT label FROM tag;
 
