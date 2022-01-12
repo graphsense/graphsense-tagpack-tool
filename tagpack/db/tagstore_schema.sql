@@ -117,6 +117,9 @@ CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (gs_cluster_id);
 
 
 -- setup fuzzy search resources
+DROP EXTENSION IF EXISTS fuzzystrmatch;
+DROP EXTENSION IF EXISTS pg_trgm;
+
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
