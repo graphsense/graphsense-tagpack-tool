@@ -51,11 +51,17 @@ INSERT INTO confidence (id, label, description, level)
 INSERT INTO confidence (id, label, description, level)
 	VALUES('web_crawl', 'Web Crawls', 'Data retrieved from Web or data dump crawls', 20);
 
+
+-- supported currencies
+
+CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
+
+
 -- Tag & TagPack tables
 
 CREATE TABLE address (
-    currency			VARCHAR		,
-	address				VARCHAR		,
+    currency			currency	NOT NULL,
+	address				VARCHAR		NOT NULL,
 	created				TIMESTAMP 	NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY(currency, address)
 );
@@ -81,7 +87,7 @@ CREATE TABLE tag (
 	is_cluster_definer	BOOLEAN		DEFAULT NULL,
 	lastmod				TIMESTAMP	NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	address				VARCHAR		NOT NULL,
-	currency		    VARCHAR		NOT NULL,
+	currency		    currency    NOT NULL,
 	confidence			VARCHAR		REFERENCES confidence(id),
 	abuse				VARCHAR		REFERENCES concept(id),
 	category			VARCHAR		REFERENCES concept(id),
@@ -97,7 +103,7 @@ CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
 
 CREATE TABLE address_cluster_mapping (
 	address 			VARCHAR		NOT NULL,
-	currency            VARCHAR     NOT NULL,
+	currency            currency    NOT NULL,
 	gs_cluster_id 		INTEGER		NOT NULL,
 	gs_cluster_def_addr	VARCHAR		NOT NULL,
 	gs_cluster_no_addr	INTEGER		DEFAULT NULL,

@@ -204,7 +204,7 @@ def insert_tagpack(args):
         print(f'{tagpack_file}: ', end='')
         try:
             tagstore.insert_tagpack(tagpack)
-            print_success(f"INSERTED {len(tagpack.tags)} Tags")
+            print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
         except Exception as e:
@@ -213,8 +213,8 @@ def insert_tagpack(args):
     status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
     duration = round(time.time() - t0, 2)
-    print_line("Inserted {}/{} TagPacks with {} Tags in {}s"
-               .format(no_passed, len(tagpack_files), no_tags, duration),
+    print_line("Processed {}/{} TagPacks with {} Tags in {}s. Only tags for supported currencies {} are inserted."
+               .format(no_passed, len(tagpack_files), no_tags, duration, tagstore.supported_currencies),
                status)
 
 

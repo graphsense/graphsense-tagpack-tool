@@ -15,6 +15,9 @@ class TagStore(object):
         self.conn = connect(url, options=f"-c search_path={schema}")
         self.cursor = self.conn.cursor()
 
+        self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
+        self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+
     def insert_taxonomy(self, taxonomy):
         self.cursor.execute("""INSERT INTO taxonomy (id, source, description) VALUES (%s, %s, %s)""", (taxonomy.key, taxonomy.uri, f"Imported at {datetime.now().isoformat()}"))
 
@@ -36,8 +39,9 @@ class TagStore(object):
         tag_data = []
         address_data = []
         for tag in tagpack.tags:
-            tag_data.append(_get_tag(tag, tagpack_id))
-            address_data.append(_get_address(tag))
+            if self._should_insert(tag):
+                tag_data.append(_get_tag(tag, tagpack_id))
+                address_data.append(_get_address(tag))
             if len(tag_data) > batch:
                 execute_batch(self.cursor, addr_sql, address_data)
                 execute_batch(self.cursor, tag_sql, tag_data)
@@ -65,6 +69,9 @@ class TagStore(object):
 
         execute_batch(self.cursor, q, data)
         self.conn.commit()
+
+    def _should_insert(self, tag):
+        return tag.all_fields.get('currency') in self.supported_currencies
 
 
 def _get_tag(tag, tagpack_id):
