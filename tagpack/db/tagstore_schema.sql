@@ -92,7 +92,8 @@ CREATE TABLE tag (
 	abuse				VARCHAR		REFERENCES concept(id),
 	category			VARCHAR		REFERENCES concept(id),
 	tagpack				VARCHAR		REFERENCES tagpack(id) ON DELETE CASCADE,
-	FOREIGN KEY (currency, address) REFERENCES address (currency, address)
+	FOREIGN KEY (currency, address) REFERENCES address (currency, address),
+	CONSTRAINT unique_tag UNIQUE (address, currency, tagpack, label, source)
 );
 
 CREATE INDEX tag_label_index ON tag (label);
