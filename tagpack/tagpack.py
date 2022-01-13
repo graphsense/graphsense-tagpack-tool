@@ -85,8 +85,15 @@ class TagPack(object):
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
-        # iterate over all tags and check types, taxonomy and mandatory use
+        # iterate over all tags, report duplicates, check types, taxonomy and mandatory use
+        seen = set()
+
         for tag in self.tags:
+            # check if duplicate entry
+            t = tuple([tag.all_fields.get(k) for k in ['address', 'currency', 'label', 'source']])
+            if t in seen:
+                raise ValidationError("Duplicate found {}".format(t))
+            seen.add(t)
 
             # check if mandatory tag fields are defined
             if isinstance(tag, AddressTag):
