@@ -63,6 +63,7 @@ CREATE TABLE address (
     currency			currency	NOT NULL,
 	address				VARCHAR		NOT NULL,
 	created				TIMESTAMP 	NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	is_mapped           BOOLEAN     NOT NULL DEFAULT FALSE,
 	PRIMARY KEY(currency, address)
 );
 

@@ -224,7 +224,7 @@ def split_into_chunks(seq, size):
 
 def insert_cluster_mapping(args, batch_size=5_000):
     tagstore = TagStore(args.url, args.schema)
-    df = pd.DataFrame(tagstore.get_addresses(), columns=['address', 'currency'])
+    df = pd.DataFrame(tagstore.get_addresses(args.update), columns=['address', 'currency'])
 
     ks_mapping = json.load(open(args.ks_file))
     gs = GraphSense(args.db_nodes, ks_mapping)
@@ -242,13 +242,14 @@ def insert_cluster_mapping(args, batch_size=5_000):
                     tagstore.insert_cluster_mappings(clusters)
                     mappings_count += len(clusters)
 
-                print_success(f"INSERTED {mappings_count} {currency} cluster mappings")
+                print_success(f"INSERTED/UPDATED {mappings_count} {currency} cluster mappings")
                 processed_currencies.append(currency)
             except Exception as e:
                 print_fail("FAILED", e)
 
     duration = round(time.time() - t0, 2)
-    print_line(f"Inserted cluster mappings for {processed_currencies} in {duration}s", "success")
+    print_line(f"Inserted {'missing' if not args.update else 'all'} cluster mappings for {processed_currencies} in {duration}s", "success")
+    tagstore.finish_mappings_update(gs.ks_map.keys())
 
 
 def show_version():
@@ -338,6 +339,8 @@ def main():
                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                           help="PostgreSQL schema for GraphSense cluster mapping table")
     parser_cl.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_cl.add_argument('--update', help='update  all cluster mappings', action='store_true')
+    parser_cl.set_defaults(update=False)
     parser_cl.set_defaults(func=insert_cluster_mapping)
 
     if len(sys.argv) == 1:

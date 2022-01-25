@@ -39,7 +39,7 @@ class TagStore(object):
         tag_data = []
         address_data = []
         for tag in tagpack.tags:
-            if self._should_insert(tag):
+            if self._supports_currency(tag):
                 tag_data.append(_get_tag(tag, tagpack_id))
                 address_data.append(_get_address(tag))
             if len(tag_data) > batch:
@@ -56,8 +56,11 @@ class TagStore(object):
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.conn.commit()
 
-    def get_addresses(self):
-        self.cursor.execute("SELECT address, currency FROM address")
+    def get_addresses(self, update_existing):
+        if update_existing:
+            self.cursor.execute("SELECT address, currency FROM address")
+        else:
+            self.cursor.execute("SELECT address, currency FROM address WHERE NOT is_mapped")
         for record in self.cursor:
             yield record
 
@@ -72,16 +75,21 @@ class TagStore(object):
         execute_batch(self.cursor, q, data)
         self.conn.commit()
 
-    def _should_insert(self, tag):
+    def _supports_currency(self, tag):
         return tag.all_fields.get('currency') in self.supported_currencies
+
+    def finish_mappings_update(self, keys):
+        self.cursor.execute('UPDATE address SET is_mapped=true WHERE NOT is_mapped AND currency IN %s', (tuple(keys),))
+        self.conn.commit()
 
 
 def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get('label').lower().strip()
+    lastmod = tag.all_fields.get('lastmod', datetime.now().isoformat())
 
     return (label, tag.all_fields.get('source'), tag.all_fields.get('category', None),
             tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
-            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), tag.all_fields.get('lastmod'), tagpack_id)
+            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), lastmod, tagpack_id)
 
 
 def _get_address(tag):
