@@ -7,6 +7,18 @@ import yaml
 from tagpack import TagPackFileError, ValidationError
 
 
+# https://gist.github.com/pypt/94d747fe5180851196eb
+class UniqueKeyLoader(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        mapping = set()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValueError(f"Duplicate {key!r} key found in YAML.")
+            mapping.add(key)
+        return super().construct_mapping(node, deep)
+
+
 class TagPack(object):
     """Represents a TagPack"""
 
@@ -20,7 +32,7 @@ class TagPack(object):
         if not os.path.isfile(pathname):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
-        contents = yaml.safe_load(open(pathname, 'r'))
+        contents = yaml.load(open(pathname, 'r'), UniqueKeyLoader)
         if not baseuri.endswith(os.path.sep):
             baseuri = baseuri + os.path.sep
         uri = baseuri + pathname
