@@ -14,7 +14,7 @@ class UniqueKeyLoader(yaml.SafeLoader):
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
             if key in mapping:
-                raise ValueError(f"Duplicate {key!r} key found in YAML.")
+                raise ValidationError(f"Duplicate {key!r} key found in YAML.")
             mapping.add(key)
         return super().construct_mapping(node, deep)
 
@@ -56,11 +56,11 @@ class TagPack(object):
             raise TagPackFileError("Cannot extract TagPack fields")
 
     @property
-    def generic_tag_fields(self):
-        """Returns generic tag fields defined in the TagPack header"""
+    def tag_fields(self):
+        """Returns tag fields defined in the TagPack header"""
         try:
             return {k: v for k, v in self.contents.items()
-                    if k != 'tags' and k in self.schema.all_tag_fields}
+                    if k != 'tags' and k in self.schema.tag_fields}
         except AttributeError:
             raise TagPackFileError("Cannot extract TagPack fields")
 
@@ -108,24 +108,18 @@ class TagPack(object):
             seen.add(t)
 
             # check if mandatory tag fields are defined
-            if isinstance(tag, AddressTag):
-                mandatory_tag_fields = self.schema.mandatory_address_tag_fields
-                tag_fields = self.schema.address_tag_fields
-            elif isinstance(tag, EntityTag):
-                mandatory_tag_fields = self.schema.mandatory_entity_tag_fields
-                tag_fields = self.schema.entity_tag_fields
-            else:
+            if not isinstance(tag, Tag):
                 raise ValidationError("Unknown tag type {}".format(tag))
 
-            for schema_field in mandatory_tag_fields:
+            for schema_field in self.schema.mandatory_tag_fields:
                 if schema_field not in tag.explicit_fields and \
-                   schema_field not in self.generic_tag_fields:
+                   schema_field not in self.tag_fields:
                     raise ValidationError("Mandatory tag field {} missing"
                                           .format(schema_field))
 
             for field, value in tag.explicit_fields.items():
                 # check whether field is defined as body field
-                if field not in tag_fields:
+                if field not in self.schema.tag_fields:
                     raise ValidationError("Field {} not allowed in tag"
                                           .format(field))
 
@@ -156,7 +150,7 @@ class TagPack(object):
 
 
 class Tag(object):
-    """A generic attribution tag"""
+    """An attribution tag"""
 
     def __init__(self, contents, tagpack):
         self.contents = contents
@@ -164,12 +158,7 @@ class Tag(object):
 
     @staticmethod
     def from_contents(contents, tagpack):
-        if 'address' in contents:
-            return AddressTag(contents, tagpack)
-        elif 'entity' in contents:
-            return EntityTag(contents, tagpack)
-        else:
-            raise TagPackFileError('Tag must be assigned to address or entity')
+        return Tag(contents, tagpack)
 
     @property
     def explicit_fields(self):
@@ -179,7 +168,7 @@ class Tag(object):
     @property
     def all_fields(self):
         """Return all tag fields (explicit and generic)"""
-        return {**self.explicit_fields, **self.tagpack.generic_tag_fields}
+        return {**self.explicit_fields, **self.tagpack.tag_fields}
 
     def to_json(self):
         """Returns a JSON serialization of all tag fields"""
@@ -190,17 +179,3 @@ class Tag(object):
     def __str__(self):
         """"Returns a string serialization of a Tag"""
         return str(self.all_fields)
-
-
-class AddressTag(Tag):
-    """A tag attributing contextual information to an address"""
-
-    def __init__(self, contents, tagpack):
-        super().__init__(contents, tagpack)
-
-
-class EntityTag(Tag):
-    """A tag attributing contextual information to an entity"""
-
-    def __init__(self, contents, tagpack):
-        super().__init__(contents, tagpack)

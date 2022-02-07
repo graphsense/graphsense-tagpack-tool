@@ -14,12 +14,9 @@ class TagPackSchema(object):
     """Defines the structure of a TagPack and supports validation"""
 
     def __init__(self):
-        self.load_schema()
-        self.definition = TAGPACK_SCHEMA_FILE
-
-    def load_schema(self):
         schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
+        self.definition = TAGPACK_SCHEMA_FILE
 
     @property
     def header_fields(self):
@@ -31,55 +28,18 @@ class TagPackSchema(object):
                 if v['mandatory']}
 
     @property
-    def generic_tag_fields(self):
-        return {k: v for k, v in self.schema['generic_tag'].items()}
+    def tag_fields(self):
+        return {k: v for k, v in self.schema['tag'].items()}
 
     @property
-    def address_tag_fields(self):
-        explicit_fields = {k: v for k, v in self.schema['address_tag'].items()}
-        inherited_fields = self.generic_tag_fields
-        return {**explicit_fields, **inherited_fields}
-
-    @property
-    def mandatory_address_tag_fields(self):
-        return {k: v for k, v in self.address_tag_fields.items()
+    def mandatory_tag_fields(self):
+        return {k: v for k, v in self.tag_fields.items()
                 if v['mandatory']}
-
-    @property
-    def entity_tag_fields(self):
-        explicit_fields = {k: v for k, v in self.schema['entity_tag'].items()}
-        inherited_fields = self.generic_tag_fields
-        return {**explicit_fields, **inherited_fields}
-
-    @property
-    def mandatory_entity_tag_fields(self):
-        return {k: v for k, v in self.entity_tag_fields.items()
-                if v['mandatory']}
-
-    @property
-    def all_tag_fields(self):
-        addr_tags = {k: v for k, v in self.schema['address_tag'].items()}
-        entity_tags = {k: v for k, v in self.schema['entity_tag'].items()}
-        generic_tags = {k: v for k, v in self.schema['generic_tag'].items()}
-        return {**addr_tags, **entity_tags, **generic_tags}
-
-    @property
-    def all_address_tag_fields(self):
-        """Returns all address tag header and body fields"""
-        return {**self.header_fields, **self.address_tag_fields}
-
-    @property
-    def all_entity_tag_fields(self):
-        """Returns all address tag header and body fields"""
-        return {**self.header_fields, **self.entity_tag_fields}
 
     @property
     def all_fields(self):
-        """Returns all address tag header and body fields"""
-        return {**self.header_fields,
-                **self.generic_tag_fields,
-                **self.entity_tag_fields,
-                **self.address_tag_fields}
+        """Returns all header and body fields"""
+        return {**self.header_fields,  **self.tag_fields}
 
     def field_type(self, field):
         return self.all_fields[field]['type']

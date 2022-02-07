@@ -159,17 +159,18 @@ def validate_tagpack(args):
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
-    for tagpack_file in tagpack_files:
-        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                         schema, taxonomies)
+    try:
+        for tagpack_file in tagpack_files:
+            tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+                                             schema, taxonomies)
 
-        print(f'{tagpack_file}: ', end='')
-        try:
+            print(f'{tagpack_file}: ', end='')
+
             tagpack.validate()
             print_success("PASSED")
             no_passed += 1
-        except (ValidationError, TagPackFileError) as e:
-            print_fail("FAILED", e)
+    except (ValidationError, TagPackFileError) as e:
+        print_fail("FAILED", e)
 
     status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
