@@ -129,4 +129,27 @@ CREATE MATERIALIZED VIEW label AS SELECT DISTINCT label FROM tag;
 
 -- TODO: add triggers updating lastmod on update
 
-
+CREATE MATERIALIZED VIEW statistics AS 
+        (SELECT 
+            t.currency, 
+            tp.is_public, 
+            COUNT(DISTINCT label) AS no_labels, 
+            COUNT(DISTINCT address) AS no_tagged_addresses
+        FROM 
+            tag t, 
+            tagpack tp 
+        WHERE 
+            tp.id = t.tagpack 
+            and tp.is_public = true
+        GROUP BY 
+            t.currency, tp.is_public)
+    UNION
+        (SELECT 
+            currency, 
+            NULL, 
+            COUNT(DISTINCT label) AS no_labels, 
+            COUNT(DISTINCT address) AS no_tagged_addresses
+        FROM 
+            tag 
+        GROUP BY 
+            currency)
