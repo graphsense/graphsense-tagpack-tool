@@ -26,11 +26,11 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def insert_tagpack(self, tagpack, batch=1000):
+    def insert_tagpack(self, tagpack, is_public, batch=1000):
         tagpack_id = _get_id(tagpack)
         h = _get_header(tagpack, tagpack_id)
 
-        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source) VALUES (%s, %s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source')))
+        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), is_public))
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"

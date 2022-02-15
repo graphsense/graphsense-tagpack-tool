@@ -204,7 +204,7 @@ def insert_tagpack(args):
 
         print(f'{tagpack_file}: ', end='')
         try:
-            tagstore.insert_tagpack(tagpack)
+            tagstore.insert_tagpack(tagpack, args.public)
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
@@ -283,8 +283,6 @@ def main():
                             default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                             help="PostgreSQL schema for taxonomy tables")
     parser_t_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
-    #parser_t_i.add_argument('-s', '--setup-keyspace', action='store_true',
-    #                        help="(Re-create) keyspace for TagPacks")
     parser_t_i.set_defaults(func=insert_taxonomy)
 
     # parser for taxonomy show command
@@ -316,8 +314,9 @@ def main():
     parser_i.add_argument('-b', '--batch_size', nargs='?', type=int,
                           default=1000,
                           help='batch size for insert)')
-    #parser_i.add_argument('-s', '--setup-keyspace', action='store_true',
-    #                      help="(Re-create) keyspace for TagPacks")
+    parser_i.add_argument("--public", action='store_true',
+                        help='By default, tagpacks are declared private in the database. '
+                             'Use this switch to declare them public.')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command

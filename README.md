@@ -90,14 +90,10 @@ Insert a single TagPack file or all TagPacks from a given folder
     tagpack-tool insert tests/testfiles/ex_entity_tagpack.yaml
     tagpack-tool insert tests/testfiles/
 
-Create a keyspace and insert all TagPacks from a given folder
+By default, TagPacks are declared as non-public in the database.
+For public TagPacks, add the `--public` flag to your arguments:
 
-    tagpack-tool insert -s -k tagpacks tests/testfiles/
-
-Optionally, you can specify the level of `concurrency` (default: 100) by using
-the `-c` parameter.
-
-    tagpack-tool insert -c 500 -s -k tagpacks tests/testfiles
+    tagpack-tool insert --public tests/testfiles/
 
 ## Insert GraphSense cluster mappings into database
 
