@@ -34,10 +34,11 @@ setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "requests>=2.26.0",
-        "pyyaml>=6.0",
-        "tabulate>=0.8.9",
-        "cassandra-driver>=3.25.0"
+        "requests==2.26.0",
+        "pyyaml==6.0",
+        "tabulate==0.8.9",
+        "cassandra-driver==3.25.0",
+        "psycopg2==2.9.1"
     ],
     test_suite="tests"
 )
