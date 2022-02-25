@@ -4,7 +4,9 @@
 
 
 
-This repository defines a common structure (schema) for TagPacks and provides a tool for  
+This repository defines a common structure (schema) for TagPacks and provides a
+tool for  
+
 * ingesting taxonomies and concepts
 * validating TagPacks 
 * ingesting TagPacks into a PostgreSQL database.
@@ -13,7 +15,7 @@ This repository defines a common structure (schema) for TagPacks and provides a 
 
 ## Prerequisites: PostgreSQL database
 
-### Option 1: dockerised database
+### Option 1: dockerized database
 
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
@@ -97,17 +99,20 @@ For public TagPacks, add the `--public` flag to your arguments:
 
 ## Insert GraphSense cluster mappings into database
 
-The final step after inserting a tagpack is to fetch the corresponding Graphsense cluster mapping ids for the crypto addresses in the tagpack.
+The final step after inserting a tagpack is to fetch the corresponding
+Graphsense cluster mapping ids for the crypto addresses in the tagpack.
 
-Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to suit your Graphsense setup.
+Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to
+suit your Graphsense setup.
 
-Then fetch the cluster mappings from your Graphsense instance and insert them into the tagstore database:  
+Then fetch the cluster mappings from your Graphsense instance and insert them
+into the tagstore database:  
     
-    tagpack-tool cluster -d $CASSANDRA_HOST -k ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool cluster -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
-    tagpack-tool cluster --update -d $CASSANDRA_HOST -k ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 
 ## Development / Testing
