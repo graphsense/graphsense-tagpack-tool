@@ -20,13 +20,13 @@ from tagpack.taxonomy import Taxonomy
 
 CONFIG_FILE = "config.yaml"
 
+TAXONOMY_URL = 'https://graphsense.github.io'
+
 DEFAULT_CONFIG = {
     'baseURI': 'uri:test',
     'taxonomies': {
-        'entity': 'https://graphsense.info/' +
-                  'DW-VA-Taxonomy/assets/data/entities.csv',
-        'abuse': 'https://graphsense.info/' +
-                  'DW-VA-Taxonomy/assets/data/abuses.csv'
+        'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
+        'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
     }
 }
 
