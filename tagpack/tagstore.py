@@ -54,6 +54,7 @@ class TagStore(object):
         execute_batch(self.cursor, tag_sql, tag_data)
 
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
+        self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
         self.conn.commit()
 
     def get_addresses(self, update_existing):
