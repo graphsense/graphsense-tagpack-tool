@@ -1,11 +1,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
-## [0.5.2] 2022-03-__
- 
+## [0.5.2] 2022-03-15
 ### Changed
-- **Tagstore design:** migrate tag handling from Cassandra/graphsense-transformation to external tag store(s)
-- tagpack validation of confidence value, which is now categorical instead of numerical
+- **Tagstore design:** migrate tag handling from Cassandra keyspaces
+  to external tag store(s)
+- tagpack validation of confidence value, which is now categorical
+  instead of numerical
 ### Added
 - check for duplicate entries
 - database view for tag statistics
