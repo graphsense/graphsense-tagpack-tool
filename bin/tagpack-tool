@@ -253,6 +253,11 @@ def insert_cluster_mapping(args, batch_size=5_000):
     tagstore.finish_mappings_update(gs.ks_map.keys())
 
 
+def update_db(args):
+    tagstore = TagStore(args.url, args.schema)
+    tagstore.refresh_db()
+
+
 def show_version():
     return "GraphSense TagPack management tool v" + version
 
@@ -342,6 +347,15 @@ def main():
     parser_cl.add_argument('--update', help='update  all cluster mappings', action='store_true')
     parser_cl.set_defaults(update=False)
     parser_cl.set_defaults(func=insert_cluster_mapping)
+
+    # parser for database statistics refresh
+    parser_db = subparsers.add_parser("db",
+                            help="refresh database statistics")
+    parser_db.add_argument('--schema',
+                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                           help="PostgreSQL schema for GraphSense cluster mapping table")
+    parser_db.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_db.set_defaults(func=update_db)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
