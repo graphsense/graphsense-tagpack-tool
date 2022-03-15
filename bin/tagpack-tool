@@ -1,35 +1,37 @@
 #!/usr/bin/env python
-
-from argparse import ArgumentParser
 import glob
+import json
 import os
-import time
 import sys
-import yaml
+import time
+from argparse import ArgumentParser
 
+import pandas as pd
+import yaml
 from tabulate import tabulate
 
 from tagpack import __version__ as version
-from tagpack.cassandra import Cassandra, CONCURRENCY, StorageError
-from tagpack.taxonomy import Taxonomy
+from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
+from tagpack.graphsense import GraphSense
 from tagpack.tagpack import TagPack, TagPackFileError
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
+from tagpack.tagstore import TagStore
+from tagpack.taxonomy import Taxonomy
 
 CONFIG_FILE = "config.yaml"
+
+TAXONOMY_URL = 'https://graphsense.github.io'
 
 DEFAULT_CONFIG = {
     'baseURI': 'uri:test',
     'taxonomies': {
-        'entity': 'https://graphsense.info/' +
-                  'DW-VA-Taxonomy/assets/data/entities.csv',
-        'abuse': 'https://graphsense.info/' +
-                  'DW-VA-Taxonomy/assets/data/abuses.csv'
+        'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
+        'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
     }
 }
 
 
-DEFAULT_KEYSPACE = "tagpacks"
+_DEFAULT_SCHEMA = "tagstore"
 
 
 def remote_load_taxonomies():
@@ -91,21 +93,10 @@ def insert_taxonomy(args):
     print_line("Taxonomy insert starts")
     print(f"Taxonomy: {args.taxonomy}")
 
-    print(f"Cassandra node: {args.db_node}")
-    print(f"Cassandra keyspace: {args.keyspace}\n")
-
-    cassandra = Cassandra(args.db_node)
+    tagstore = TagStore(args.url, args.schema)
     try:
-        cassandra.connect()
-        if args.setup_keyspace:
-            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
-            cassandra.setup_keyspace(args.keyspace)
-        if not cassandra.has_keyspace(args.keyspace):
-            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
-            sys.exit()
-
         taxonomy = remote_load_taxonomy(args.taxonomy)
-        cassandra.insert_taxonomy(taxonomy, args.keyspace)
+        tagstore.insert_taxonomy(taxonomy)
 
         print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
         print_success("INSERTED")
@@ -114,12 +105,9 @@ def insert_taxonomy(args):
         print_line(
             f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
             'success')
-    except StorageError as e:
+    except Exception as e:
         print_fail(e)
         print_line("Aborted insert", 'fail')
-    finally:
-        cassandra.close()
-        sys.exit()
 
 
 def load_config():
@@ -171,17 +159,18 @@ def validate_tagpack(args):
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
-    for tagpack_file in tagpack_files:
-        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                         schema, taxonomies)
+    try:
+        for tagpack_file in tagpack_files:
+            tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+                                             schema, taxonomies)
 
-        print(f'{tagpack_file}: ', end='')
-        try:
+            print(f'{tagpack_file}: ', end='')
+
             tagpack.validate()
             print_success("PASSED")
             no_passed += 1
-        except (ValidationError, TagPackFileError) as e:
-            print_fail("FAILED", e)
+    except (ValidationError, TagPackFileError) as e:
+        print_fail("FAILED", e)
 
     status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
@@ -195,22 +184,7 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    print(f"Cassandra node: {args.db_node}")
-    print(f"Cassandra keyspace: {args.keyspace}")
-    cassandra = Cassandra(args.db_node)
-    try:
-        cassandra.connect()
-        if args.setup_keyspace:
-            print_info(f"Setup keyspace '{args.keyspace}' in {args.db_node}")
-            cassandra.setup_keyspace(args.keyspace)
-        if not cassandra.has_keyspace(args.keyspace):
-            print_fail(f"Keyspace '{args.keyspace}' does not exist.")
-            sys.exit()
-    except StorageError as e:
-        print_fail(e)
-        cassandra.close()
-        print_line("Aborted ingest", 'fail')
-        sys.exit()
+    tagstore = TagStore(args.url, args.schema)
 
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
@@ -230,21 +204,58 @@ def insert_tagpack(args):
 
         print(f'{tagpack_file}: ', end='')
         try:
-            cassandra.insert_tagpack(tagpack, args.keyspace, args.concurrency)
-            print_success(f"INSERTED {len(tagpack.tags)} Tags")
+            tagstore.insert_tagpack(tagpack, args.public)
+            print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
-        except StorageError as e:
+        except Exception as e:
             print_fail("FAILED", e)
-
-    cassandra.close()
 
     status = 'fail' if no_passed < len(tagpack_files) else 'success'
 
     duration = round(time.time() - t0, 2)
-    print_line("Inserted {}/{} TagPacks with {} Tags in {}s"
-               .format(no_passed, len(tagpack_files), no_tags, duration),
+    print_line("Processed {}/{} TagPacks with {} Tags in {}s. Only tags for supported currencies {} are inserted."
+               .format(no_passed, len(tagpack_files), no_tags, duration, tagstore.supported_currencies),
                status)
+
+
+def split_into_chunks(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
+
+def insert_cluster_mapping(args, batch_size=5_000):
+    tagstore = TagStore(args.url, args.schema)
+    df = pd.DataFrame(tagstore.get_addresses(args.update), columns=['address', 'currency'])
+
+    ks_mapping = json.load(open(args.ks_file))
+    gs = GraphSense(args.db_nodes, ks_mapping)
+
+    processed_currencies = []
+    t0 = time.time()
+    for currency, data in df.groupby('currency'):
+        if gs.contains_keyspace_mapping(currency):
+            try:
+                print(currency)
+                mappings_count = 0
+                for batch in split_into_chunks(data, batch_size):
+                    clusters = gs.get_address_clusters(batch, currency)
+                    clusters['currency'] = currency
+                    tagstore.insert_cluster_mappings(clusters)
+                    mappings_count += len(clusters)
+
+                print_success(f"INSERTED/UPDATED {mappings_count} {currency} cluster mappings")
+                processed_currencies.append(currency)
+            except Exception as e:
+                print_fail("FAILED", e)
+
+    duration = round(time.time() - t0, 2)
+    print_line(f"Inserted {'missing' if not args.update else 'all'} cluster mappings for {processed_currencies} in {duration}s", "success")
+    tagstore.finish_mappings_update(gs.ks_map.keys())
+
+
+def update_db(args):
+    tagstore = TagStore(args.url, args.schema)
+    tagstore.refresh_db()
 
 
 def show_version():
@@ -273,14 +284,10 @@ def main():
         'insert', help='insert taxonomy into GraphSense')
     parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
                             help='the selected taxonomy')
-    parser_t_i.add_argument('-d', '--db_node',
-                            default='localhost', metavar='DB_NODE',
-                            help='Cassandra node; default "localhost")')
-    parser_t_i.add_argument('-k', '--keyspace',
-                            default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-                            help="Cassandra keyspace for taxonomy tables")
-    parser_t_i.add_argument('-s', '--setup-keyspace', action='store_true',
-                            help="(Re-create) keyspace for TagPacks")
+    parser_t_i.add_argument('--schema',
+                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                            help="PostgreSQL schema for taxonomy tables")
+    parser_t_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
     parser_t_i.set_defaults(func=insert_taxonomy)
 
     # parser for taxonomy show command
@@ -305,17 +312,16 @@ def main():
     parser_i.add_argument('path', nargs='+', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
-    parser_i.add_argument('-d', '--db_node',
-                          default='localhost', metavar='DB_NODE',
-                          help='Cassandra node; default "localhost")')
-    parser_i.add_argument('-k', '--keyspace',
-                          default=DEFAULT_KEYSPACE, metavar='KEYSPACE',
-                          help="Cassandra keyspace for taxonomy tables")
-    parser_i.add_argument('-c', '--concurrency', nargs='?', type=int,
-                          default=CONCURRENCY,
-                          help='Concurrent execution threshold)')
-    parser_i.add_argument('-s', '--setup-keyspace', action='store_true',
-                          help="(Re-create) keyspace for TagPacks")
+    parser_i.add_argument('--schema',
+                          default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                          help="PostgreSQL schema for tagpack tables")
+    parser_i.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_i.add_argument('-b', '--batch_size', nargs='?', type=int,
+                          default=1000,
+                          help='batch size for insert)')
+    parser_i.add_argument("--public", action='store_true',
+                        help='By default, tagpacks are declared private in the database. '
+                             'Use this switch to declare them public.')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
@@ -324,6 +330,32 @@ def main():
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
     parser_v.set_defaults(func=validate_tagpack)
+
+    # parser for cluster command
+    parser_cl = subparsers.add_parser("cluster",
+                                     help="insert cluster mappings")
+    parser_cl.add_argument('-d', '--db_nodes', nargs='+',
+                          default=['localhost'], metavar='DB_NODE',
+                          help='Cassandra node(s); default "localhost")')
+    parser_cl.add_argument('-f', '--ks_file',
+                          metavar='KEYSPACE_FILE',
+                          help="JSON file with Cassandra keyspaces that contain GraphSense cluster mappings")
+    parser_cl.add_argument('--schema',
+                          default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                          help="PostgreSQL schema for GraphSense cluster mapping table")
+    parser_cl.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_cl.add_argument('--update', help='update  all cluster mappings', action='store_true')
+    parser_cl.set_defaults(update=False)
+    parser_cl.set_defaults(func=insert_cluster_mapping)
+
+    # parser for database statistics refresh
+    parser_db = subparsers.add_parser("db",
+                            help="refresh database statistics")
+    parser_db.add_argument('--schema',
+                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                           help="PostgreSQL schema for GraphSense cluster mapping table")
+    parser_db.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    parser_db.set_defaults(func=update_db)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)

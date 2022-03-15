@@ -7,6 +7,18 @@ import yaml
 from tagpack import TagPackFileError, ValidationError
 
 
+# https://gist.github.com/pypt/94d747fe5180851196eb
+class UniqueKeyLoader(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        mapping = set()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValidationError(f"Duplicate {key!r} key found in YAML.")
+            mapping.add(key)
+        return super().construct_mapping(node, deep)
+
+
 class TagPack(object):
     """Represents a TagPack"""
 
@@ -20,7 +32,7 @@ class TagPack(object):
         if not os.path.isfile(pathname):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
-        contents = yaml.safe_load(open(pathname, 'r'))
+        contents = yaml.load(open(pathname, 'r'), UniqueKeyLoader)
         if not baseuri.endswith(os.path.sep):
             baseuri = baseuri + os.path.sep
         uri = baseuri + pathname
@@ -44,11 +56,11 @@ class TagPack(object):
             raise TagPackFileError("Cannot extract TagPack fields")
 
     @property
-    def generic_tag_fields(self):
-        """Returns generic tag fields defined in the TagPack header"""
+    def tag_fields(self):
+        """Returns tag fields defined in the TagPack header"""
         try:
             return {k: v for k, v in self.contents.items()
-                    if k != 'tags' and k in self.schema.all_tag_fields}
+                    if k != 'tags' and k in self.schema.tag_fields}
         except AttributeError:
             raise TagPackFileError("Cannot extract TagPack fields")
 
@@ -85,28 +97,29 @@ class TagPack(object):
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
-        # iterate over all tags and check types, taxonomy and mandatory use
+        # iterate over all tags, report duplicates, check types, taxonomy and mandatory use
+        seen = set()
+
         for tag in self.tags:
+            # check if duplicate entry
+            t = tuple([tag.all_fields.get(k) for k in ['address', 'currency', 'label', 'source']])
+            if t in seen:
+                raise ValidationError("Duplicate found {}".format(t))
+            seen.add(t)
 
             # check if mandatory tag fields are defined
-            if isinstance(tag, AddressTag):
-                mandatory_tag_fields = self.schema.mandatory_address_tag_fields
-                tag_fields = self.schema.address_tag_fields
-            elif isinstance(tag, EntityTag):
-                mandatory_tag_fields = self.schema.mandatory_entity_tag_fields
-                tag_fields = self.schema.entity_tag_fields
-            else:
+            if not isinstance(tag, Tag):
                 raise ValidationError("Unknown tag type {}".format(tag))
 
-            for schema_field in mandatory_tag_fields:
+            for schema_field in self.schema.mandatory_tag_fields:
                 if schema_field not in tag.explicit_fields and \
-                   schema_field not in self.generic_tag_fields:
+                   schema_field not in self.tag_fields:
                     raise ValidationError("Mandatory tag field {} missing"
                                           .format(schema_field))
 
             for field, value in tag.explicit_fields.items():
                 # check whether field is defined as body field
-                if field not in tag_fields:
+                if field not in self.schema.tag_fields:
                     raise ValidationError("Field {} not allowed in tag"
                                           .format(field))
 
@@ -120,7 +133,7 @@ class TagPack(object):
                 self.schema.check_type(field, value)
                 self.schema.check_taxonomies(field, value, self.taxonomies)
 
-            return True
+        return True
 
     def to_json(self):
         """Returns a JSON representation of a TagPack's header"""
@@ -137,7 +150,7 @@ class TagPack(object):
 
 
 class Tag(object):
-    """A generic attribution tag"""
+    """An attribution tag"""
 
     def __init__(self, contents, tagpack):
         self.contents = contents
@@ -145,12 +158,7 @@ class Tag(object):
 
     @staticmethod
     def from_contents(contents, tagpack):
-        if 'address' in contents:
-            return AddressTag(contents, tagpack)
-        elif 'entity' in contents:
-            return EntityTag(contents, tagpack)
-        else:
-            raise TagPackFileError('Tag must be assigned to address or entity')
+        return Tag(contents, tagpack)
 
     @property
     def explicit_fields(self):
@@ -160,7 +168,7 @@ class Tag(object):
     @property
     def all_fields(self):
         """Return all tag fields (explicit and generic)"""
-        return {**self.explicit_fields, **self.tagpack.generic_tag_fields}
+        return {**self.explicit_fields, **self.tagpack.tag_fields}
 
     def to_json(self):
         """Returns a JSON serialization of all tag fields"""
@@ -171,17 +179,3 @@ class Tag(object):
     def __str__(self):
         """"Returns a string serialization of a Tag"""
         return str(self.all_fields)
-
-
-class AddressTag(Tag):
-    """A tag attributing contextual information to an address"""
-
-    def __init__(self, contents, tagpack):
-        super().__init__(contents, tagpack)
-
-
-class EntityTag(Tag):
-    """A tag attributing contextual information to an entity"""
-
-    def __init__(self, contents, tagpack):
-        super().__init__(contents, tagpack)

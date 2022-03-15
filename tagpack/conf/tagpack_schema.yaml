@@ -17,7 +17,7 @@ header:
   tags:
     type: list
     mandatory: true
-generic_tag:
+tag:
   label:
     type: text
     mandatory: true
@@ -31,7 +31,7 @@ generic_tag:
     type: text
     mandatory: false
   confidence:
-    type: int
+    type: text
     mandatory: false
   is_cluster_definer:
     type: boolean
@@ -50,11 +50,6 @@ generic_tag:
     type: text
     mandatory: false
     taxonomy: abuse
-address_tag:
   address:
     type: text
-    mandatory: true
-entity_tag:
-  entity:
-    type: int
     mandatory: true

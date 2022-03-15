@@ -1,18 +1,15 @@
+import json
 from datetime import date
 import pytest
 
 from tagpack import TagPackFileError, ValidationError
-from tagpack.tagpack import TagPack, Tag, AddressTag, EntityTag
+from tagpack.tagpack import TagPack, Tag
 from tagpack.tagpack_schema import TagPackSchema
 from tagpack.taxonomy import Taxonomy
 
 
 @pytest.fixture
 def schema(monkeypatch):
-
-    def mock_load_schema(*args, **kwargs):
-        pass
-
     tagpack_schema = TagPackSchema()
 
     return tagpack_schema
@@ -26,9 +23,7 @@ def taxonomies():
     tax_abuse = Taxonomy('abuse', 'http://example.com/abuse')
     tax_abuse.add_concept('bad_coding', 'Bad coding', 'Really bad')
 
-    taxonomies = {}
-    taxonomies['entity'] = tax_entity
-    taxonomies['abuse'] = tax_abuse
+    taxonomies = {'entity': tax_entity, 'abuse': tax_abuse}
     return taxonomies
 
 
@@ -43,6 +38,10 @@ def tagpack(schema, taxonomies):
                     'tags': [
                         {'label': 'Some attribution tag',
                          'address': '123Bitcoin45'
+                         },
+                        {'label': 'Another attribution tag',
+                         'address': '123Bitcoin66',
+                         'context': '{"counts": 1}'
                          }
                     ]},
                    schema,
@@ -58,34 +57,6 @@ def test_init(tagpack):
     assert isinstance(tagpack.taxonomies, dict)
 
 
-def test_load_from_file_addr_tagpack(schema, taxonomies):
-    tagpack = TagPack.load_from_file('http://example.com/',
-                                     'tests/testfiles/ex_addr_tagpack.yaml',
-                                     schema,
-                                     taxonomies)
-    assert isinstance(tagpack, TagPack)
-    assert tagpack.uri == \
-        'http://example.com/tests/testfiles/ex_addr_tagpack.yaml'
-    assert tagpack.contents['title'] == 'Test Address TagPack'
-    assert isinstance(tagpack.schema, TagPackSchema)
-    assert 'title' in tagpack.schema.header_fields
-    assert isinstance(tagpack.taxonomies, dict)
-
-
-def test_load_from_file_entity_tagpack(schema, taxonomies):
-    tagpack = TagPack.load_from_file('http://example.com/',
-                                     'tests/testfiles/ex_entity_tagpack.yaml',
-                                     schema,
-                                     taxonomies)
-    assert isinstance(tagpack, TagPack)
-    assert tagpack.uri == \
-        'http://example.com/tests/testfiles/ex_entity_tagpack.yaml'
-    assert tagpack.contents['title'] == 'Test Entity TagPack'
-    assert isinstance(tagpack.schema, TagPackSchema)
-    assert 'title' in tagpack.schema.header_fields
-    assert isinstance(tagpack.taxonomies, dict)
-
-
 def test_all_header_fields(tagpack, schema):
     assert all(field in tagpack.all_header_fields
                for field in ['title', 'creator', 'lastmod', 'tags'])
@@ -96,40 +67,33 @@ def test_header_fields(tagpack):
                for field in ['title', 'creator'])
 
 
-def test_generic_tag_fields(tagpack):
-    assert 'lastmod' in tagpack.generic_tag_fields
-    assert 'creator' not in tagpack.generic_tag_fields
+def test_tag_fields(tagpack):
+    assert 'lastmod' in tagpack.tag_fields
+    assert 'creator' not in tagpack.tag_fields
     tagpack.contents['currency'] = 'BTC'
-    assert 'currency' in tagpack.generic_tag_fields
+    assert 'currency' in tagpack.tag_fields
 
 
 def test_tags(tagpack):
-    assert len(tagpack.tags) == 1
-    assert isinstance(tagpack.tags[0], AddressTag)
+    assert len(tagpack.tags) == 2
     tagpack.contents['tags'] = [
         {'label': 'Some attribution tag',
          'address': '123Bitcoin45'},
         {'label': 'Some attribution tag',
-         'entity': 1234},
+         'address': 1234},
     ]
     assert len(tagpack.tags) == 2
-    assert isinstance(tagpack.tags[0], AddressTag)
-    assert isinstance(tagpack.tags[1], EntityTag)
+    assert isinstance(tagpack.tags[0], Tag)
+    assert isinstance(tagpack.tags[1], Tag)
 
 
 def test_tags_from_contents(tagpack):
     contents = {'label': 'Some attribution tag', 'address': '12dv44'}
-    assert isinstance(Tag.from_contents(contents, tagpack), AddressTag)
-    contents = {'label': 'Some attribution tag', 'entity': 1234}
-    assert isinstance(Tag.from_contents(contents, tagpack), EntityTag)
-    contents = {'label': 'Some attribution tag', 'something': 'bla'}
-    with(pytest.raises(TagPackFileError)) as e:
-        assert isinstance(Tag.from_contents(contents, tagpack), EntityTag)
-    assert "Tag must be assigned to address or entity" in str(e.value)
+    assert isinstance(Tag.from_contents(contents, tagpack), Tag)
 
 
 def test_tags_explicit_fields(tagpack):
-    assert len(tagpack.tags) == 1
+    assert len(tagpack.tags) == 2
     all(x in ['label', 'address'] for x in tagpack.tags[0].explicit_fields)
     tagpack.contents['tags'] = [
         {'label': 'Some attribution tag',
@@ -139,7 +103,7 @@ def test_tags_explicit_fields(tagpack):
 
 
 def test_tags_all_fields(tagpack):
-    assert len(tagpack.tags) == 1
+    assert len(tagpack.tags) == 2
     all(x in ['label', 'address', 'lastmod']
         for x in tagpack.tags[0].all_fields)
     tagpack.contents['tags'] = [
@@ -182,6 +146,12 @@ def test_tagpack_to_str(tagpack):
 
 def test_validate(tagpack):
     assert tagpack.validate()
+
+
+def test_context_is_valid_json(tagpack):
+    assert json.loads(tagpack.contents['tags'][1]['context'])
+
+    assert "context" not in tagpack.contents['tags'][0].keys()
 
 
 def test_validate_undefined_field(tagpack):
@@ -227,9 +197,10 @@ def test_validate_fail_missing_body(tagpack):
 def test_validate_fail_missing_address(tagpack):
     del tagpack.contents['tags'][0]['address']
 
-    with pytest.raises(TagPackFileError) as e:
+    with pytest.raises(ValidationError) as e:
         tagpack.validate()
-    assert "Tag must be assigned to address or entity" in str(e.value)
+    print(e.value)
+    assert "Mandatory tag field address missing" in str(e.value)
 
 
 def test_validate_fail_is_cluster_definer(tagpack):
@@ -241,11 +212,11 @@ def test_validate_fail_is_cluster_definer(tagpack):
 
 
 def test_validate_fail_taxonomy(tagpack):
-    tagpack.contents['tags'][0]['category'] = 'unknown'
+    tagpack.contents['tags'][1]['category'] = 'UNKNOWN'
 
     with pytest.raises(ValidationError) as e:
         tagpack.validate()
-    assert "Undefined concept unknown in field category" in str(e.value)
+    assert "Undefined concept UNKNOWN in field category" in str(e.value)
 
 
 def test_validate_fail_taxonomy_header(tagpack):
@@ -272,3 +243,24 @@ def test_validate_fail_empty_body_field(tagpack):
         tagpack.validate()
     assert "Value of body field label must not be empty (None)" \
         in str(e.value)
+
+
+def test_duplicate_raises(tagpack):
+    tagpack.contents['tags'].append(tagpack.contents['tags'][0])
+    with pytest.raises(ValidationError) as e:
+        tagpack.validate()
+    assert "Duplicate found" in str(e.value)
+
+
+def test_load_from_file_addr_tagpack(schema, taxonomies):
+    tagpack = TagPack.load_from_file('http://example.com/',
+                                     'tests/testfiles/ex_addr_tagpack.yaml',
+                                     schema,
+                                     taxonomies)
+    assert isinstance(tagpack, TagPack)
+    assert tagpack.uri == \
+        'http://example.com/tests/testfiles/ex_addr_tagpack.yaml'
+    assert tagpack.contents['title'] == 'Test Address TagPack'
+    assert isinstance(tagpack.schema, TagPackSchema)
+    assert 'title' in tagpack.schema.header_fields
+    assert isinstance(tagpack.taxonomies, dict)

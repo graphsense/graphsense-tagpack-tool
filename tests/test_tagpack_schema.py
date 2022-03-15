@@ -7,10 +7,6 @@ from tagpack.taxonomy import Taxonomy
 
 @pytest.fixture
 def schema(monkeypatch):
-
-    def mock_load_schema(*args, **kwargs):
-        pass
-
     tagpack_schema = TagPackSchema()
 
     return tagpack_schema
@@ -24,9 +20,7 @@ def taxonomies():
     tax_abuse = Taxonomy('abuse', 'http://example.com/abuse')
     tax_abuse.add_concept('bad_coding', 'Bad coding', 'Really bad')
 
-    taxonomies = {}
-    taxonomies['entity'] = tax_entity
-    taxonomies['abuse'] = tax_abuse
+    taxonomies = {'entity': tax_entity, 'abuse': tax_abuse}
     return taxonomies
 
 
@@ -43,81 +37,70 @@ def test_header_fields(schema):
     assert 'text' in schema.header_fields['title']['type']
     assert 'mandatory' in schema.header_fields['title']
     assert schema.header_fields['title']['mandatory'] is True
+    assert schema.header_fields['creator']['mandatory'] is True
+    assert schema.header_fields['tags']['mandatory'] is True
 
 
 def test_mandatory_header_fields(schema):
     assert isinstance(schema.mandatory_header_fields, dict)
     assert 'title' in schema.mandatory_header_fields
     assert 'tags' in schema.mandatory_header_fields
+    assert 'creator' in schema.mandatory_header_fields
     assert 'notmandatory' not in schema.mandatory_header_fields
 
 
-def test_generic_tag_fields(schema):
-    assert isinstance(schema.generic_tag_fields, dict)
-    assert 'label' in schema.generic_tag_fields
-    assert 'type' in schema.generic_tag_fields['label']
-    assert 'mandatory' in schema.generic_tag_fields['label']
+def test_tag_fields(schema):
+    assert isinstance(schema.tag_fields, dict)
+    assert 'label' in schema.tag_fields
+    assert 'type' in schema.tag_fields['label']
+    assert 'mandatory' in schema.tag_fields['label']
+    assert 'address' in schema.tag_fields
 
 
-def test_address_tag_fields(schema):
-    assert 'address' in schema.address_tag_fields
-    assert 'label' in schema.address_tag_fields
-    assert 'entity' not in schema.address_tag_fields
-    assert isinstance(schema.address_tag_fields, dict)
+def test_mandatory_tag_fields(schema):
+    assert isinstance(schema.mandatory_tag_fields, dict)
+    assert 'address' in schema.mandatory_tag_fields
+    assert 'label' in schema.mandatory_tag_fields
+    assert 'source' in schema.mandatory_tag_fields
+    assert 'currency' in schema.mandatory_tag_fields
 
-
-def test_mandatory_address_tag_fields(schema):
-    assert isinstance(schema.mandatory_address_tag_fields, dict)
-    assert 'address' in schema.mandatory_address_tag_fields
-    assert 'label' in schema.mandatory_address_tag_fields
-    assert 'created' not in schema.mandatory_address_tag_fields
-    assert 'lastmod' not in schema.mandatory_address_tag_fields
-
-
-def test_entity_tag_fields(schema):
-    assert 'entity' in schema.entity_tag_fields
-    assert 'label' in schema.entity_tag_fields
-    assert 'address' not in schema.entity_tag_fields
-    assert isinstance(schema.entity_tag_fields, dict)
-
-
-def test_mandatory_entity_tag_fields(schema):
-    assert isinstance(schema.mandatory_entity_tag_fields, dict)
-    assert 'entity' in schema.mandatory_entity_tag_fields
-    assert 'label' in schema.mandatory_entity_tag_fields
-    assert 'lastmod' not in schema.mandatory_entity_tag_fields
+    assert 'created' not in schema.mandatory_tag_fields
+    assert 'lastmod' not in schema.mandatory_tag_fields
 
 
 def test_all_tag_fields(schema):
-    assert isinstance(schema.all_tag_fields, dict)
-    assert 'address' in schema.all_tag_fields
-    assert 'entity' in schema.all_tag_fields
-    assert 'label' in schema.all_tag_fields
-
-
-def test_all_address_tag_fields(schema):
-    assert isinstance(schema.all_address_tag_fields, dict)
-    assert 'address' in schema.all_address_tag_fields
-    assert 'entity' not in schema.all_address_tag_fields
-
-
-def test_all_entity_tag_fields(schema):
-    assert isinstance(schema.all_entity_tag_fields, dict)
-    assert 'entity' in schema.all_entity_tag_fields
-    assert 'address' not in schema.all_entity_tag_fields
+    assert isinstance(schema.tag_fields, dict)
+    assert 'address' in schema.tag_fields
+    assert 'label' in schema.tag_fields
 
 
 def test_all_fields(schema):
     assert isinstance(schema.all_fields, dict)
     assert all(field in schema.all_fields
-               for field in ['title', 'label', 'address', 'entity'])
+               for field in ['title', 'label', 'address'])
 
 
 def test_field_type(schema):
     assert schema.field_type('title') == 'text'
+    assert schema.field_type('creator') == 'text'
+    assert schema.field_type('owner') == 'text'
+    assert schema.field_type('description') == 'text'
+    assert schema.field_type('address') == 'text'
+    assert schema.field_type('label') == 'text'
+    assert schema.field_type('source') == 'text'
+    assert schema.field_type('currency') == 'text'
+    assert schema.field_type('context') == 'text'
+    assert schema.field_type('confidence') == 'text'
+    assert schema.field_type('category') == 'text'
+    assert schema.field_type('abuse') == 'text'
+
+    assert schema.field_type('created') == 'datetime'
     assert schema.field_type('lastmod') == 'datetime'
-    assert schema.field_type('entity') == 'int'
+
     assert schema.field_type('is_cluster_definer') == 'boolean'
+    assert schema.field_type('is_public') == 'boolean'
+
+    assert schema.field_type('tags') == 'list'
 
 
 def test_field_taxonomy(schema):
@@ -139,10 +122,10 @@ def test_check_type(schema):
         assert schema.check_type('lastmod', 5)
     assert "Field lastmod must be of type datetime" in str(e.value)
 
-    assert schema.check_type('entity', 5)
+    assert schema.check_type('address', "string")
     with(pytest.raises(ValidationError)) as e:
-        assert schema.check_type('entity', '56abc')
-    assert "Field entity must be of type integer" in str(e.value)
+        assert schema.check_type('address', 0x2342)
+    assert "Field address must be of type text" in str(e.value)
 
     assert schema.check_type('tags', [{'a': 1}, {'b': 2}])
     with(pytest.raises(ValidationError)) as e:
@@ -156,7 +139,7 @@ def test_check_taxonomies(schema, taxonomies):
         assert schema.check_taxonomies('category', 'test', taxonomies)
     assert "Undefined concept test in field category" in str(e.value)
 
-    schema.schema['generic_tag']['dummy'] = {'taxonomy': 'test'}
+    schema.schema['tag']['dummy'] = {'taxonomy': 'test'}
     with(pytest.raises(ValidationError)) as e:
         assert schema.check_taxonomies('dummy', 'test', taxonomies)
     assert "Unknown taxonomy test" in str(e.value)

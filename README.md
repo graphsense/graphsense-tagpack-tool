@@ -2,15 +2,45 @@
 
 # GraphSense TagPack Management Tool
 
-This repository defines a common structure (schema) for TagPacks and provides a
-tool for validating and ingesting TagPacks into [Apache Cassandra][cassandra].
 
-The TagPack management tool supports validation of TagPacks and ingestion into
-an [Apache Cassandra database][cassandra], which is required before running
-the [GraphSense transformation][graphsense-transformation] pipeline.
-It is made available as a Python package.
 
-## Local Installation
+This repository defines a common structure (schema) for TagPacks and provides a tool for  
+* ingesting taxonomies and concepts
+* validating TagPacks 
+* ingesting TagPacks into a PostgreSQL database.
+* ingesting GraphSense cluster mappings  
+
+
+## Prerequisites: PostgreSQL database
+
+### Option 1: dockerised database
+
+- [Docker][docker], see e.g. https://docs.docker.com/engine/install/
+- Docker Compose: https://docs.docker.com/compose/install/
+
+Setup and start a PostgreSQL instance. First, copy `tagpack/conf/env.template` to `.env`
+and fill in all parameters:
+
+`LOCAL_DATA_DIR`, the persisted PostgreSQL data directory on the local machine,
+and all PostgreSQL connection parameters
+- `POSTGRES_HOST`
+- `POSTGRES_USER`
+- `POSTGRES_DB`
+- `POSTGRES_PASSWORD`
+
+Start an PostgreSQL instance using Docker Compose:
+
+    docker-compose up -d
+
+This will automatically create the database schema as defined
+in `scripts/tagstore_schema.sql`.
+
+### Option 2: create the schema and tables in a PostgreSQL instance of your choice    
+
+    psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
+
+
+## Install tagpack-tools
 
 Create and activate a python environment for required dependencies
 
@@ -22,7 +52,11 @@ Install package and dependencies in local environment
 
     pip install .
 
-### Handling Taxonomies
+## Handling Taxonomies
+
+Create a default config.yaml (interactively)
+
+    tagpack-tool config
 
 List configured taxonomy keys and URIs
 
@@ -32,15 +66,12 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
     tagpack-tool taxonomy show entity
 
-Insert concepts from a remote taxonomy into Cassandra
+Insert concepts from a remote taxonomy into database
 
-    tagpack-tool taxonomy insert abuse
+    tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
-Use the `-s / --setup-keyspace` (and `-k`) option to (re-)create the keyspace
 
-    tagpack-tool taxonomy insert -s -k tagpacks abuse
-
-### Validate a TagPack
+## Validate a TagPack
 
 Validate a single TagPack file
 
@@ -51,7 +82,7 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool validate tests/testfiles/
 
-### Insert a TagPack into Cassandra
+## Insert a TagPack into database
 
 Insert a single TagPack file or all TagPacks from a given folder
 
@@ -59,26 +90,29 @@ Insert a single TagPack file or all TagPacks from a given folder
     tagpack-tool insert tests/testfiles/ex_entity_tagpack.yaml
     tagpack-tool insert tests/testfiles/
 
-Create a keyspace and insert all TagPacks from a given folder
+By default, TagPacks are declared as non-public in the database.
+For public TagPacks, add the `--public` flag to your arguments:
 
-    tagpack-tool insert -s -k tagpacks tests/testfiles/
+    tagpack-tool insert --public tests/testfiles/
 
-Optionally, you can specify the level of `concurrency` (default: 100) by using
-the `-c` parameter.
+## Insert GraphSense cluster mappings into database
 
-    tagpack-tool insert -c 500 -s -k tagpacks tests/testfiles
+The final step after inserting a tagpack is to fetch the corresponding Graphsense cluster mapping ids for the crypto addresses in the tagpack.
+
+Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to suit your Graphsense setup.
+
+Then fetch the cluster mappings from your Graphsense instance and insert them into the tagstore database:  
+    
+    tagpack-tool cluster -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
+To update ALL cluster-mappings in your tagstore, add the `--update` flag:
+
+    tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
 
 ## Development / Testing
 
-Speed-up building of [cassandra-driver](https://docs.datastax.com/en/developer/python-driver/3.25/installation/) from source.
-
-    CASS_DRIVER_BUILD_CONCURRENCY=8
-
-Use the `-e` option for linking package to sources (for development purposes)
-
-    pip install -e .
-
-OR install packages via `requirements.txt`
+Install packages via `requirements.txt`
 
     pip install -r requirements.txt
 
@@ -96,5 +130,5 @@ Check test coverage (optional)
 Use [act][act] to check if test via [Github action](https://github.com/features/actions) pass.
 
 [act]: https://github.com/nektos/act
-[cassandra]: https://cassandra.apache.org
+[docker]: https://www.docker.com
 [graphsense-transformation]: https://github.com/graphsense/graphsense-transformation
