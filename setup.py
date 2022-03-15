@@ -21,8 +21,8 @@ setup(
     packages=find_packages(),
     scripts=['bin/tagpack-tool'],
     include_package_data=True,
-    author="Bernhard Haslhofer",
-    author_email="bernhard.haslhofer@ait.ac.at",
+    author="GraphSense Core Team",
+    author_email="contact@graphsense.info",
     description="GraphSense TagPack Management Tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -34,11 +34,11 @@ setup(
     ],
     python_requires='>=3.7',
     install_requires=[
-        "requests==2.26.0",
+        "requests==2.27.1",
         "pyyaml==6.0",
         "tabulate==0.8.9",
         "cassandra-driver==3.25.0",
-        "psycopg2==2.9.1"
+        "psycopg2==2.9.3"
     ],
     test_suite="tests"
 )
