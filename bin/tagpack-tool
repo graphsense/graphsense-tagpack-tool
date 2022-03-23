@@ -204,7 +204,7 @@ def insert_tagpack(args):
 
         print(f'{tagpack_file}: ', end='')
         try:
-            tagstore.insert_tagpack(tagpack, args.public)
+            tagstore.insert_tagpack(tagpack, args.public, args.force)
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
@@ -322,6 +322,9 @@ def main():
     parser_i.add_argument("--public", action='store_true',
                         help='By default, tagpacks are declared private in the database. '
                              'Use this switch to declare them public.')
+    parser_i.add_argument("--force", action='store_true',
+                          help='By default, tagpack insertion stops when an already ingested tagpack'
+                               'exists in the database. Use this switch to force re-insertion.')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command

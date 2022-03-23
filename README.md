@@ -97,6 +97,12 @@ For public TagPacks, add the `--public` flag to your arguments:
 
     tagpack-tool insert --public tests/testfiles/
 
+If you try to insert tagpacks that already exist in the database, the ingestion process will be stopped.
+
+To force re-insertion, add the `--force` flag to your arguments:
+
+    tagpack-tool insert --force tests/testfiles/
+
 ## Insert GraphSense cluster mappings into database
 
 The final step after inserting a tagpack is to fetch the corresponding
