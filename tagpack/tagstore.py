@@ -26,10 +26,13 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def insert_tagpack(self, tagpack, is_public, batch=1000):
+    def insert_tagpack(self, tagpack, is_public, force_insert, batch=1000):
         tagpack_id = _get_id(tagpack)
         h = _get_header(tagpack, tagpack_id)
 
+        if force_insert:
+            print(f"evicting and re-inserting tagpack {tagpack_id}")
+            self.cursor.execute("DELETE FROM tagpack WHERE id = (%s)", (tagpack_id,))
         self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), is_public))
         self.conn.commit()
 
