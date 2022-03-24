@@ -1,7 +1,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
-## [0.5.2] 2022-03-15
+## [0.5.2] 2022-03-24
 ### Changed
 - **Tagstore design:** migrate tag handling from Cassandra keyspaces
   to external tag store(s)
