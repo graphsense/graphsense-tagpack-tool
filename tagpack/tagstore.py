@@ -90,6 +90,10 @@ class TagStore(object):
         self.cursor.execute('UPDATE address SET is_mapped=true WHERE NOT is_mapped AND currency IN %s', (tuple(keys),))
         self.conn.commit()
 
+    def get_ingested_tagpacks(self) -> list:
+        self.cursor.execute("SELECT id from tagpack")
+        return [i[0] for i in self.cursor.fetchall()]
+
 
 def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get('label').lower().strip()

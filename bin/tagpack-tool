@@ -194,6 +194,11 @@ def insert_tagpack(args):
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
     tagpack_files = collect_tagpack_files(args.path)
+    if args.add_new:
+        print_info("Checking which files are new to the tagstore:")
+        existing = tagstore.get_ingested_tagpacks()
+        tagpack_files = [x for x in tagpack_files if os.path.basename(x) not in existing]
+
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
@@ -325,6 +330,10 @@ def main():
     parser_i.add_argument("--force", action='store_true',
                           help='By default, tagpack insertion stops when an already ingested tagpack'
                                'exists in the database. Use this switch to force re-insertion.')
+    parser_i.add_argument("--add_new", action='store_true',
+                          help='By default, tagpack insertion stops when an already ingested tagpack'
+                               'exists in the database. Use this switch to ingest new tagpacks '
+                               'while skipping over existing ones.')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
