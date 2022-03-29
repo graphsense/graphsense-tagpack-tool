@@ -88,7 +88,7 @@ Recursively validate all TagPacks in (a) given folder(s).
 
 Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
 
-Confidence settings are validated against [confidence](tagpack/conf/confidence.csv).
+Confidence settings are validated against a set of acceptable [confidence](tagpack/conf/confidence.csv)  values.
 
 ## Insert a TagPack into database
 
