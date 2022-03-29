@@ -84,6 +84,12 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool validate tests/testfiles/
 
+### Validation resources
+
+Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
+
+Confidence settings are validated against [confidence](tagpack/conf/confidence.csv).
+
 ## Insert a TagPack into database
 
 Insert a single TagPack file or all TagPacks from a given folder
