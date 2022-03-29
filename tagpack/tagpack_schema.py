@@ -22,7 +22,7 @@ class TagPackSchema(object):
         schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
         confidence = pkg_resources.open_text(conf, CONFIDENCE_FILE)
-        self.confidences = pd.read_csv(confidence, sep=';', index_col='id')
+        self.confidences = pd.read_csv(confidence, index_col='id')
         self.definition = TAGPACK_SCHEMA_FILE
 
     @property
