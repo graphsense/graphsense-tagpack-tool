@@ -1,5 +1,8 @@
 """TagPack - A wrappers TagPack Schema"""
 import datetime
+import json
+from json import JSONDecodeError
+
 import yaml
 
 import importlib.resources as pkg_resources
@@ -57,6 +60,11 @@ class TagPackSchema(object):
             if not len(value) >= 1:
                 raise ValidationError("Empty value in text field {}"
                                       .format(field))
+            if field == 'context':
+                try:
+                    json.loads(value)
+                except JSONDecodeError as e:
+                    raise ValidationError(f"Invalid JSON in field context with value {value}: {e}")
         elif schema_type == 'datetime':
             if not isinstance(value, datetime.date):
                 raise ValidationError("Field {} must be of type datetime"
