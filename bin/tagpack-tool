@@ -114,13 +114,9 @@ def load_config():
     if not os.path.isfile(CONFIG_FILE):
         print_line(
             "Could not find TagPack repository configuration file.", 'fail')
-        new = input("Create a new default configuration? (y/n) ")
-        if new == 'y':
-            with open('config.yaml', 'a') as the_file:
-                yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
-        else:
-            sys.exit("This program requires a repository config file in {}"
-                     .format(os.getcwd()))
+        print_info(f"Creating a new default configuration file: {CONFIG_FILE}")
+        with open('config.yaml', 'a') as the_file:
+            yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
     return yaml.safe_load(open(CONFIG_FILE, 'r'))
 
 
