@@ -197,12 +197,12 @@ class GraphSense(object):
         if currency == 'ETH':
             df_address_ids['cluster_id'] = df_address_ids['address_id']
             df_address_ids['no_addresses'] = 1
-            df_address_ids['cluster_defining_address'] = df_address_ids['address']
             degrees = self.get_address_statistics(df_address_ids, currency)
 
             result = df_address_ids.merge(degrees, on="address_id", how='left').merge(addresses, on='address')
             result.drop("address", axis="columns", inplace=True)
             result.rename(columns={"checksum_address": "address"}, inplace=True)
+            result['cluster_defining_address'] = result['address']
             result.fillna(value={'in_degree': 0, 'out_degree': 0}, inplace=True)  # no txs have been recorded
             return result
 
