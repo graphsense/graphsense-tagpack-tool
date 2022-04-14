@@ -130,8 +130,11 @@ class TagPack(object):
                         .format(field))
 
                 # check types and taxomomy use
-                self.schema.check_type(field, value)
-                self.schema.check_taxonomies(field, value, self.taxonomies)
+                try:
+                    self.schema.check_type(field, value)
+                    self.schema.check_taxonomies(field, value, self.taxonomies)
+                except ValidationError as e:
+                    raise ValidationError(f'address {t[0]}:\n\t {e}')
 
         return True
 
