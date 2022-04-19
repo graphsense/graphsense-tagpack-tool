@@ -36,9 +36,6 @@ tag:
   is_cluster_definer:
     type: boolean
     mandatory: false
-  created:
-    type: datetime
-    mandatory: false
   lastmod:
     type: datetime
     mandatory: false
