@@ -64,7 +64,6 @@ def test_mandatory_tag_fields(schema):
     assert 'source' in schema.mandatory_tag_fields
     assert 'currency' in schema.mandatory_tag_fields
 
-    assert 'created' not in schema.mandatory_tag_fields
     assert 'lastmod' not in schema.mandatory_tag_fields
 
 
@@ -94,7 +93,6 @@ def test_field_type(schema):
     assert schema.field_type('category') == 'text'
     assert schema.field_type('abuse') == 'text'
 
-    assert schema.field_type('created') == 'datetime'
     assert schema.field_type('lastmod') == 'datetime'
 
     assert schema.field_type('is_cluster_definer') == 'boolean'
