@@ -4,7 +4,6 @@ source: http://example.com/my_addresses
 confidence: web_crawl
 is_cluster_definer: true
 currency: BTC
-created: 2021-04-21
 lastmod: 2021-04-21
 tags:
 - address: 1bacdeddg32dsfk5692dmn23
