@@ -67,10 +67,6 @@ distort clustering results and lead to false, unreliable, or intentionally
 misplaced attribution tags that could associate unrelated actors with a given
 cluster.
 
-For further details and an explanation of why we are hosting TagPacks on Github,
-we refer to our paper [Safeguarding the evidential value of forensic
-cryptocurrency investigations](https://www.sciencedirect.com/science/article/pii/S1742287619302567).
-
 ### TagPack properties
 
 A TagPack defines a **header** with several mandatory and optional fields
