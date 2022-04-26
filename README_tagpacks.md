@@ -4,7 +4,7 @@ A TagPack is a collection of attribution tags, which associate cryptoasset addre
 
 TagPacks make use of the [INTERPOL Dark Web and Virtual Assets Taxonomy][dw-va] ([read on below](#using-concepts-from-public-taxonomies) for details on taxonomies) and can be validated and ingested into GraphSense using the  GraphSense TagPack Management Tool in this repository. 
 
-An example for a public GraphSense repository containing TagPacks can be found [here] (https://github.com/graphsense/graphsense-tagpacks).
+An example for a public GraphSense repository containing TagPacks can be found [here](https://github.com/graphsense/graphsense-tagpacks).
 
 ## More about TagPacks
 
