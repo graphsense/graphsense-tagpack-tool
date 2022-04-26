@@ -2,20 +2,17 @@
 
 A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
 
-TagPacks make use of the [INTERPOL Dark Web and Virtual Assets Taxonomy][dw-va] ([read on below](#using-concepts-from-public-taxonomies) for details on taxonomies)
-and can be validated and ingested into GraphSense using the 
-[GraphSense TagPack Management Tool][tagpack-tool]. 
+TagPacks make use of the [INTERPOL Dark Web and Virtual Assets Taxonomy][dw-va] ([read on below](#using-concepts-from-public-taxonomies) for details on taxonomies) and can be validated and ingested into GraphSense using the  GraphSense TagPack Management Tool in this repository. 
 
-## More About TagPacks
+An example for a public GraphSense repository containing TagPacks can be found [here] (https://github.com/graphsense/graphsense-tagpacks).
+
+## More about TagPacks
 
 ### What is an attribution tag?
 
-An attribution tag is any form of context information that can be attributed to
-a cryptoasset address.
+An attribution tag is any form of context information that can be attributed to a cryptoasset address.
 
-The following example attributes a Bitcoin address to the
-Internet Archive, which is, according to [this source](https://archive.org/donate/cryptocurrency/),
-the holder of that address:
+The following example attributes a Bitcoin address to the Internet Archive, which is, according to [this source](https://archive.org/donate/cryptocurrency/), the holder of that address:
 
     label: Internet Archive
     address: 1Archive1n2C579dMsAu3iC6tWzuQJz8dN
