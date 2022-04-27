@@ -1,14 +1,38 @@
 """TagPack - A wrapper for TagPacks files"""
+import glob
 import json
 import os
 import sys
 import yaml
 
 from tagpack import TagPackFileError, ValidationError
+from yamlinclude import YamlIncludeConstructor
+
+
+def collect_tagpack_files(paths):
+    """Collect Tagpack YAML files from given paths"""
+    tagpack_files = []
+    header_path = None
+    for p in paths:
+        if os.path.isdir(p):
+            files = glob.glob(p + '/**/*.yaml', recursive=True)
+            tagpack_files = tagpack_files + files
+        elif os.path.isfile(p):
+            tagpack_files.append(p)
+
+    # deal with yaml includes
+    for p in tagpack_files:
+        if p.endswith('header.yaml'):
+            header_path = p
+    if header_path:
+        tagpack_files.remove(header_path)
+        header_path = os.path.dirname(header_path)
+
+    return tagpack_files, header_path
 
 
 # https://gist.github.com/pypt/94d747fe5180851196eb
-class UniqueKeyLoader(yaml.SafeLoader):
+class UniqueKeyLoader(yaml.FullLoader):
     def construct_mapping(self, node, deep=False):
         mapping = set()
         for key_node, value_node in node.value:
@@ -28,7 +52,9 @@ class TagPack(object):
         self.schema = schema
         self.taxonomies = taxonomies
 
-    def load_from_file(baseuri, pathname, schema, taxonomies):
+    def load_from_file(baseuri, pathname, schema, taxonomies, header_dir=None):
+        YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=header_dir)
+
         if not os.path.isfile(pathname):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
@@ -36,6 +62,11 @@ class TagPack(object):
         if not baseuri.endswith(os.path.sep):
             baseuri = baseuri + os.path.sep
         uri = baseuri + pathname
+
+        if 'header' in contents.keys():
+            for k, v in contents['header'].items():
+                contents[k] = v
+            contents.pop('header')
         return TagPack(uri, contents, schema, taxonomies)
 
     @property
@@ -171,7 +202,7 @@ class Tag(object):
     @property
     def all_fields(self):
         """Return all tag fields (explicit and generic)"""
-        return {**self.explicit_fields, **self.tagpack.tag_fields}
+        return {**self.tagpack.tag_fields, **self.explicit_fields, }
 
     def to_json(self):
         """Returns a JSON serialization of all tag fields"""

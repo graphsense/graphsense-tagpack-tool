@@ -13,7 +13,7 @@ from tabulate import tabulate
 from tagpack import __version__ as version
 from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
 from tagpack.graphsense import GraphSense
-from tagpack.tagpack import TagPack, TagPackFileError
+from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
@@ -127,18 +127,6 @@ def show_config(args):
         list_taxonomies()
 
 
-def collect_tagpack_files(paths):
-    """Collect Tagpack YAML files from given paths"""
-    tagpack_files = []
-    for path in paths:
-        if os.path.isdir(path):
-            files = glob.glob(path + '/**/*.yaml', recursive=True)
-            tagpack_files = tagpack_files + files
-        elif os.path.isfile(path):
-            tagpack_files.append(path)
-    return tagpack_files
-
-
 def validate_tagpack(args):
     t0 = time.time()
     print_line("TagPack validation starts")
@@ -151,14 +139,14 @@ def validate_tagpack(args):
     schema = TagPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    tagpack_files = collect_tagpack_files(args.path)
+    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
     try:
         for tagpack_file in tagpack_files:
             tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                             schema, taxonomies)
+                                             schema, taxonomies, headerfile_dir)
 
             print(f'{tagpack_file}: ', end='')
 
@@ -189,7 +177,7 @@ def insert_tagpack(args):
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    tagpack_files = collect_tagpack_files(args.path)
+    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
     if args.add_new:
         print_info("Checking which files are new to the tagstore:")
         existing = tagstore.get_ingested_tagpacks()
@@ -201,7 +189,7 @@ def insert_tagpack(args):
     no_tags = 0
     for tagpack_file in tagpack_files:
         tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                         schema, taxonomies)
+                                         schema, taxonomies, headerfile_dir)
 
         print(f'{tagpack_file}: ', end='')
         try:
