@@ -1,7 +1,15 @@
 ![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
 
-# GraphSense TagPack Management Tool
+# GraphSense TagPacks
 
+A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
+
+To learn more about TagPacks, continue [reading here](README_tagpacks.md).
+
+TagPacks can be validated and ingested into a GraphSense TagStore using the 
+
+
+# GraphSense TagPack Management Tool
 
 
 This repository defines a common structure (schema) for TagPacks and provides a
