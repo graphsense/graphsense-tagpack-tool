@@ -138,7 +138,11 @@ The definition looks as follows:
         type: text
         mandatory: true
 
+The `source` should provide a backlink to the websource where the tag information originates, e.g. https://archive.org/donate/cryptocurrency/.  If no backlink is to be provided (e.g. for private TagPacks), the field can contain other informative text.
+
 For `currency`, use the corresponding currency codes such as: `BCH, BTC, ETH, LTC, ZEC`.
+
+For `confidence` values read on [below](#attribution-tag-confidence-score).
 
 The `context` property contains any additional information associated with the tag, in JSON format, e.g.
 
