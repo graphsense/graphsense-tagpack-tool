@@ -9,6 +9,8 @@ from argparse import ArgumentParser
 import pandas as pd
 import yaml
 from tabulate import tabulate
+from git import Repo
+import giturlparse as gup
 
 from tagpack import __version__ as version
 from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
@@ -23,7 +25,6 @@ CONFIG_FILE = "config.yaml"
 TAXONOMY_URL = 'https://graphsense.github.io'
 
 DEFAULT_CONFIG = {
-    'baseURI': 'uri:test',
     'taxonomies': {
         'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
         'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
@@ -145,7 +146,7 @@ def validate_tagpack(args):
     no_passed = 0
     try:
         for tagpack_file in tagpack_files:
-            tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+            tagpack = TagPack.load_from_file('', tagpack_file,
                                              schema, taxonomies, headerfile_dir)
 
             print(f'{tagpack_file}: ', end='')
@@ -163,10 +164,60 @@ def validate_tagpack(args):
                .format(no_passed, len(tagpack_files), duration), status)
 
 
+def _get_repository_and_subpath(path: str) -> (Repo, str):
+    """ Parse '/home/anna/graphsense/graphsense-tagpacks/public/packs' ->
+        and return a tuple (Repo, 'public/packs')
+     """
+    repo_path = path
+    while repo_path != os.path.sep:
+        try:
+            rel_path = os.path.dirname(path.replace(repo_path, ''))
+            return Repo(repo_path), rel_path[1:]
+        except:
+            pass
+        repo_path, _ = os.path.split(repo_path)
+    return None, None
+
+
+def get_remote_for_clean_repo(path, strict_check):
+    """ For a given path string
+    '/home/anna/graphsense/graphsense-tagpacks/public/packs'
+
+    return remote URI
+    'https://github.com/anna/tagpacks/blob/develop/public/packs/'
+
+    Local git copy will be checked for modifications by default.
+    Toggle strict_check param to change this.
+
+    If path does not contain git information, the original path
+    is returned.
+
+    """
+    repo, rel_path = _get_repository_and_subpath(path)
+
+    if not repo:
+        print_info(f"No repository root found in {path}.")
+        return path
+
+    if strict_check and repo.is_dirty():
+        print_info(f"Local modifications in {repo.common_dir} detected, please push first.")
+        sys.exit(0)
+
+    if len(repo.remotes) > 1:
+        print_info("Multiple remotes present, cannot decide on backlink. ")
+        sys.exit(0)
+
+    u = next(repo.remotes[0].urls)
+    g = gup.parse(u).url2https.replace('.git', '')
+    return f'{g}/tree/{repo.active_branch.name}/{rel_path}'
+
+
 def insert_tagpack(args):
     t0 = time.time()
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
+
+    git_url = get_remote_for_clean_repo(args.path, not args.no_strict_check)
 
     tagstore = TagStore(args.url, args.schema)
 
@@ -188,7 +239,7 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     for tagpack_file in tagpack_files:
-        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
+        tagpack = TagPack.load_from_file(git_url, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
 
         print(f'{tagpack_file}: ', end='')
@@ -298,8 +349,8 @@ def main():
     # parser for insert command
     parser_i = subparsers.add_parser("insert",
                                      help="insert TagPacks into GraphSense")
-    parser_i.add_argument('path', nargs='+', metavar='PATH',
-                          default=[os.getcwd()],
+    parser_i.add_argument('path', nargs='?', metavar='PATH',
+                          default=os.getcwd(),
                           help='TagPacks file or folder root path')
     parser_i.add_argument('--schema',
                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
@@ -318,11 +369,13 @@ def main():
                           help='By default, tagpack insertion stops when an already ingested tagpack'
                                'exists in the database. Use this switch to ingest new tagpacks '
                                'while skipping over existing ones.')
+    parser_i.add_argument("--no_strict_check", action='store_true',
+                          help='Disables check for local modifications in git repository')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
     parser_v = subparsers.add_parser("validate", help="validate TagPacks")
-    parser_v.add_argument('path', nargs='+', metavar='PATH',
+    parser_v.add_argument('path', nargs='?', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
     parser_v.set_defaults(func=validate_tagpack)

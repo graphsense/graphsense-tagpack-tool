@@ -288,14 +288,14 @@ def test_duplicate_raises(tagpack):
 
 
 def test_simple_file_collection():
-    files, headerfile_path = collect_tagpack_files(['tests/testfiles/simple/'])
+    files, headerfile_path = collect_tagpack_files('tests/testfiles/simple/')
 
     assert len(files) == 1
     assert files[0].endswith('ex_addr_tagpack.yaml')
 
 
 def test_file_collection_with_yaml_include():
-    files, headerfile_path = collect_tagpack_files(['tests/testfiles/yaml_inclusion/'])
+    files, headerfile_path = collect_tagpack_files('tests/testfiles/yaml_inclusion/')
 
     assert len(files) == 3
     assert 'tests/testfiles/yaml_inclusion/2021/01/20210101.yaml' in files
@@ -306,13 +306,13 @@ def test_file_collection_with_yaml_include():
 
 
 def test_load_from_file_addr_tagpack(schema, taxonomies):
-    tagpack = TagPack.load_from_file('http://example.com/',
+    tagpack = TagPack.load_from_file('http://example.com/packs',
                                      'tests/testfiles/simple/ex_addr_tagpack.yaml',
                                      schema,
                                      taxonomies)
     assert isinstance(tagpack, TagPack)
     assert tagpack.uri == \
-        'http://example.com/tests/testfiles/simple/ex_addr_tagpack.yaml'
+        'http://example.com/packs/ex_addr_tagpack.yaml'
     assert tagpack.contents['title'] == 'Test Address TagPack'
     assert isinstance(tagpack.schema, TagPackSchema)
     assert 'title' in tagpack.schema.header_fields

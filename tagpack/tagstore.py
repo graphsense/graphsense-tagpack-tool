@@ -33,7 +33,7 @@ class TagStore(object):
         if force_insert:
             print(f"evicting and re-inserting tagpack {tagpack_id}")
             self.cursor.execute("DELETE FROM tagpack WHERE id = (%s)", (tagpack_id,))
-        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), is_public))
+        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, uri, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), tagpack.uri, is_public))
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
@@ -101,7 +101,8 @@ def _get_tag(tag, tagpack_id):
 
     return (label, tag.all_fields.get('source'), tag.all_fields.get('category', None),
             tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
-            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), lastmod, tag.all_fields.get('context'), tagpack_id)
+            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'),
+            lastmod, tag.all_fields.get('context'), tagpack_id)
 
 
 def _get_address(tag):

@@ -76,6 +76,7 @@ CREATE TABLE tagpack (
 	source 				VARCHAR		DEFAULT NULL,
 	creator				VARCHAR		NOT NULL,
 	owner				VARCHAR		NOT NULL,
+	uri                 VARCHAR     ,
 	is_public			BOOLEAN		DEFAULT FALSE,
 	lastmod				TIMESTAMP 	NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

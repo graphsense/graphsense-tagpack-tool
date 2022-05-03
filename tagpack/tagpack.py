@@ -9,16 +9,16 @@ from tagpack import TagPackFileError, ValidationError
 from yamlinclude import YamlIncludeConstructor
 
 
-def collect_tagpack_files(paths):
+def collect_tagpack_files(path):
     """Collect Tagpack YAML files from given paths"""
     tagpack_files = []
     header_path = None
-    for p in paths:
-        if os.path.isdir(p):
-            files = glob.glob(p + '/**/*.yaml', recursive=True)
-            tagpack_files = tagpack_files + files
-        elif os.path.isfile(p):
-            tagpack_files.append(p)
+
+    if os.path.isdir(path):
+        files = glob.glob(path + '/**/*.yaml', recursive=True)
+        tagpack_files = tagpack_files + files
+    elif os.path.isfile(path):
+        tagpack_files.append(path)
 
     # deal with yaml includes
     for p in tagpack_files:
@@ -59,9 +59,8 @@ class TagPack(object):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
         contents = yaml.load(open(pathname, 'r'), UniqueKeyLoader)
-        if not baseuri.endswith(os.path.sep):
-            baseuri = baseuri + os.path.sep
-        uri = baseuri + pathname
+
+        uri = os.path.join(baseuri, os.path.basename(pathname))
 
         if 'header' in contents.keys():
             for k, v in contents['header'].items():
