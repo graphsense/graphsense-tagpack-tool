@@ -280,18 +280,15 @@ def test_validate_fail_empty_body_field(tagpack):
         in str(e.value)
 
 
-def test_duplicate_raises(tagpack):
-    tagpack.contents['tags'].append(tagpack.contents['tags'][0])
-    with pytest.raises(ValidationError) as e:
-        tagpack.validate()
-    assert "Duplicate found" in str(e.value)
-
-
 def test_simple_file_collection():
-    files, headerfile_path = collect_tagpack_files('tests/testfiles/simple/')
+    prefix = 'tests/testfiles/simple/'
+    files, headerfile_path = collect_tagpack_files(prefix)
 
-    assert len(files) == 1
-    assert files[0].endswith('ex_addr_tagpack.yaml')
+    assert len(files) == 4
+    assert f'{prefix}ex_addr_tagpack.yaml' in files
+    assert f'{prefix}duplicate_tag.yaml' in files
+    assert f'{prefix}empty_tag_list.yaml' in files
+    assert f'{prefix}multiple_tags_for_address.yaml' in files
 
 
 def test_file_collection_with_yaml_include():
@@ -305,10 +302,10 @@ def test_file_collection_with_yaml_include():
     assert headerfile_path == 'tests/testfiles/yaml_inclusion'
 
 
-def test_load_from_file_addr_tagpack(schema, taxonomies):
+def test_load_from_file_addr_tagpack(taxonomies):
     tagpack = TagPack.load_from_file('http://example.com/packs',
                                      'tests/testfiles/simple/ex_addr_tagpack.yaml',
-                                     schema,
+                                     TagPackSchema(),
                                      taxonomies)
     assert isinstance(tagpack, TagPack)
     assert tagpack.uri == \
@@ -319,10 +316,10 @@ def test_load_from_file_addr_tagpack(schema, taxonomies):
     assert isinstance(tagpack.taxonomies, dict)
 
 
-def test_yaml_inclusion(schema, taxonomies):
+def test_yaml_inclusion(taxonomies):
     tagpack = TagPack.load_from_file('http://example.com/',
                                      'tests/testfiles/yaml_inclusion/2021/01/20210101.yaml',
-                                     schema,
+                                     TagPackSchema(),
                                      taxonomies,
                                      'tests/testfiles/yaml_inclusion')
     assert isinstance(tagpack, TagPack)
@@ -333,13 +330,44 @@ def test_yaml_inclusion(schema, taxonomies):
     assert tagpack.tags[0].contents['context'] == '{"validated": true}'
 
 
-def test_yaml_inclusion_overwrite_abuse(schema, taxonomies):
+def test_yaml_inclusion_overwrite_abuse(taxonomies):
     tagpack = TagPack.load_from_file('http://example.com/',
                                      'tests/testfiles/yaml_inclusion/2021/02/20210201.yaml',
-                                     schema,
+                                     TagPackSchema(),
                                      taxonomies,
                                      'tests/testfiles/yaml_inclusion')
     assert isinstance(tagpack, TagPack)
     assert tagpack.contents['title'] == 'BadHack TagPack'
     assert tagpack.tags[0].contents['address'] == '1Ai52Uw6usjhpcDrwSmkUvjuqLpcznUuyF'
     assert tagpack.tags[0].contents['abuse'] == 'sextortion'
+
+
+def test_empty_tag_list_raises():
+    tagpack = TagPack.load_from_file('http://example.com/packs',
+                                     'tests/testfiles/simple/empty_tag_list.yaml',
+                                     TagPackSchema(),
+                                     taxonomies)
+
+    with pytest.raises(ValidationError) as e:
+        tagpack.validate()
+
+
+def test_multiple_tags_for_one_address_work():
+    tagpack = TagPack.load_from_file('http://example.com/packs',
+                                     'tests/testfiles/simple/multiple_tags_for_address.yaml',
+                                     TagPackSchema(),
+                                     taxonomies)
+    assert len(tagpack.tags) == 2
+    tagpack.validate()
+
+
+def test_duplicate_does_not_raise_only_inform(capsys):
+    tagpack = TagPack.load_from_file('http://example.com/packs',
+                                     'tests/testfiles/simple/duplicate_tag.yaml',
+                                     TagPackSchema(),
+                                     taxonomies)
+
+    tagpack.validate()
+    captured = capsys.readouterr()
+
+    assert "1 duplicate(s) found" in captured.out

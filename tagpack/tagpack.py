@@ -8,6 +8,8 @@ import yaml
 from tagpack import TagPackFileError, ValidationError
 from yamlinclude import YamlIncludeConstructor
 
+from tagpack.cmd_utils import print_info
+
 
 def collect_tagpack_files(path):
     """Collect Tagpack YAML files from given paths"""
@@ -127,14 +129,19 @@ class TagPack(object):
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
+        if len(self.tags) < 1:
+            raise ValidationError("no tags found.")
+
         # iterate over all tags, report duplicates, check types, taxonomy and mandatory use
         seen = set()
+        duplicates = []
 
         for tag in self.tags:
             # check if duplicate entry
-            t = tuple([tag.all_fields.get(k) for k in ['address', 'currency', 'label', 'source']])
+            t = tuple([str(tag.all_fields.get(k)).lower() if k in tag.all_fields.keys() else ''
+                       for k in ['address', 'currency', 'label', 'source']])
             if t in seen:
-                raise ValidationError("Duplicate found {}".format(t))
+                duplicates.append(t)
             seen.add(t)
 
             # check if mandatory tag fields are defined
@@ -166,6 +173,8 @@ class TagPack(object):
                 except ValidationError as e:
                     raise ValidationError(f'address {t[0]}:\n\t {e}')
 
+        if duplicates:
+            print_info(f"{len(duplicates)} duplicate(s) found, starting with {duplicates[0]}\n")
         return True
 
     def to_json(self):
