@@ -53,6 +53,8 @@ class TagPack(object):
         self.contents = contents
         self.schema = schema
         self.taxonomies = taxonomies
+        self._unique_tags = []
+        self._duplicates = []
 
     def load_from_file(baseuri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=header_dir)
@@ -105,6 +107,26 @@ class TagPack(object):
         except AttributeError:
             raise TagPackFileError("Cannot extract tags from tagpack")
 
+    def get_unique_tags(self):
+        if self._unique_tags:
+            return self._unique_tags
+
+        seen = set()
+        duplicates = []
+
+        for tag in self.tags:
+            # check if duplicate entry
+            t = tuple([str(tag.all_fields.get(k)).lower() if k in tag.all_fields.keys() else ''
+                       for k in ['address', 'currency', 'label', 'source']])
+            if t in seen:
+                duplicates.append(t)
+            else:
+                seen.add(t)
+                self._unique_tags.append(tag)
+
+        self._duplicates = duplicates
+        return self._unique_tags
+
     def validate(self):
         """Validates a TagPack against its schema and used taxonomies"""
 
@@ -132,18 +154,8 @@ class TagPack(object):
         if len(self.tags) < 1:
             raise ValidationError("no tags found.")
 
-        # iterate over all tags, report duplicates, check types, taxonomy and mandatory use
-        seen = set()
-        duplicates = []
-
-        for tag in self.tags:
-            # check if duplicate entry
-            t = tuple([str(tag.all_fields.get(k)).lower() if k in tag.all_fields.keys() else ''
-                       for k in ['address', 'currency', 'label', 'source']])
-            if t in seen:
-                duplicates.append(t)
-            seen.add(t)
-
+        # iterate over all tags, check types, taxonomy and mandatory use
+        for tag in self.get_unique_tags():
             # check if mandatory tag fields are defined
             if not isinstance(tag, Tag):
                 raise ValidationError("Unknown tag type {}".format(tag))
@@ -151,30 +163,27 @@ class TagPack(object):
             for schema_field in self.schema.mandatory_tag_fields:
                 if schema_field not in tag.explicit_fields and \
                    schema_field not in self.tag_fields:
-                    raise ValidationError("Mandatory tag field {} missing"
-                                          .format(schema_field))
+                    raise ValidationError(f"Mandatory tag field {schema_field} missing in {tag} ")
 
             for field, value in tag.explicit_fields.items():
                 # check whether field is defined as body field
                 if field not in self.schema.tag_fields:
-                    raise ValidationError("Field {} not allowed in tag"
-                                          .format(field))
+                    raise ValidationError(f"Field {field} not allowed in {tag} ")
 
                 # check for None values
                 if value is None:
                     raise ValidationError(
-                        "Value of body field {} must not be empty (None)"
-                        .format(field))
+                        f"Value of body field {field} must not be empty (None) in {tag}")
 
                 # check types and taxomomy use
                 try:
                     self.schema.check_type(field, value)
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
-                    raise ValidationError(f'address {t[0]}:\n\t {e}')
+                    raise ValidationError(f'{e} in {tag}')
 
-        if duplicates:
-            print_info(f"{len(duplicates)} duplicate(s) found, starting with {duplicates[0]}\n")
+        if self._duplicates:
+            print_info(f"{len(self._duplicates)} duplicate(s) found, starting with {self._duplicates[0]}\n")
         return True
 
     def to_json(self):

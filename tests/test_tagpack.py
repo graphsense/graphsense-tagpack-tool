@@ -371,3 +371,4 @@ def test_duplicate_does_not_raise_only_inform(capsys):
     captured = capsys.readouterr()
 
     assert "1 duplicate(s) found" in captured.out
+    assert len(tagpack.get_unique_tags()) == 1

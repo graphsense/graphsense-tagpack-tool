@@ -41,7 +41,7 @@ class TagStore(object):
 
         tag_data = []
         address_data = []
-        for tag in tagpack.tags:
+        for tag in tagpack.get_unique_tags():
             if self._supports_currency(tag):
                 tag_data.append(_get_tag(tag, tagpack_id))
                 address_data.append(_get_address(tag))
