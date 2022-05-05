@@ -179,22 +179,27 @@ def _get_repository_and_subpath(path: str) -> (Repo, str):
     return None, None
 
 
-def get_remote_for_clean_repo(path, strict_check):
+def get_remote_uri(path, strict_check, no_git):
     """ For a given path string
     '/home/anna/graphsense/graphsense-tagpacks/public/packs'
 
     return remote URI
-    'https://github.com/anna/tagpacks/blob/develop/public/packs/'
+        'https://github.com/anna/tagpacks/blob/develop/public/packs/'
+    or, if no_git is set
+        path
 
     Local git copy will be checked for modifications by default.
     Toggle strict_check param to change this.
 
     If path does not contain git information, the original path
     is returned.
-
     """
-    repo, rel_path = _get_repository_and_subpath(path)
+    if no_git:
+        if os.path.isfile:
+            return os.path.dirname(path)
+        return path
 
+    repo, rel_path = _get_repository_and_subpath(path)
     if not repo:
         print_info(f"No repository root found in {path}.")
         return path
@@ -217,7 +222,7 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    git_url = get_remote_for_clean_repo(args.path, not args.no_strict_check)
+    base_url = get_remote_uri(args.path, not args.no_strict_check, args.no_git)
 
     tagstore = TagStore(args.url, args.schema)
 
@@ -239,7 +244,7 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     for tagpack_file in tagpack_files:
-        tagpack = TagPack.load_from_file(git_url, tagpack_file,
+        tagpack = TagPack.load_from_file(base_url, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
 
         print(f'{tagpack_file}: ', end='')
@@ -371,6 +376,8 @@ def main():
                                'while skipping over existing ones.')
     parser_i.add_argument("--no_strict_check", action='store_true',
                           help='Disables check for local modifications in git repository')
+    parser_i.add_argument("--no_git", action='store_true',
+                          help='Disables check for local git repository')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
