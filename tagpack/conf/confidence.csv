@@ -1,4 +1,5 @@
 id,score,label,description
+override,100,Manual cluster tag,Creator knows cluster label and overrides all other cluster tags
 ownership,100,Proven address ownership,Creator knows address private keys
 manual_transaction,90,Trusted transaction,Creator transferred funds from known service x to known service y
 service_api,80,Service API,Creator retrieves addresses from a known and trusted service API  (e.g. Bitpanda API)

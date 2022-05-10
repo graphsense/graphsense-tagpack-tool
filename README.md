@@ -1,25 +1,18 @@
 ![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
 
-# GraphSense TagPacks
-
-A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
-
-To learn more about TagPacks, continue [reading here](README_tagpacks.md).
-
-TagPacks can be validated and ingested into a GraphSense TagStore using the 
-
-
-# GraphSense TagPack Management Tool
-
+# TagPack Management Tool
 
 This repository defines a common structure (schema) for TagPacks and provides a
 tool for  
 
-* ingesting taxonomies and concepts
-* validating TagPacks 
+* validating TagPacks
+* handling taxonomies and concepts
 * ingesting TagPacks into a PostgreSQL database.
 * ingesting GraphSense cluster mappings  
 
+A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
+
+To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
 ## Prerequisites: PostgreSQL database
 
@@ -50,7 +43,13 @@ in `scripts/tagstore_schema.sql`.
     psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
 
-## Install tagpack-tools
+## Installation
+
+### Using Pip
+
+    pip install git+https://github.com/graphsense/graphsense-tagpack-tool.git
+
+### Using Pip locally
 
 Create and activate a python environment for required dependencies
 
@@ -61,6 +60,13 @@ Create and activate a python environment for required dependencies
 Install package and dependencies in local environment
 
     pip install .
+
+### Using Conda
+
+Create and activate the conda environment
+
+    conda env create -f environment.yml
+    conda activate tagpack-tool
 
 ## Handling Taxonomies
 
