@@ -19,8 +19,17 @@ def collect_tagpack_files(path):
     if os.path.isdir(path):
         files = glob.glob(path + '/**/*.yaml', recursive=True)
         tagpack_files = tagpack_files + files
-    elif os.path.isfile(path):
+    elif os.path.isfile(path):  # validate single file
         tagpack_files.append(path)
+
+        # check if corresponding header file exists
+        header_dir = path
+        while header_dir != os.path.sep:
+            header_dir, _ = os.path.split(header_dir)
+            res = glob.glob(os.path.join(header_dir, 'header.yaml'))
+            if res:
+                tagpack_files += res
+                break
 
     # deal with yaml includes
     for p in tagpack_files:
