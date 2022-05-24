@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import glob
+
 import json
 import os
 import sys
@@ -35,45 +35,49 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
-def remote_load_taxonomies():
-    if 'taxonomies' not in CONFIG:
+def _remote_load_taxonomies(config):
+    if 'taxonomies' not in config:
         return None
     taxonomies = {}
-    for key in CONFIG['taxonomies']:
-        taxonomy = remote_load_taxonomy(key)
+    for key in config['taxonomies']:
+        taxonomy = _remote_load_taxonomy(config, key)
         taxonomies[key] = taxonomy
     return taxonomies
 
 
-def remote_load_taxonomy(key):
-    if 'taxonomies' not in CONFIG:
+def _remote_load_taxonomy(config, key):
+    if 'taxonomies' not in config:
         return None
-    uri = CONFIG['taxonomies'][key]
+    uri = config['taxonomies'][key]
     taxonomy = Taxonomy(key, uri)
     taxonomy.load_from_remote()
     return taxonomy
 
 
 def list_taxonomies(args=None):
+    config = _load_config(args.config)
+
     print_line("Show configured taxonomies")
-    print_line(f"Configuration: {CONFIG_FILE}", 'info')
+    print_line(f"Configuration: {args.config}", 'info')
     count = 0
-    if 'taxonomies' not in CONFIG:
+    if 'taxonomies' not in config:
         print_line("No configured taxonomies", 'fail')
     else:
-        for key, value in CONFIG['taxonomies'].items():
+        for key, value in config['taxonomies'].items():
             print_line(value)
             count += 1
         print_line(f"{count} configured taxonomies", 'success')
 
 
 def show_taxonomy_concepts(args):
-    if 'taxonomies' not in CONFIG:
+    config = _load_config(args.config)
+
+    if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    print("Remote URI: ", CONFIG['taxonomies'][args.taxonomy], "\n")
-    taxonomy = remote_load_taxonomy(args.taxonomy)
+    print("Remote URI: ", config['taxonomies'][args.taxonomy], "\n")
+    taxonomy = _remote_load_taxonomy(config, args.taxonomy)
     if args.verbose:
         headers = ['Id', 'Label', 'Uri', 'Description']
         table = [[c.id, c.label, c.uri, c.description]
@@ -87,7 +91,9 @@ def show_taxonomy_concepts(args):
 
 
 def insert_taxonomy(args):
-    if 'taxonomies' not in CONFIG:
+    config = _load_config(args.config)
+
+    if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
     t0 = time.time()
@@ -96,7 +102,7 @@ def insert_taxonomy(args):
 
     tagstore = TagStore(args.url, args.schema)
     try:
-        taxonomy = remote_load_taxonomy(args.taxonomy)
+        taxonomy = _remote_load_taxonomy(config, args.taxonomy)
         tagstore.insert_taxonomy(taxonomy)
 
         print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
@@ -111,29 +117,30 @@ def insert_taxonomy(args):
         print_line("Aborted insert", 'fail')
 
 
-def load_config():
-    if not os.path.isfile(CONFIG_FILE):
+def _load_config(cfile):
+    if not os.path.isfile(cfile):
         print_line(
             "Could not find TagPack repository configuration file.", 'fail')
-        print_info(f"Creating a new default configuration file: {CONFIG_FILE}")
+        print_info(f"Creating a new default configuration file: {cfile}")
         with open('config.yaml', 'a') as the_file:
             yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
-    return yaml.safe_load(open(CONFIG_FILE, 'r'))
+    return yaml.safe_load(open(cfile, 'r'))
 
 
 def show_config(args):
-    print("Config File:", os.path.abspath(CONFIG_FILE))
+    print("Config File:", args.config)
     if args.verbose:
-        print("BaseURI:", CONFIG['baseURI'])
         list_taxonomies()
 
 
 def validate_tagpack(args):
+    config = _load_config(args.config)
+
     t0 = time.time()
     print_line("TagPack validation starts")
     print(f"Path: {args.path}")
 
-    taxonomies = remote_load_taxonomies()
+    taxonomies = _remote_load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
@@ -179,7 +186,7 @@ def _get_repository_and_subpath(path: str) -> (Repo, str):
     return None, None
 
 
-def get_remote_uri(path, strict_check, no_git):
+def _get_remote_uri(path, strict_check, no_git):
     """ For a given path string
     '/home/anna/graphsense/graphsense-tagpacks/public/packs'
 
@@ -218,18 +225,20 @@ def get_remote_uri(path, strict_check, no_git):
 
 
 def insert_tagpack(args):
+    config = _load_config(args.config)
+
     t0 = time.time()
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    base_url = get_remote_uri(args.path, not args.no_strict_check, args.no_git)
+    base_url = _get_remote_uri(args.path, not args.no_strict_check, args.no_git)
 
     tagstore = TagStore(args.url, args.schema)
 
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
 
-    taxonomies = remote_load_taxonomies()
+    taxonomies = _remote_load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
@@ -264,7 +273,7 @@ def insert_tagpack(args):
                status)
 
 
-def split_into_chunks(seq, size):
+def _split_into_chunks(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
@@ -282,7 +291,7 @@ def insert_cluster_mapping(args, batch_size=5_000):
             try:
                 print(currency)
                 mappings_count = 0
-                for batch in split_into_chunks(data, batch_size):
+                for batch in _split_into_chunks(data, batch_size):
                     clusters = gs.get_address_clusters(batch, currency)
                     clusters['currency'] = currency
                     tagstore.insert_cluster_mappings(clusters)
@@ -314,6 +323,8 @@ def main():
         .format(version))
     parser.add_argument('-v', '--version', action='version',
                         version=show_version())
+    parser.add_argument('--config', help='path to config.yaml',
+                        default=os.path.join(os.getcwd(), CONFIG_FILE))
 
     subparsers = parser.add_subparsers(title='Commands')
 
@@ -424,7 +435,4 @@ def main():
 if __name__ == '__main__':
     if sys.version_info < (3, 6):
         sys.exit("This program requires python version 3.6 or later")
-
-    global CONFIG
-    CONFIG = load_config()
     main()
