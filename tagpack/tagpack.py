@@ -24,7 +24,7 @@ def collect_tagpack_files(path):
 
     # check if corresponding header file exists in a parent directory
     header_dir = path
-    while header_dir != os.path.sep:
+    while header_dir and header_dir != os.path.sep:
         header_dir, _ = os.path.split(header_dir)
         res = glob.glob(os.path.join(header_dir, 'header.yaml'))
         if res:
