@@ -22,16 +22,17 @@ def collect_tagpack_files(path):
     elif os.path.isfile(path):  # validate single file
         tagpack_files.append(path)
 
-        # check if corresponding header file exists
-        header_dir = path
-        while header_dir != os.path.sep:
-            header_dir, _ = os.path.split(header_dir)
-            res = glob.glob(os.path.join(header_dir, 'header.yaml'))
-            if res:
-                tagpack_files += res
-                break
+    # check if corresponding header file exists in a parent directory
+    header_dir = path
+    while header_dir != os.path.sep:
+        header_dir, _ = os.path.split(header_dir)
+        res = glob.glob(os.path.join(header_dir, 'header.yaml'))
+        if res:
+            tagpack_files += res
+            break
 
     # deal with yaml includes
+    tagpack_files = set(tagpack_files)
     for p in tagpack_files:
         if p.endswith('header.yaml'):
             header_path = p
