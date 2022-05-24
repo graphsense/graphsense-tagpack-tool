@@ -96,25 +96,33 @@ def insert_taxonomy(args):
     if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
+
+    tax_keys = [args.taxonomy]
+
+    if not args.taxonomy:  # insert all available taxonomies
+        tax_keys = config['taxonomies'].keys()
+
     t0 = time.time()
     print_line("Taxonomy insert starts")
-    print(f"Taxonomy: {args.taxonomy}")
 
     tagstore = TagStore(args.url, args.schema)
-    try:
-        taxonomy = _remote_load_taxonomy(config, args.taxonomy)
-        tagstore.insert_taxonomy(taxonomy)
 
-        print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
-        print_success("INSERTED")
+    for t in tax_keys:
+        print(f"Taxonomy: {t}")
+        try:
+            taxonomy = _remote_load_taxonomy(config, t)
+            tagstore.insert_taxonomy(taxonomy)
 
-        duration = round(time.time() - t0, 2)
-        print_line(
-            f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
-            'success')
-    except Exception as e:
-        print_fail(e)
-        print_line("Aborted insert", 'fail')
+            print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
+            print_success("INSERTED")
+
+            duration = round(time.time() - t0, 2)
+            print_line(
+                f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
+                'success')
+        except Exception as e:
+            print_fail(e)
+            print_line("Aborted insert", 'fail')
 
 
 def _load_config(cfile):
@@ -338,8 +346,8 @@ def main():
     # parser for taxonomy insert command
     parser_t_i = parser_t_subparsers.add_parser(
         'insert', help='insert taxonomy into GraphSense')
-    parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
-                            help='the selected taxonomy')
+    parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY', nargs='?',
+                            help='the selected taxonomy', default=None)
     parser_t_i.add_argument('--schema',
                             default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                             help="PostgreSQL schema for taxonomy tables")
