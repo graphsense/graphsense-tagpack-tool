@@ -1,0 +1,3 @@
+taxonomies:
+  abuse: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/abuses.csv
+  entity: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/entities.csv
