@@ -158,7 +158,7 @@ To avoid repeating field values shared by all tags, one can add body fields to t
 Thus, they are *abstracted* into the header and then inherited by all body elements.
 An example is given below where the `currency` and `lastmod` fields are abstracted into the heade:
 
-    ---
+    
     title: Second TagPack Example
     creator: John Doe
     lastmod: 2019-03-15
@@ -183,7 +183,7 @@ cryptocurrencies with the label `Internet Archive`. Most of them were collected
 at the same time (2019-03-15), except the Zcash tag that was collected and
 added later (2019-03-20).
 
-    ---
+    
     title: Third TagPack Example
     creator: John Doe
     description: A collection of tags commonly used for demonstrating GraphSense features
@@ -266,6 +266,57 @@ As a rule-of-thumb, we consider the following generic aspects when doing the map
 One can finally end up with several address tags, which are mapped to a single cluster and carry the flat `is_cluster_definer: true`. In such cases, we select the one with the higher
 `confidence` value. In case of conflicts, address tags mappings must be revised as part of an attribution tag curation workflow.
 
+
+### Header inclusion
+
+If a lot of tagpacks share common header properties, a `header.yaml` can be created to avoid repetitive data in each tagpack file.
+
+A simple example:
+
+    home
+        user
+            tagpack_provider
+                 header.yaml
+                 2021
+                     01
+                         tp_20200101.yaml
+                         ..
+                     02
+                          tp_20200201.yaml
+
+
+The `header.yaml` file contains all the shared fields:
+
+
+    title: BadHack TagPack
+    creator: GraphSense Team
+    description: Addresses used for BadHack
+    confidence: forensic
+    abuse: scam
+    currency: BTC
+    label: BadHack
+
+
+and each tagpack file (e.g. `tp_20200101.yaml`) includes the header file:
+
+    header: !include header.yaml
+    tags:
+         - address: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+           context: '{"validated": true}'
+
+The directory structure can be arbitrarily deep. The syntax is always the same:
+
+    header: !include header.yaml
+
+
+#### Header file location resolution
+
+The tagpack tool resolves the header file as follows:
+ starting from the directory given on the command line, it traverses the parent directories, i.e. upwards, until the `header.yaml` is found.
+
+For the directories structure example given above, starting with `/home/user/tagpack_provider/2021/01`
+the header file is detected in `/home/user/tagpack_provider/`
+    
 
 ### TagPack Repository Configuration
 

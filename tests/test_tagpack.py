@@ -303,6 +303,17 @@ def test_file_collection_with_yaml_include():
     assert headerfile_path == 'tests/testfiles/yaml_inclusion'
 
 
+def test_file_collection_with_missing_yaml_include_raises_exception():
+    files, headerfile_path = collect_tagpack_files('tests/testfiles/yaml_inclusion_missing_header/')
+
+    assert not headerfile_path
+
+    with pytest.raises(FileNotFoundError) as e:
+        TagPack.load_from_file(None, files[0], None, None, headerfile_path)
+    assert "No such file or directory: 'header.yaml'" \
+        in str(e.value)
+
+
 def test_load_from_file_addr_tagpack(taxonomies):
     tagpack = TagPack.load_from_file('http://example.com/packs',
                                      'tests/testfiles/simple/ex_addr_tagpack.yaml',
