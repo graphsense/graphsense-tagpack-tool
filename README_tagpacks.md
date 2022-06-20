@@ -138,7 +138,11 @@ The definition looks as follows:
         type: text
         mandatory: true
 
+The `source` should provide a backlink to the websource where the tag information originates, e.g. https://archive.org/donate/cryptocurrency/.  If no backlink is to be provided (e.g. for private TagPacks), the field can contain other informative text.
+
 For `currency`, use the corresponding currency codes such as: `BCH, BTC, ETH, LTC, ZEC`.
+
+For `confidence` values read on [below](#attribution-tag-confidence-score).
 
 The `context` property contains any additional information associated with the tag, in JSON format, e.g.
 
@@ -242,7 +246,7 @@ e.g. using `ico_wallet` should be preferred over `wallet_service`.
 
 Attribution tags originate from distinct sources, which have various confidence levels. E.g., Bitcoin addresses retrieved via a Web crawl are less trustworthy than a Bitcoin address with proven private key ownership. 
 
-The TagPack creator can choose an id from the list of confidence score ids available [here](https://github.com/graphsense/graphsense-tagpack-tool/blob/develop/README.md#validation-resources), e.g. 
+The TagPack creator can choose an id from the list of confidence score ids available [here](https://github.com/graphsense/graphsense-tagpack-tool/blob/develop/tagpack/conf/confidence.csv), e.g. 
     
     confidence: ownership
 
