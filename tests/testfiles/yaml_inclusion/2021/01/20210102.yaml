@@ -1,4 +1,4 @@
-header: !include ./header.yaml
+header: !include header.yaml
 lastmod: 2020-01-02
 tags:
 - address: bc1qwr30ddc04zqp878c0evdrqfx564mmf0dy2w39l

@@ -294,10 +294,11 @@ def test_simple_file_collection():
 def test_file_collection_with_yaml_include():
     files, headerfile_path = collect_tagpack_files('tests/testfiles/yaml_inclusion/')
 
-    assert len(files) == 3
+    assert len(files) == 4
     assert 'tests/testfiles/yaml_inclusion/2021/01/20210101.yaml' in files
     assert 'tests/testfiles/yaml_inclusion/2021/01/20210102.yaml' in files
     assert 'tests/testfiles/yaml_inclusion/2021/02/20210201.yaml' in files
+    assert 'tests/testfiles/yaml_inclusion/2021/01/special/20210106-special.yaml' in files
 
     assert headerfile_path == 'tests/testfiles/yaml_inclusion'
 
