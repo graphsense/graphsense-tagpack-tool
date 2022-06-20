@@ -322,10 +322,8 @@ the header file is detected in `/home/user/tagpack_provider/`
 
 TagPacks are stored in some Git repository - a so-called **TagPack Repository**.
 
-Each TagPack repository must have a file `config.yaml`, which defines the TagPacks'
-`baseURI` as well as pointers to used taxonomies.
+Each TagPack repository must have a file `config.yaml`, which defines pointers to used taxonomies.
 
-    baseURI: https://github.com/graphsense/graphsense-tagpacks
     taxonomies:
       entity: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/entities.csv
       abuse: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/abuses.csv
