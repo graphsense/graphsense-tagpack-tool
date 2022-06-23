@@ -4,11 +4,66 @@ import json
 import os
 import sys
 import yaml
-
+from git import Repo
+import giturlparse as gup
+import pathlib
 from tagpack import TagPackFileError, ValidationError
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack.cmd_utils import print_info
+
+
+def get_repository(path: str) -> pathlib.Path:
+    """ Parse '/home/anna/graphsense/graphsense-tagpacks/public/packs' ->
+        and return pathlib object with the repository root
+     """
+    repo_path = pathlib.Path(path)
+
+    while str(repo_path) != repo_path.root:
+        try:
+            Repo(repo_path)
+            return repo_path
+        except:
+            pass
+        repo_path = repo_path.parent
+    raise ValidationError(f'No repository root found in path {path}')
+
+
+def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
+    """ For a given path string
+    '/home/anna/graphsense/graphsense-tagpacks/public/packs'
+    and tagpack file string
+    '/home/anna/graphsense/graphsense-tagpacks/public/packs/a/2021/01/2010101.yaml'
+
+    return remote URI
+        'https://github.com/anna/tagpacks/blob/develop/public/packs/a/2021/01/2010101.yaml'
+    or, if no_git is set
+        tagpack file string
+
+    Local git copy will be checked for modifications by default.
+    Toggle strict_check param to change this.
+
+    If path does not contain git information, the original path
+    is returned.
+    """
+    if no_git:
+        return tagpack_file
+
+    repo = Repo(repo_path)
+
+    if strict_check and repo.is_dirty():
+        print_info(f"Local modifications in {repo.common_dir} detected, please push first.")
+        sys.exit(0)
+
+    if len(repo.remotes) > 1:
+        raise ValidationError("Multiple remotes present, cannot decide on backlink. ")
+
+    rel_path = pathlib.Path(tagpack_file).relative_to(repo_path)
+
+    u = next(repo.remotes[0].urls)
+    g = gup.parse(u).url2https.replace('.git', '')
+    res = f'{g}/tree/{repo.active_branch.name}/{rel_path}'
+    return res
 
 
 def collect_tagpack_files(path):
@@ -68,15 +123,13 @@ class TagPack(object):
         self._unique_tags = []
         self._duplicates = []
 
-    def load_from_file(baseuri, pathname, schema, taxonomies, header_dir=None):
+    def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=header_dir)
 
         if not os.path.isfile(pathname):
             sys.exit("This program requires {} to be a file"
                      .format(pathname))
         contents = yaml.load(open(pathname, 'r'), UniqueKeyLoader)
-
-        uri = os.path.join(baseuri, os.path.basename(pathname))
 
         if 'header' in contents.keys():
             for k, v in contents['header'].items():

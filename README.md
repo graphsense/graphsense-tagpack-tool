@@ -7,14 +7,14 @@ tool for
 
 * validating TagPacks
 * handling taxonomies and concepts
-* ingesting TagPacks into a PostgreSQL database.
+* ingesting TagPacks into a PostgreSQL database, a so-called TagStore
 * ingesting GraphSense cluster mappings  
 
 A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
 
 To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
-## Prerequisites: PostgreSQL database
+## Prerequisites: TagStore - PostgreSQL database
 
 ### Option 1: dockerized database
 
@@ -104,7 +104,7 @@ Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.
 
 Confidence settings are validated against a set of acceptable [confidence](tagpack/conf/confidence.csv)  values.
 
-## Insert a TagPack into database
+## Insert a TagPack into TagStore database
 
 Insert a single TagPack file or all TagPacks from a given folder
 
@@ -126,6 +126,17 @@ To force **re-insertion** (if tagpack file contents have been modified), add the
 To ingest **new** tagpacks and **skip** over already ingested tagpacks, add the `--add_new` flag to  your arguments:
 
     tagpack-tool insert --add_new tests/testfiles/
+
+
+By default, trying to insert tagpacks from a repository with **local** modifications will **fail**.
+To force insertion despite local modifications, add the ``--no_strict_check`` command-line parameter
+
+    tagpack-tool insert --force --add_new tests/testfiles/
+
+By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository ([see here](README_tagpacks.md#versioning-with-git)).
+To instead write local file paths instead, add the ``--no_git`` command-line parameter
+
+    tagpack-tool insert --no_git --add_new tests/testfiles/
 
 ## Insert GraphSense cluster mappings into database
 

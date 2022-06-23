@@ -9,13 +9,12 @@ from argparse import ArgumentParser
 import pandas as pd
 import yaml
 from tabulate import tabulate
-from git import Repo
-import giturlparse as gup
+
 
 from tagpack import __version__ as version
 from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
 from tagpack.graphsense import GraphSense
-from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files
+from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files, get_repository, get_uri_for_tagpack
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
@@ -179,59 +178,6 @@ def validate_tagpack(args):
                .format(no_passed, len(tagpack_files), duration), status)
 
 
-def _get_repository_and_subpath(path: str) -> (Repo, str):
-    """ Parse '/home/anna/graphsense/graphsense-tagpacks/public/packs' ->
-        and return a tuple (Repo, 'public/packs')
-     """
-    repo_path = path
-    while repo_path != os.path.sep:
-        try:
-            rel_path = os.path.dirname(path.replace(repo_path, ''))
-            return Repo(repo_path), rel_path[1:]
-        except:
-            pass
-        repo_path, _ = os.path.split(repo_path)
-    return None, None
-
-
-def _get_remote_uri(path, strict_check, no_git):
-    """ For a given path string
-    '/home/anna/graphsense/graphsense-tagpacks/public/packs'
-
-    return remote URI
-        'https://github.com/anna/tagpacks/blob/develop/public/packs/'
-    or, if no_git is set
-        path
-
-    Local git copy will be checked for modifications by default.
-    Toggle strict_check param to change this.
-
-    If path does not contain git information, the original path
-    is returned.
-    """
-    if no_git:
-        if os.path.isfile:
-            return os.path.dirname(path)
-        return path
-
-    repo, rel_path = _get_repository_and_subpath(path)
-    if not repo:
-        print_info(f"No repository root found in {path}.")
-        return path
-
-    if strict_check and repo.is_dirty():
-        print_info(f"Local modifications in {repo.common_dir} detected, please push first.")
-        sys.exit(0)
-
-    if len(repo.remotes) > 1:
-        print_info("Multiple remotes present, cannot decide on backlink. ")
-        sys.exit(0)
-
-    u = next(repo.remotes[0].urls)
-    g = gup.parse(u).url2https.replace('.git', '')
-    return f'{g}/tree/{repo.active_branch.name}/{rel_path}'
-
-
 def insert_tagpack(args):
     config = _load_config(args.config)
 
@@ -239,7 +185,8 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    base_url = _get_remote_uri(args.path, not args.no_strict_check, args.no_git)
+    base_url = get_repository(args.path)
+    print_line(f"Detected repository root in {base_url}")
 
     tagstore = TagStore(args.url, args.schema)
 
@@ -261,7 +208,9 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     for i, tagpack_file in enumerate(tagpack_files, start=1):
-        tagpack = TagPack.load_from_file(base_url, tagpack_file,
+        uri = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
+
+        tagpack = TagPack.load_from_file(uri, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
 
         print(f'{i} {tagpack_file}: ', end='')

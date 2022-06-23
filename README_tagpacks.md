@@ -320,7 +320,22 @@ the header file is detected in `/home/user/tagpack_provider/`
 
 ### TagPack Repository Configuration
 
-TagPacks are stored in some Git repository - a so-called **TagPack Repository**.
+#### Versioning with git
+
+TagPacks are stored in a Git repository - a so-called **TagPack Repository**.
+
+When inserting tagpacks into a **TagStore database**, this git repository information will be used to provide the backlink to the remote repository, e.g.:
+
+    tagstore=# select id,uri from tagpack ;
+          id               |                                                                   uri                                                                   
+     -----------------------+-----------------------------------------------------------------------------------------------------------------------------------------
+     testpacks:20210101.yaml         | https://github.com/graphsense/graphsense-tagpack-tool/tree/develop/tests/testfiles/yaml_inclusion/2021/01/20210101.yaml
+     testpacks:20210106-special.yaml | https://github.com/graphsense/graphsense-tagpack-tool/tree/develop/tests/testfiles/yaml_inclusion/2021/01/special/20210106-special.yaml
+
+Currently having a single remote is supported. 
+
+
+#### Taxonomy configuration
 
 Each TagPack repository must have a file `config.yaml`, which defines pointers to used taxonomies.
 

@@ -1,8 +1,9 @@
 import json
 from datetime import date
+
 import pytest
 
-from tagpack import TagPackFileError, ValidationError
+from tagpack import ValidationError
 from tagpack.tagpack import TagPack, Tag, collect_tagpack_files
 from tagpack.tagpack_schema import TagPackSchema
 from tagpack.taxonomy import Taxonomy
