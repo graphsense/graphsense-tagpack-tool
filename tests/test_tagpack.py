@@ -316,7 +316,7 @@ def test_file_collection_with_missing_yaml_include_raises_exception():
 
 
 def test_load_from_file_addr_tagpack(taxonomies):
-    tagpack = TagPack.load_from_file('http://example.com/packs',
+    tagpack = TagPack.load_from_file('http://example.com/packs/ex_addr_tagpack.yaml',
                                      'tests/testfiles/simple/ex_addr_tagpack.yaml',
                                      TagPackSchema(),
                                      taxonomies)
