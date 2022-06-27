@@ -1,11 +1,11 @@
 id,score,label,description
-override,100,Manual cluster tag,Creator knows cluster label and overrides all other cluster tags
-ownership,100,Proven address ownership,Creator knows address private keys
+override,100,Manual cluster tag,Creator knows that a tag is representative for an entire cluster and overrides all other tags
+ownership,100,Proven address ownership,Creator controls the private key the address associated with a tag
 manual_transaction,90,Trusted transaction,Creator transferred funds from known service x to known service y
-service_api,80,Service API,Creator retrieves addresses from a known and trusted service API  (e.g. Bitpanda API)
+service_api,70,Service API,Creator retrieves addresses from a known and trusted service provider API (e.g. VASP API)
 authority_data,60,Authority data,Creator retrieves attribution tags from public authorities (e.g. OFAC)
-trusted_provider,50,Trusted data providers,Creator retrieved attribution tags from trusted third parties (e.g. darknet crawl or spam trap)
-service_data,50,Service data,Data retrieved from a known service (e.g. CSV file received from exchange)
+trusted_provider,50,Trusted data providers,Creator retrieved attribution tags from trusted third parties (e.g. spam trap)
+service_data,50,Service data,Creator retrieved attribution tag from a known service (e.g. CSV file received from exchange)
 forensic,50,Forensic reports,Creator retrieved data attribution data from somehow trusted reports (e.g. academic papers)
 untrusted_transaction,40,Untrusted transaction,A third party transferred funds from known service x to known service y
-web_crawl,20,Web crawls,Data retrieved from crawling the web or other data dumps
+web_crawl,20,Web crawls,Attribution tags were retrieved from crawling the web or other data dumps
