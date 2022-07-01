@@ -207,7 +207,7 @@ def insert_tagpack(args):
 
     no_passed = 0
     no_tags = 0
-    for i, tagpack_file in enumerate(tagpack_files, start=1):
+    for i, tagpack_file in enumerate(sorted(tagpack_files), start=1):
         uri = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
 
         tagpack = TagPack.load_from_file(uri, tagpack_file,

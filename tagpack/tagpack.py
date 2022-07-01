@@ -72,7 +72,7 @@ def collect_tagpack_files(path):
     header_path = None
 
     if os.path.isdir(path):
-        files = sorted(glob.glob(path + '/**/*.yaml', recursive=True))
+        files = glob.glob(path + '/**/*.yaml', recursive=True)
         tagpack_files = tagpack_files + files
     elif os.path.isfile(path):  # validate single file
         tagpack_files.append(path)
