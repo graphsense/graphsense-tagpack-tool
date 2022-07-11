@@ -5,13 +5,72 @@ services:
   db:
     image: postgres:14.0-alpine3.14
     restart: always
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=10000 -c max_connections=200
     env_file:
       - .env
     environment:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql
+      # "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
+      - "pgtags:/var/lib/postgresql/data"
+      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema_monitored.sql:Z
     ports:
       - 5432:5432
     shm_size: '512mb'
+
+  bouncer:
+    image: bitnami/pgbouncer:1.17.0-debian-11-r14
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - POSTGRESQL_USERNAME=${POSTGRES_USER}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRESQL_HOST=db
+      - POSTGRESQL_DATABASE=${POSTGRES_DB}
+      - PGBOUNCER_DATABASE=${POSTGRES_DB}
+      - PGBOUNCER_AUTH_USER=${POSTGRES_USER}
+      - PGBOUNCER_STATS_USERS=${POSTGRES_USER}
+      - PGBOUNCER_PORT=6432
+      - PGBOUNCER_AUTH_TYPE=md5
+      - PGBOUNCER_SET_DATABASE_USER=yes
+      - PGBOUNCER_SET_DATABASE_PASSWORD=yes
+      - PGBOUNCER_IGNORE_STARTUP_PARAMETERS=extra_float_digits
+    ports:
+      - 6432:6432
+
+  admin:
+    image: dpage/pgadmin4:6.11
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@ikna.io
+      - PGADMIN_DEFAULT_PASSWORD=${POSTGRES_PASSWORD}
+      - PGADMIN_LISTEN_PORT=8081
+    depends_on:
+      - db
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "8083:8081"
+
+  pgwatch:
+    image: cybertec/pgwatch2:1.9.0
+    depends_on:
+      - db
+    volumes:
+      - pg:/var/lib/postgresql
+      - grafana:/var/lib/grafana
+      - pw2:/pgwatch2/persistent-config
+    ports:
+      - "8080:8080"
+      - "8081:3000"
+    depends_on:
+      - db
+      - bouncer
+
+
+volumes:
+  pg: {}
+  pgtags: {}
+  grafana: {}
+  pw2: {}
+  pgadmin-data: {}
