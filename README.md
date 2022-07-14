@@ -82,9 +82,13 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
     tagpack-tool taxonomy show entity
 
-Insert concepts from a remote taxonomy into database
+Insert concepts from a remote taxonomy into database, e.g. abuse:
 
     tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
+resp. to insert all configured taxonomies at once, simply omit taxonomy name
+
+    tagpack-tool taxonomy insert -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 
 ## Validate a TagPack
