@@ -1,13 +1,12 @@
 title: Test Address TagPack
 creator: GraphSense Team
 source: http://example.com/my_addresses
-confidence: 50
+confidence: web_crawl
 is_cluster_definer: true
 currency: BTC
-created: 2021-04-21
 lastmod: 2021-04-21
 tags:
-- address: 1bacdeddg32dsfk5692dmn23
-  label: sometag
 - address: 3bacadsfg3sdfafd2deddg32
-  label: othertag
+  label: sometag.info
+- address: 3bacadsfg3sdfafd2deddg32
+  label: SomeTag.info

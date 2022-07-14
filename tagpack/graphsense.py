@@ -128,7 +128,7 @@ class GraphSense(object):
         df_temp = df_temp.drop_duplicates()
         df_temp['address_id_group'] = np.floor(
             df_temp['address_id'] / ks_config['bucket_size']).astype(int)
-        
+
         query = "SELECT address_id, cluster_id " + \
                 "FROM address WHERE address_id_group=? and address_id=?"
         statement = self.session.prepare(query)
@@ -147,12 +147,12 @@ class GraphSense(object):
         keyspace = self.ks_map[currency]['transformed']
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
-            
+
         df_temp = df[['cluster_id']].copy()
         df_temp = df_temp.drop_duplicates()
         df_temp['cluster_id_group'] = np.floor(
             df_temp['cluster_id'] / ks_config['bucket_size']).astype(int)
-        
+
         query = "SELECT * FROM cluster " + \
                 "WHERE cluster_id_group=? and cluster_id=?"
         statement = self.session.prepare(query)
@@ -183,13 +183,28 @@ class GraphSense(object):
     def get_address_clusters(self, df: DataFrame, currency: str) -> DataFrame:
         self._check_passed_params(df, currency, 'address')
 
-        df_address_ids = self.get_address_ids(df, currency)
+        addresses = df.copy()
+
+        if currency == 'ETH':
+            # tagpacks include invalid ETH addresses, ignore those
+            addresses.drop(addresses[~addresses.address.str.startswith("0x")].index, inplace=True)
+            addresses.rename(columns={"address": "checksum_address"}, inplace=True)
+            addresses.loc[:, 'address'] = addresses["checksum_address"].str.lower()
+
+        df_address_ids = self.get_address_ids(addresses, currency)
         if len(df_address_ids) == 0:
             return DataFrame()
         if currency == 'ETH':
             df_address_ids['cluster_id'] = df_address_ids['address_id']
             df_address_ids['no_addresses'] = 1
-            return df_address_ids
+            degrees = self.get_address_statistics(df_address_ids, currency)
+
+            result = df_address_ids.merge(degrees, on="address_id", how='left').merge(addresses, on='address')
+            result.drop("address", axis="columns", inplace=True)
+            result.rename(columns={"checksum_address": "address"}, inplace=True)
+            result['cluster_defining_address'] = result['address']
+            result.fillna(value={'in_degree': 0, 'out_degree': 0}, inplace=True)  # no txs have been recorded
+            return result
 
         df_cluster_ids = self.get_cluster_ids(df_address_ids, currency)
         if len(df_cluster_ids) == 0:
@@ -208,3 +223,24 @@ class GraphSense(object):
         )
 
         return result
+
+    def get_address_statistics(self, df, currency):
+        """Get statistics for address ids."""
+        self._check_passed_params(df, currency, 'address_id')
+
+        keyspace = self.ks_map[currency]['transformed']
+        ks_config = self._query_keyspace_config(keyspace)
+        self.session.set_keyspace(keyspace)
+
+        df_temp = df[['address_id']].copy()
+        df_temp = df_temp.drop_duplicates()
+        df_temp['address_id_group'] = np.floor(
+            df_temp['address_id'] / ks_config['bucket_size']).astype(int)
+
+        query = "SELECT address_id, in_degree, out_degree  " + \
+                "FROM address WHERE address_id_group=? and address_id=?"
+        statement = self.session.prepare(query)
+        parameters = df_temp[
+            ['address_id_group', 'address_id']].to_records(index=False)
+
+        return self._execute_query(statement, parameters)

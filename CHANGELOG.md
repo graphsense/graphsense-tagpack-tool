@@ -1,5 +1,18 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.0.0] 2022-07-14
+### Changed
+- improved ingest: improved schema validation feedback for user, remove duplicates in tagpacks
+- generate tagpack base URI automatically (no longer necessary to keep config.yaml up-to-date)
+- updated confidence.csv 
+### Added
+- YAML file inclusion to share a header file between multiple tagpack files
+- encourage clean tagpack repository when ingesting tagpacks (can be disabled with command line options `--no_strict_check` and `--no_git`)
+- URI field in TagStore database to support backlink to tagpack repository in the dashboard
+- option to ingest all taxonomies at once instead of one taxonomy at a time
+- command line option `--config` to supply path to config file
+- command line option `--force` to force re-ingest if tagpack already is present in database
+- command line option `--add_new` to skip over ingested tagpacks and ingest only new ones
 
 ## [0.5.2] 2022-03-24
 ### Changed
@@ -18,7 +31,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 # [0.5.1] 2021-11-17
 ## Changed
 - versions of third party library dependencies
-
 ## Added
 - additional schema fields
 - command line tool usability fixes

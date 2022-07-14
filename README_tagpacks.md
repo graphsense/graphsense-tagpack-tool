@@ -158,7 +158,7 @@ To avoid repeating field values shared by all tags, one can add body fields to t
 Thus, they are *abstracted* into the header and then inherited by all body elements.
 An example is given below where the `currency` and `lastmod` fields are abstracted into the heade:
 
-    ---
+    
     title: Second TagPack Example
     creator: John Doe
     lastmod: 2019-03-15
@@ -183,7 +183,7 @@ cryptocurrencies with the label `Internet Archive`. Most of them were collected
 at the same time (2019-03-15), except the Zcash tag that was collected and
 added later (2019-03-20).
 
-    ---
+    
     title: Third TagPack Example
     creator: John Doe
     description: A collection of tags commonly used for demonstrating GraphSense features
@@ -267,14 +267,78 @@ One can finally end up with several address tags, which are mapped to a single c
 `confidence` value. In case of conflicts, address tags mappings must be revised as part of an attribution tag curation workflow.
 
 
+### Header inclusion
+
+If a lot of tagpacks share common header properties, a `header.yaml` can be created to avoid repetitive data in each tagpack file.
+
+A simple example:
+
+    home
+        user
+            tagpack_provider
+                 header.yaml
+                 2021
+                     01
+                         tp_20200101.yaml
+                         ..
+                     02
+                          tp_20200201.yaml
+
+
+The `header.yaml` file contains all the shared fields:
+
+
+    title: BadHack TagPack
+    creator: GraphSense Team
+    description: Addresses used for BadHack
+    confidence: forensic
+    abuse: scam
+    currency: BTC
+    label: BadHack
+
+
+and each tagpack file (e.g. `tp_20200101.yaml`) includes the header file:
+
+    header: !include header.yaml
+    tags:
+         - address: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+           context: '{"validated": true}'
+
+The directory structure can be arbitrarily deep. The syntax is always the same:
+
+    header: !include header.yaml
+
+
+#### Header file location resolution
+
+The tagpack tool resolves the header file as follows:
+ starting from the directory given on the command line, it traverses the parent directories, i.e. upwards, until the `header.yaml` is found.
+
+For the directories structure example given above, starting with `/home/user/tagpack_provider/2021/01`
+the header file is detected in `/home/user/tagpack_provider/`
+    
+
 ### TagPack Repository Configuration
 
-TagPacks are stored in some Git repository - a so-called **TagPack Repository**.
+#### Versioning with git
 
-Each TagPack repository must have a file `config.yaml`, which defines the TagPacks'
-`baseURI` as well as pointers to used taxonomies.
+TagPacks are stored in a Git repository - a so-called **TagPack Repository**.
 
-    baseURI: https://github.com/graphsense/graphsense-tagpacks
+When inserting tagpacks into a **TagStore database**, this git repository information will be used to provide the backlink to the remote repository, e.g.:
+
+    tagstore=# select id,uri from tagpack ;
+          id               |                                                                   uri                                                                   
+     -----------------------+-----------------------------------------------------------------------------------------------------------------------------------------
+     testpacks:20210101.yaml         | https://github.com/graphsense/graphsense-tagpack-tool/tree/develop/tests/testfiles/yaml_inclusion/2021/01/20210101.yaml
+     testpacks:20210106-special.yaml | https://github.com/graphsense/graphsense-tagpack-tool/tree/develop/tests/testfiles/yaml_inclusion/2021/01/special/20210106-special.yaml
+
+Currently having a single remote is supported. 
+
+
+#### Taxonomy configuration
+
+Each TagPack repository must have a file `config.yaml`, which defines pointers to used taxonomies.
+
     taxonomies:
       entity: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/entities.csv
       abuse: https://graphsense.github.io/DW-VA-Taxonomy/assets/data/abuses.csv

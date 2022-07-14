@@ -33,23 +33,25 @@ CREATE TABLE confidence (
 
 
 INSERT INTO confidence (id, label, description, level)
-	VALUES('ownership', 'Proven address ownership', 'Known private key owner for a given address', 100);
+	VALUES('override', 'Manual cluster tag', 'Creator knows that a tag is representative for an entire cluster and overrides all other tags', 100);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('manual_transaction', 'Manual transaction', 'Self-executed transaction and known involved entities', 90);
+	VALUES('ownership', 'Proven address ownership', 'Creator controls the private key the address associated with a tag', 100);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('service_api', 'Service API', 'Data retrieved from API of a known service (e.g. Bitpanda API)', 80);
+	VALUES('manual_transaction', 'Trusted transaction', 'Creator transferred funds from known service x to known service y', 90);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('authority_data', 'Authority data', 'Data retrieved from public authorities (e.g. OFAC)', 60);
+	VALUES('service_api', 'Service API', 'Creator retrieves addresses from a known and trusted service provider API (e.g. VASP API)', 70);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('trusted_provider', 'Trusted data providers', 'Data retrieved from trusted third parties (e.g. Darknet crawl or Spam trap)', 50);
+	VALUES('authority_data', 'Authority data', 'Creator retrieves attribution tags from public authorities (e.g. OFAC)', 60);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('service_data', 'Service data', 'Data retrieved from a known service (e.g. CSV file received from exchange)', 50);
+	VALUES('trusted_provider', 'Trusted data providers', 'Creator retrieved attribution tags from trusted third parties (e.g. spam trap)', 50);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('forensic', 'Forensic reports', 'Data retrieved from somehow trusted reports (e.g. academic papers)', 50);
+	VALUES('service_data', 'Service data', 'Creator retrieved attribution tag from a known service (e.g. CSV file received from exchange)', 50);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('untrusted_transaction', 'Untrusted transaction', 'Transaction executed by third parties', 40);
+	VALUES('forensic', 'Forensic reports', 'Creator retrieved data attribution data from somehow trusted reports (e.g. academic papers)', 50);
 INSERT INTO confidence (id, label, description, level)
-	VALUES('web_crawl', 'Web Crawls', 'Data retrieved from Web or data dump crawls', 20);
+	VALUES('untrusted_transaction', 'Untrusted transaction', 'A third party transferred funds from known service x to known service y', 40);
+INSERT INTO confidence (id, label, description, level)
+	VALUES('web_crawl', 'Web crawls', 'Attribution tags were retrieved from crawling the web or other data dumps', 20);
 
 
 -- supported currencies
@@ -76,6 +78,7 @@ CREATE TABLE tagpack (
 	source 				VARCHAR		DEFAULT NULL,
 	creator				VARCHAR		NOT NULL,
 	owner				VARCHAR		NOT NULL,
+	uri                 VARCHAR     ,
 	is_public			BOOLEAN		DEFAULT FALSE,
 	lastmod				TIMESTAMP 	NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

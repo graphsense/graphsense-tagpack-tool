@@ -8,3 +8,4 @@ tagpack_tool.egg-info/
 config.yaml
 /.env
 /ks_map.json
+build

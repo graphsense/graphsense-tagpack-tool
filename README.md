@@ -1,27 +1,20 @@
 ![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
 
-# GraphSense TagPacks
+# TagPack Management Tool
+
+This repository defines a common structure (schema) for TagPacks and provides a
+tool for  
+
+* validating TagPacks
+* handling taxonomies and concepts
+* ingesting TagPacks into a PostgreSQL database, a so-called TagStore
+* ingesting GraphSense cluster mappings  
 
 A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
 
 To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
-TagPacks can be validated and ingested into a GraphSense TagStore using the 
-
-
-# GraphSense TagPack Management Tool
-
-
-This repository defines a common structure (schema) for TagPacks and provides a
-tool for  
-
-* ingesting taxonomies and concepts
-* validating TagPacks 
-* ingesting TagPacks into a PostgreSQL database.
-* ingesting GraphSense cluster mappings  
-
-
-## Prerequisites: PostgreSQL database
+## Prerequisites: TagStore - PostgreSQL database
 
 ### Option 1: dockerized database
 
@@ -50,7 +43,13 @@ in `scripts/tagstore_schema.sql`.
     psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
 
-## Install tagpack-tools
+## Installation
+
+### Using Pip
+
+    pip install git+https://github.com/graphsense/graphsense-tagpack-tool.git
+
+### Using Pip locally
 
 Create and activate a python environment for required dependencies
 
@@ -61,6 +60,13 @@ Create and activate a python environment for required dependencies
 Install package and dependencies in local environment
 
     pip install .
+
+### Using Conda
+
+Create and activate the conda environment
+
+    conda env create -f environment.yml
+    conda activate tagpack-tool
 
 ## Handling Taxonomies
 
@@ -76,9 +82,13 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
     tagpack-tool taxonomy show entity
 
-Insert concepts from a remote taxonomy into database
+Insert concepts from a remote taxonomy into database, e.g. abuse:
 
     tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
+resp. to insert all configured taxonomies at once, simply omit taxonomy name
+
+    tagpack-tool taxonomy insert -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 
 ## Validate a TagPack
@@ -92,7 +102,13 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool validate tests/testfiles/
 
-## Insert a TagPack into database
+### Validation resources
+
+Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
+
+Confidence settings are validated against a set of acceptable [confidence](tagpack/conf/confidence.csv)  values.
+
+## Insert a TagPack into TagStore database
 
 Insert a single TagPack file or all TagPacks from a given folder
 
@@ -107,9 +123,24 @@ For public TagPacks, add the `--public` flag to your arguments:
 
 If you try to insert tagpacks that already exist in the database, the ingestion process will be stopped.
 
-To force re-insertion, add the `--force` flag to your arguments:
+To force **re-insertion** (if tagpack file contents have been modified), add the `--force` flag to your arguments:
 
     tagpack-tool insert --force tests/testfiles/
+
+To ingest **new** tagpacks and **skip** over already ingested tagpacks, add the `--add_new` flag to  your arguments:
+
+    tagpack-tool insert --add_new tests/testfiles/
+
+
+By default, trying to insert tagpacks from a repository with **local** modifications will **fail**.
+To force insertion despite local modifications, add the ``--no_strict_check`` command-line parameter
+
+    tagpack-tool insert --force --add_new tests/testfiles/
+
+By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository ([see here](README_tagpacks.md#versioning-with-git)).
+To instead write local file paths instead, add the ``--no_git`` command-line parameter
+
+    tagpack-tool insert --no_git --add_new tests/testfiles/
 
 ## Insert GraphSense cluster mappings into database
 

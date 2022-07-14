@@ -1,5 +1,9 @@
 """TagPack - A wrappers TagPack Schema"""
 import datetime
+import json
+from json import JSONDecodeError
+import pandas as pd
+
 import yaml
 
 import importlib.resources as pkg_resources
@@ -8,6 +12,7 @@ from . import conf
 from tagpack import ValidationError
 
 TAGPACK_SCHEMA_FILE = 'tagpack_schema.yaml'
+CONFIDENCE_FILE = 'confidence.csv'
 
 
 class TagPackSchema(object):
@@ -16,6 +21,8 @@ class TagPackSchema(object):
     def __init__(self):
         schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
+        confidence = pkg_resources.open_text(conf, CONFIDENCE_FILE)
+        self.confidences = pd.read_csv(confidence, index_col='id')
         self.definition = TAGPACK_SCHEMA_FILE
 
     @property
@@ -57,6 +64,14 @@ class TagPackSchema(object):
             if not len(value) >= 1:
                 raise ValidationError("Empty value in text field {}"
                                       .format(field))
+            if field == 'context':
+                try:
+                    json.loads(value)
+                except JSONDecodeError as e:
+                    raise ValidationError(f"Invalid JSON in field context with value {value}: {e}")
+            elif field == 'confidence':
+                if value not in self.confidences.index:
+                    raise ValidationError(f"{value} is not a valid confidence value.")
         elif schema_type == 'datetime':
             if not isinstance(value, datetime.date):
                 raise ValidationError("Field {} must be of type datetime"

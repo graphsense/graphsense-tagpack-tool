@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import glob
+
 import json
 import os
 import sys
@@ -10,10 +10,11 @@ import pandas as pd
 import yaml
 from tabulate import tabulate
 
+
 from tagpack import __version__ as version
 from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
 from tagpack.graphsense import GraphSense
-from tagpack.tagpack import TagPack, TagPackFileError
+from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files, get_repository, get_uri_for_tagpack
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
@@ -23,7 +24,6 @@ CONFIG_FILE = "config.yaml"
 TAXONOMY_URL = 'https://graphsense.github.io'
 
 DEFAULT_CONFIG = {
-    'baseURI': 'uri:test',
     'taxonomies': {
         'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
         'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
@@ -34,45 +34,49 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
-def remote_load_taxonomies():
-    if 'taxonomies' not in CONFIG:
+def _remote_load_taxonomies(config):
+    if 'taxonomies' not in config:
         return None
     taxonomies = {}
-    for key in CONFIG['taxonomies']:
-        taxonomy = remote_load_taxonomy(key)
+    for key in config['taxonomies']:
+        taxonomy = _remote_load_taxonomy(config, key)
         taxonomies[key] = taxonomy
     return taxonomies
 
 
-def remote_load_taxonomy(key):
-    if 'taxonomies' not in CONFIG:
+def _remote_load_taxonomy(config, key):
+    if 'taxonomies' not in config:
         return None
-    uri = CONFIG['taxonomies'][key]
+    uri = config['taxonomies'][key]
     taxonomy = Taxonomy(key, uri)
     taxonomy.load_from_remote()
     return taxonomy
 
 
 def list_taxonomies(args=None):
+    config = _load_config(args.config)
+
     print_line("Show configured taxonomies")
-    print_line(f"Configuration: {CONFIG_FILE}", 'info')
+    print_line(f"Configuration: {args.config}", 'info')
     count = 0
-    if 'taxonomies' not in CONFIG:
+    if 'taxonomies' not in config:
         print_line("No configured taxonomies", 'fail')
     else:
-        for key, value in CONFIG['taxonomies'].items():
+        for key, value in config['taxonomies'].items():
             print_line(value)
             count += 1
         print_line(f"{count} configured taxonomies", 'success')
 
 
 def show_taxonomy_concepts(args):
-    if 'taxonomies' not in CONFIG:
+    config = _load_config(args.config)
+
+    if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    print("Remote URI: ", CONFIG['taxonomies'][args.taxonomy], "\n")
-    taxonomy = remote_load_taxonomy(args.taxonomy)
+    print("Remote URI: ", config['taxonomies'][args.taxonomy], "\n")
+    taxonomy = _remote_load_taxonomy(config, args.taxonomy)
     if args.verbose:
         headers = ['Id', 'Label', 'Uri', 'Description']
         table = [[c.id, c.label, c.uri, c.description]
@@ -86,83 +90,78 @@ def show_taxonomy_concepts(args):
 
 
 def insert_taxonomy(args):
-    if 'taxonomies' not in CONFIG:
+    config = _load_config(args.config)
+
+    if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
+
+    tax_keys = [args.taxonomy]
+
+    if not args.taxonomy:  # insert all available taxonomies
+        tax_keys = config['taxonomies'].keys()
+
     t0 = time.time()
     print_line("Taxonomy insert starts")
-    print(f"Taxonomy: {args.taxonomy}")
 
     tagstore = TagStore(args.url, args.schema)
-    try:
-        taxonomy = remote_load_taxonomy(args.taxonomy)
-        tagstore.insert_taxonomy(taxonomy)
 
-        print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
-        print_success("INSERTED")
+    for t in tax_keys:
+        print(f"Taxonomy: {t}")
+        try:
+            taxonomy = _remote_load_taxonomy(config, t)
+            tagstore.insert_taxonomy(taxonomy)
 
-        duration = round(time.time() - t0, 2)
-        print_line(
-            f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
-            'success')
-    except Exception as e:
-        print_fail(e)
-        print_line("Aborted insert", 'fail')
+            print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
+            print_success("INSERTED")
+
+            duration = round(time.time() - t0, 2)
+            print_line(
+                f"Inserted {len(taxonomy.concepts)} concepts in {duration}s",
+                'success')
+        except Exception as e:
+            print_fail(e)
+            print_line("Aborted insert", 'fail')
 
 
-def load_config():
-    if not os.path.isfile(CONFIG_FILE):
+def _load_config(cfile):
+    if not os.path.isfile(cfile):
         print_line(
             "Could not find TagPack repository configuration file.", 'fail')
-        new = input("Create a new default configuration? (y/n) ")
-        if new == 'y':
-            with open('config.yaml', 'a') as the_file:
-                yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
-        else:
-            sys.exit("This program requires a repository config file in {}"
-                     .format(os.getcwd()))
-    return yaml.safe_load(open(CONFIG_FILE, 'r'))
+        print_info(f"Creating a new default configuration file: {cfile}")
+        with open('config.yaml', 'a') as the_file:
+            yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
+    return yaml.safe_load(open(cfile, 'r'))
 
 
 def show_config(args):
-    print("Config File:", os.path.abspath(CONFIG_FILE))
+    print("Config File:", args.config)
     if args.verbose:
-        print("BaseURI:", CONFIG['baseURI'])
         list_taxonomies()
 
 
-def collect_tagpack_files(paths):
-    """Collect Tagpack YAML files from given paths"""
-    tagpack_files = []
-    for path in paths:
-        if os.path.isdir(path):
-            files = glob.glob(path + '/**/*.yaml', recursive=True)
-            tagpack_files = tagpack_files + files
-        elif os.path.isfile(path):
-            tagpack_files.append(path)
-    return tagpack_files
-
-
 def validate_tagpack(args):
+    config = _load_config(args.config)
+
     t0 = time.time()
     print_line("TagPack validation starts")
     print(f"Path: {args.path}")
 
-    taxonomies = remote_load_taxonomies()
+    taxonomies = _remote_load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
     schema = TagPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    tagpack_files = collect_tagpack_files(args.path)
+    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
     try:
         for tagpack_file in tagpack_files:
-            tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                             schema, taxonomies)
+            tagpack = TagPack.load_from_file('', tagpack_file,
+                                             schema, taxonomies, headerfile_dir)
 
             print(f'{tagpack_file}: ', end='')
 
@@ -180,29 +179,41 @@ def validate_tagpack(args):
 
 
 def insert_tagpack(args):
+    config = _load_config(args.config)
+
     t0 = time.time()
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
+
+    base_url = get_repository(args.path)
+    print_line(f"Detected repository root in {base_url}")
 
     tagstore = TagStore(args.url, args.schema)
 
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
 
-    taxonomies = remote_load_taxonomies()
+    taxonomies = _remote_load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    tagpack_files = collect_tagpack_files(args.path)
+    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
+    if args.add_new:
+        print_info("Checking which files are new to the tagstore:")
+        existing = tagstore.get_ingested_tagpacks()
+        tagpack_files = [x for x in tagpack_files if os.path.basename(x) not in existing]
+
     print_info(f"Collected {len(tagpack_files)} TagPack files\n")
 
     no_passed = 0
     no_tags = 0
-    for tagpack_file in tagpack_files:
-        tagpack = TagPack.load_from_file(CONFIG['baseURI'], tagpack_file,
-                                         schema, taxonomies)
+    for i, tagpack_file in enumerate(sorted(tagpack_files), start=1):
+        uri = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
 
-        print(f'{tagpack_file}: ', end='')
+        tagpack = TagPack.load_from_file(uri, tagpack_file,
+                                         schema, taxonomies, headerfile_dir)
+
+        print(f'{i} {tagpack_file}: ', end='')
         try:
             tagstore.insert_tagpack(tagpack, args.public, args.force)
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
@@ -219,7 +230,7 @@ def insert_tagpack(args):
                status)
 
 
-def split_into_chunks(seq, size):
+def _split_into_chunks(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
@@ -237,7 +248,7 @@ def insert_cluster_mapping(args, batch_size=5_000):
             try:
                 print(currency)
                 mappings_count = 0
-                for batch in split_into_chunks(data, batch_size):
+                for batch in _split_into_chunks(data, batch_size):
                     clusters = gs.get_address_clusters(batch, currency)
                     clusters['currency'] = currency
                     tagstore.insert_cluster_mappings(clusters)
@@ -269,6 +280,8 @@ def main():
         .format(version))
     parser.add_argument('-v', '--version', action='version',
                         version=show_version())
+    parser.add_argument('--config', help='path to config.yaml',
+                        default=os.path.join(os.getcwd(), CONFIG_FILE))
 
     subparsers = parser.add_subparsers(title='Commands')
 
@@ -282,8 +295,8 @@ def main():
     # parser for taxonomy insert command
     parser_t_i = parser_t_subparsers.add_parser(
         'insert', help='insert taxonomy into GraphSense')
-    parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY',
-                            help='the selected taxonomy')
+    parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY', nargs='?',
+                            help='the selected taxonomy', default=None)
     parser_t_i.add_argument('--schema',
                             default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                             help="PostgreSQL schema for taxonomy tables")
@@ -309,8 +322,8 @@ def main():
     # parser for insert command
     parser_i = subparsers.add_parser("insert",
                                      help="insert TagPacks into GraphSense")
-    parser_i.add_argument('path', nargs='+', metavar='PATH',
-                          default=[os.getcwd()],
+    parser_i.add_argument('path', nargs='?', metavar='PATH',
+                          default=os.getcwd(),
                           help='TagPacks file or folder root path')
     parser_i.add_argument('--schema',
                           default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
@@ -325,11 +338,19 @@ def main():
     parser_i.add_argument("--force", action='store_true',
                           help='By default, tagpack insertion stops when an already ingested tagpack'
                                'exists in the database. Use this switch to force re-insertion.')
+    parser_i.add_argument("--add_new", action='store_true',
+                          help='By default, tagpack insertion stops when an already ingested tagpack'
+                               'exists in the database. Use this switch to ingest new tagpacks '
+                               'while skipping over existing ones.')
+    parser_i.add_argument("--no_strict_check", action='store_true',
+                          help='Disables check for local modifications in git repository')
+    parser_i.add_argument("--no_git", action='store_true',
+                          help='Disables check for local git repository')
     parser_i.set_defaults(func=insert_tagpack)
 
     # parser for validate command
     parser_v = subparsers.add_parser("validate", help="validate TagPacks")
-    parser_v.add_argument('path', nargs='+', metavar='PATH',
+    parser_v.add_argument('path', nargs='?', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
     parser_v.set_defaults(func=validate_tagpack)
@@ -371,7 +392,4 @@ def main():
 if __name__ == '__main__':
     if sys.version_info < (3, 6):
         sys.exit("This program requires python version 3.6 or later")
-
-    global CONFIG
-    CONFIG = load_config()
     main()

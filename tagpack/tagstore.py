@@ -33,15 +33,15 @@ class TagStore(object):
         if force_insert:
             print(f"evicting and re-inserting tagpack {tagpack_id}")
             self.cursor.execute("DELETE FROM tagpack WHERE id = (%s)", (tagpack_id,))
-        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), is_public))
+        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, uri, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), tagpack.uri, is_public))
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
-        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, confidence, lastmod, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, currency, is_cluster_definer, confidence, lastmod, context, tagpack ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         tag_data = []
         address_data = []
-        for tag in tagpack.tags:
+        for tag in tagpack.get_unique_tags():
             if self._supports_currency(tag):
                 tag_data.append(_get_tag(tag, tagpack_id))
                 address_data.append(_get_address(tag))
@@ -73,15 +73,16 @@ class TagStore(object):
             yield record
 
     def insert_cluster_mappings(self, clusters):
-        q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr , gs_cluster_in_degr , gs_cluster_out_degr)" \
-            "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (currency, address) DO UPDATE SET " \
-            "gs_cluster_id = EXCLUDED.gs_cluster_id , gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr , gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr , " \
-            "gs_cluster_in_degr = EXCLUDED.gs_cluster_in_degr , gs_cluster_out_degr = EXCLUDED.gs_cluster_out_degr"
+        if not clusters.empty:
+            q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr , gs_cluster_in_degr , gs_cluster_out_degr)" \
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (currency, address) DO UPDATE SET " \
+                "gs_cluster_id = EXCLUDED.gs_cluster_id , gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr , gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr , " \
+                "gs_cluster_in_degr = EXCLUDED.gs_cluster_in_degr , gs_cluster_out_degr = EXCLUDED.gs_cluster_out_degr"
 
-        data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses', 'in_degree', 'out_degree']].to_records(index=False)
+            data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses', 'in_degree', 'out_degree']].to_records(index=False)
 
-        execute_batch(self.cursor, q, data)
-        self.conn.commit()
+            execute_batch(self.cursor, q, data)
+            self.conn.commit()
 
     def _supports_currency(self, tag):
         return tag.all_fields.get('currency') in self.supported_currencies
@@ -90,6 +91,10 @@ class TagStore(object):
         self.cursor.execute('UPDATE address SET is_mapped=true WHERE NOT is_mapped AND currency IN %s', (tuple(keys),))
         self.conn.commit()
 
+    def get_ingested_tagpacks(self) -> list:
+        self.cursor.execute("SELECT id from tagpack")
+        return [i[0] for i in self.cursor.fetchall()]
+
 
 def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get('label').lower().strip()
@@ -97,7 +102,8 @@ def _get_tag(tag, tagpack_id):
 
     return (label, tag.all_fields.get('source'), tag.all_fields.get('category', None),
             tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
-            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'), lastmod, tagpack_id)
+            tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'),
+            lastmod, tag.all_fields.get('context'), tagpack_id)
 
 
 def _get_address(tag):
