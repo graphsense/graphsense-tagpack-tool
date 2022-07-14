@@ -2,9 +2,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.0.0] 2022-07-13
 ### Changed
-- improved schema validation feedback for user
+- improved ingest: improved schema validation feedback for user, remove duplicates in tagpacks
 - generate tagpack base URI automatically (no longer necessary to keep config.yaml up-to-date)
-- improved ingest (remove duplicates in tagpacks, )
 - updated confidence.csv 
 ### Added
 - YAML file inclusion to share a header file between multiple tagpack files
