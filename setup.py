@@ -40,9 +40,9 @@ setup(
         "cassandra-driver==3.25.0",
         "psycopg2==2.9.1",
         "pandas>=1.3.5",
-        "pyyaml-include",
-        "GitPython",
-        "giturlparse"
+        "pyyaml-include~=1.3",
+        "GitPython~=3.1",
+        "giturlparse~=0.10"
     ],
     test_suite="tests"
 )
