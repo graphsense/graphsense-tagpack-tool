@@ -179,8 +179,6 @@ def validate_tagpack(args):
 
 
 def insert_tagpack(args):
-    config = _load_config(args.config)
-
     t0 = time.time()
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
@@ -193,6 +191,7 @@ def insert_tagpack(args):
     schema = TagPackSchema()
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
 
+    config = _load_config(args.config)
     taxonomies = _remote_load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
@@ -215,7 +214,7 @@ def insert_tagpack(args):
 
         print(f'{i} {tagpack_file}: ', end='')
         try:
-            tagstore.insert_tagpack(tagpack, args.public, args.force)
+            tagstore.insert_tagpack(tagpack, args.public, args.force, config.get('prefix', ''))
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)

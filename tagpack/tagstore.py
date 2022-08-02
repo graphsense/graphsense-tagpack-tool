@@ -26,8 +26,8 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def insert_tagpack(self, tagpack, is_public, force_insert, batch=1000):
-        tagpack_id = _get_id(tagpack)
+    def insert_tagpack(self, tagpack, is_public, force_insert, prefix, batch=1000):
+        tagpack_id = _get_id(tagpack, prefix)
         h = _get_header(tagpack, tagpack_id)
 
         if force_insert:
@@ -110,8 +110,9 @@ def _get_address(tag):
     return tag.all_fields.get('currency'), tag.all_fields.get('address')
 
 
-def _get_id(tagpack):
-    return os.path.split(tagpack.uri)[1]
+def _get_id(tagpack, prefix):
+    p = os.path.split(tagpack.uri)[1]
+    return ":".join([prefix, p]) if prefix else p
 
 
 def _get_header(tagpack, tid):
