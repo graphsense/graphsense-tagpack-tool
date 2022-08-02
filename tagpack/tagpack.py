@@ -31,23 +31,32 @@ def get_repository(path: str) -> pathlib.Path:
 
 def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     """ For a given path string
-    '/home/anna/graphsense/graphsense-tagpacks/public/packs'
+        '/home/anna/graphsense/graphsense-tagpacks/public/packs'
+
     and tagpack file string
-    '/home/anna/graphsense/graphsense-tagpacks/public/packs/a/2021/01/2010101.yaml'
+        '/home/anna/graphsense/graphsense-tagpacks/public/packs/a/2021/01/2010101.yaml'
 
     return remote URI
         'https://github.com/anna/tagpacks/blob/develop/public/packs/a/2021/01/2010101.yaml'
-    or, if no_git is set
-        tagpack file string
+
+        and relative path
+        'a/2021/01/2010101.yaml'
+
+    If no_git is set, return tagpack file string. For the relative path,
+    try to split at '/packs/', or as fallback return the absolute path.
 
     Local git copy will be checked for modifications by default.
     Toggle strict_check param to change this.
 
-    If path does not contain git information, the original path
+    If path does not contain any git information, the original path
     is returned.
     """
     if no_git:
-        return tagpack_file
+        if '/packs/' in tagpack_file:
+            rel_path = tagpack_file.split('/packs/')[1]
+        else:
+            rel_path = tagpack_file
+        return tagpack_file, rel_path
 
     repo = Repo(repo_path)
 
@@ -58,12 +67,12 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     if len(repo.remotes) > 1:
         raise ValidationError("Multiple remotes present, cannot decide on backlink. ")
 
-    rel_path = pathlib.Path(tagpack_file).relative_to(repo_path)
+    rel_path = str(pathlib.Path(tagpack_file).relative_to(repo_path))
 
     u = next(repo.remotes[0].urls)
     g = gup.parse(u).url2https.replace('.git', '')
     res = f'{g}/tree/{repo.active_branch.name}/{rel_path}'
-    return res
+    return res, rel_path
 
 
 def collect_tagpack_files(path):

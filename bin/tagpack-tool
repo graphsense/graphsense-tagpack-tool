@@ -207,14 +207,14 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     for i, tagpack_file in enumerate(sorted(tagpack_files), start=1):
-        uri = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
+        uri, relpath = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
 
         tagpack = TagPack.load_from_file(uri, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
 
         print(f'{i} {tagpack_file}: ', end='')
         try:
-            tagstore.insert_tagpack(tagpack, args.public, args.force, config.get('prefix', ''))
+            tagstore.insert_tagpack(tagpack, args.public, args.force, config.get('prefix', ''), relpath)
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
