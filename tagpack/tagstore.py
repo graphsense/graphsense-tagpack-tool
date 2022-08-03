@@ -17,6 +17,7 @@ class TagStore(object):
 
         self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
         self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+        self.existing_packs = None
 
     def insert_taxonomy(self, taxonomy):
         self.cursor.execute("""INSERT INTO taxonomy (id, source, description) VALUES (%s, %s, %s)""", (taxonomy.key, taxonomy.uri, f"Imported at {datetime.now().isoformat()}"))
@@ -26,8 +27,16 @@ class TagStore(object):
 
         self.conn.commit()
 
+    def tp_exists(self, prefix, rel_path):
+        if not self.existing_packs:
+            self.existing_packs = self.get_ingested_tagpacks()
+        return self.create_id(prefix, rel_path) in self.existing_packs
+
+    def create_id(self, prefix, rel_path):
+        return ":".join([prefix, rel_path]) if prefix else rel_path
+
     def insert_tagpack(self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000):
-        tagpack_id = ":".join([prefix, rel_path]) if prefix else rel_path
+        tagpack_id = self.create_id(prefix, rel_path)
         h = _get_header(tagpack, tagpack_id)
 
         if force_insert:

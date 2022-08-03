@@ -197,17 +197,21 @@ def insert_tagpack(args):
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
     tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
-    if args.add_new:
-        print_info("Checking which files are new to the tagstore:")
-        existing = tagstore.get_ingested_tagpacks()
-        tagpack_files = [x for x in tagpack_files if os.path.basename(x) not in existing]
 
-    print_info(f"Collected {len(tagpack_files)} TagPack files\n")
+    # resolve backlinks to remote repository and relative paths
+    prepared_packs = [(m, n[0], n[1]) for m, n in
+                      [(a, get_uri_for_tagpack(base_url, a, not args.no_strict_check, args.no_git)) for a in tagpack_files]]
+
+    if args.add_new:  # don't re-insert existing tagpacks
+        print_info("Checking which files are new to the tagstore:")
+        prepared_packs = [(t, u, r) for (t, u, r) in prepared_packs if not tagstore.tp_exists(config.get('prefix'), r)]
+
+    print_info(f"Collected {len(prepared_packs)} TagPack files\n")
 
     no_passed = 0
     no_tags = 0
-    for i, tagpack_file in enumerate(sorted(tagpack_files), start=1):
-        uri, relpath = get_uri_for_tagpack(base_url, tagpack_file, not args.no_strict_check, args.no_git)
+    for i, tp in enumerate(sorted(prepared_packs), start=1):
+        tagpack_file, uri, relpath = tp
 
         tagpack = TagPack.load_from_file(uri, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
@@ -221,11 +225,11 @@ def insert_tagpack(args):
         except Exception as e:
             print_fail("FAILED", e)
 
-    status = 'fail' if no_passed < len(tagpack_files) else 'success'
+    status = 'fail' if no_passed < len(prepared_packs) else 'success'
 
     duration = round(time.time() - t0, 2)
     print_line("Processed {}/{} TagPacks with {} Tags in {}s. Only tags for supported currencies {} are inserted."
-               .format(no_passed, len(tagpack_files), no_tags, duration, tagstore.supported_currencies),
+               .format(no_passed, len(prepared_packs), no_tags, duration, tagstore.supported_currencies),
                status)
 
 
