@@ -12,8 +12,8 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      # - "pgtags:/var/lib/postgresql/data"
-      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema_monitored.sql:Z
+      #- "pgtags:/var/lib/postgresql/data"
+      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql:Z
     ports:
       - 5432:5432
     shm_size: '512mb'
@@ -39,38 +39,7 @@ services:
     ports:
       - 6432:6432
 
-  admin:
-    image: dpage/pgadmin4:6.11
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@ikna.io
-      - PGADMIN_DEFAULT_PASSWORD=${POSTGRES_PASSWORD}
-      - PGADMIN_LISTEN_PORT=8081
-    depends_on:
-      - db
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    ports:
-      - "8083:8081"
+networks:
+  default:
+    name: tag-packs
 
-  pgwatch:
-    image: cybertec/pgwatch2:1.9.0
-    depends_on:
-      - db
-    volumes:
-      - pg:/var/lib/postgresql
-      - grafana:/var/lib/grafana
-      - pw2:/pgwatch2/persistent-config
-    ports:
-      - "8080:8080"
-      - "8081:3000"
-    depends_on:
-      - db
-      - bouncer
-
-
-volumes:
-  pg: {}
-  pgtags: {}
-  grafana: {}
-  pw2: {}
-  pgadmin-data: {}
