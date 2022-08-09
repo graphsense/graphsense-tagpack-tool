@@ -162,4 +162,23 @@ CREATE MATERIALIZED VIEW statistics AS
          GROUP
             BY currency
         ) implicit 
-    ON implicit.currency = explicit.currency
+    ON implicit.currency = explicit.currency;
+
+CREATE MATERIALIZED VIEW tag_count_by_cluster AS 
+    SELECT 
+        t.currency, 
+        acm.gs_cluster_id, 
+        tp.is_public, 
+        count(t.address) as count 
+    FROM 
+        tag t, 
+        tagpack tp, 
+        address_cluster_mapping acm 
+    WHERE 
+        acm.address=t.address 
+        AND acm.currency=t.currency 
+        AND t.tagpack=tp.id 
+    GROUP BY 
+        t.currency, 
+        acm.gs_cluster_id, 
+        tp.is_public;
