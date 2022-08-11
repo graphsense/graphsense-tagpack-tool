@@ -182,3 +182,30 @@ CREATE MATERIALIZED VIEW tag_count_by_cluster AS
         t.currency, 
         acm.gs_cluster_id, 
         tp.is_public;
+
+CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS 
+    SELECT 
+        acm.gs_cluster_id, 
+        t.currency, 
+        t.label, 
+        t.category, 
+        tp.is_public, 
+        COUNT(t.address) AS no_addresses, 
+        MAX(c.level) AS max_level
+    FROM 
+        tag t, 
+        address_cluster_mapping acm, 
+        confidence c,
+        tagpack tp
+    WHERE 
+        acm.address=t.address 
+        AND acm.currency=t.currency 
+        AND t.is_cluster_definer=true 
+        AND t.confidence=c.id 
+        AND tp.id=t.tagpack 
+    GROUP BY 
+        t.label, 
+        t.category, 
+        t.currency, 
+        acm.gs_cluster_id, 
+        tp.is_public;
