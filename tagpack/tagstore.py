@@ -71,6 +71,8 @@ class TagStore(object):
     def refresh_db(self):
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
+        self.cursor.execute('REFRESH MATERIALIZED VIEW tag_count_by_cluster')
+        self.cursor.execute('REFRESH MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence') # noqa
         self.conn.commit()
 
     def get_addresses(self, update_existing):
