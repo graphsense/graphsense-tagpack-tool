@@ -213,9 +213,9 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
     UNION
         SELECT 
             gs_cluster_id, 
-            MIN(t.currency) AS currency, 
-            MIN(t.label) AS label,
-            MIN(t.category) AS category, 
+            t.currency, 
+            t.label,
+            t.category, 
             every(tp.is_public) AS is_public, 
             1 AS no_addresses,
             MAX(c.level) AS max_level,
@@ -232,8 +232,10 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
             and t.currency=acm.currency 
             and acm.gs_cluster_no_addr = 1
         GROUP BY 
-            gs_cluster_id 
+            t.label, 
+            t.category, 
+            t.currency, 
+            acm.gs_cluster_id
         HAVING 
-            COUNT(t.address) = 1
-            AND every(t.is_cluster_definer=false);
+            every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
