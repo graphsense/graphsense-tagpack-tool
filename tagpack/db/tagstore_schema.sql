@@ -183,6 +183,15 @@ CREATE MATERIALIZED VIEW tag_count_by_cluster AS
         acm.gs_cluster_id, 
         tp.is_public;
 
+/* In the end this view fulfils the following requirements in junction with
+ * REST's `list_entity_tags_by_entity`:
+ *  If there is no address tag with is_cluster_definer = True -> no cluster tag
+ *  If there is an address tag with is_cluster_definer = True -> assign on cluster level
+ *  If there are several address tags with is_cluster_definer = True -> take the one with higher confidence value
+ *  If there are several address tags with is_cluster_definer = True and same confidence value and if the labels are the same -> take one of them and assign it to cluster level
+ *  If cluster size = 1 and there is an address tag on that single address -> assign to cluster level
+ *  If cluster size = 1 and there are several address tags on that single address -> assign the one with highest confidence
+ */
 CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS 
     SELECT 
         acm.gs_cluster_id, 
