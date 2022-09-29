@@ -246,7 +246,7 @@ e.g. using `ico_wallet` should be preferred over `wallet_service`.
 
 Attribution tags originate from distinct sources, which have various confidence levels. E.g., Bitcoin addresses retrieved via a Web crawl are less trustworthy than a Bitcoin address with proven private key ownership. 
 
-The TagPack creator can choose an id from the list of confidence score ids available [here](https://github.com/graphsense/graphsense-tagpack-tool/blob/develop/tagpack/conf/confidence.csv), e.g. 
+The TagPack creator can choose an id from the list of confidence score ids available [here](https://github.com/graphsense/graphsense-tagpack-tool/blob/develop/tagpack/db/confidence.csv), e.g. 
     
     confidence: ownership
 
