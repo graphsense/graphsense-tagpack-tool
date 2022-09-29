@@ -5,13 +5,41 @@ services:
   db:
     image: postgres:14.0-alpine3.14
     restart: always
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=10000 -c max_connections=200
     env_file:
       - .env
     environment:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql
+      #- "pgtags:/var/lib/postgresql/data"
+      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql:Z
     ports:
       - 5432:5432
     shm_size: '512mb'
+
+  bouncer:
+    image: bitnami/pgbouncer:1.17.0-debian-11-r14
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - POSTGRESQL_USERNAME=${POSTGRES_USER_TAGSTORE}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD_TAGSTORE}
+      - POSTGRESQL_HOST=db
+      - POSTGRESQL_DATABASE=${POSTGRES_DB}
+      - PGBOUNCER_DATABASE=${POSTGRES_DB}
+      - PGBOUNCER_AUTH_USER=${POSTGRES_USER}
+      - PGBOUNCER_STATS_USERS=${POSTGRES_USER}
+      - PGBOUNCER_PORT=6432
+      - PGBOUNCER_AUTH_TYPE=md5
+      - PGBOUNCER_SET_DATABASE_USER=yes
+      - PGBOUNCER_SET_DATABASE_PASSWORD=yes
+      - PGBOUNCER_IGNORE_STARTUP_PARAMETERS=extra_float_digits
+    ports:
+      - 6432:6432
+
+networks:
+  default:
+    name: tag-packs
+

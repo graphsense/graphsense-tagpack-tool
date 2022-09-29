@@ -38,7 +38,7 @@ Start an PostgreSQL instance using Docker Compose:
 This will automatically create the database schema as defined
 in `scripts/tagstore_schema.sql`.
 
-### Option 2: create the schema and tables in a PostgreSQL instance of your choice    
+### Option 2: create the schema and tables in a PostgreSQL instance of your choice
 
     psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
@@ -159,6 +159,15 @@ To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
     tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
+
+## Connection Pooling for PostgreSQL
+
+For setups which expect many parallel connections to the tagstore it can be a good option to run all connections over a dedicated connection-pooler (to avoid exhausting the connections). The docker-compose file used to start the postgres instance automatically starts a pg-bounce container as well. The pg-bounce instance runs on port 6432 and can be used as a drop in replacement for the standard pgsql connections over port 5432. To use pg-bounce as connection-pooler configure the additional environment variables
+
+    POSTGRES_USER_TAGSTORE=<user that is used to connect to the tagstore>
+    POSTGRES_PASSWORD_TAGSTORE=<PASSWORD>
+
+for example in the your local .env file. Currently, the pg-bounce setup only allows connections with this specific user configured in POSTGRES_USER_TAGSTORE.
 
 ## Development / Testing
 
