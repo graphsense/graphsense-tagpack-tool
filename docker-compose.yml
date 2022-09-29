@@ -1,4 +1,4 @@
-version: '3.5'
+version: "3.5"
 
 services:
 
@@ -12,11 +12,10 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      #- "pgtags:/var/lib/postgresql/data"
       -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql:Z
     ports:
       - 5432:5432
-    shm_size: '512mb'
+    shm_size: "2048mb"
 
   bouncer:
     image: bitnami/pgbouncer:1.17.0-debian-11-r14
@@ -41,5 +40,4 @@ services:
 
 networks:
   default:
-    name: tag-packs
-
+    name: tagpack

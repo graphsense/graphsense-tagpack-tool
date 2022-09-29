@@ -1,4 +1,4 @@
-version: '3.5'
+version: "3.5"
 
 services:
 
@@ -8,8 +8,6 @@ services:
       - PGADMIN_DEFAULT_EMAIL=admin@ikna.io
       - PGADMIN_DEFAULT_PASSWORD=${POSTGRES_PASSWORD}
       - PGADMIN_LISTEN_PORT=8081
-    depends_on:
-      - db
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     ports:
@@ -17,8 +15,6 @@ services:
 
   pgwatch:
     image: cybertec/pgwatch2:1.9.0
-    depends_on:
-      - db
     volumes:
       - pg:/var/lib/postgresql
       - grafana:/var/lib/grafana
@@ -26,9 +22,6 @@ services:
     ports:
       - "8084:8080"
       - "8085:3000"
-    depends_on:
-      - db
-      - bouncer
 
 volumes:
   pg: {}
@@ -39,5 +32,5 @@ volumes:
 
 networks:
   default:
-    name: tag-packs
+    name: tagpack
     external: true
