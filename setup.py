@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 VERSIONFILE = "tagpack/_version.py"
 verfilestr = open(VERSIONFILE, "rt").read()
-match = re.search(r"^__version__ = '(\d\.\d.\d+(\.\w+)?)'",
+match = re.search(r"^__version__ = '(\d\.\d.\d+(\w+)?)'",
                   verfilestr,
                   re.MULTILINE)
 if match:
@@ -22,7 +22,7 @@ setup(
     scripts=['bin/tagpack-tool'],
     include_package_data=True,
     author="GraphSense Core Team",
-    author_email="contact@graphsense.info",
+    author_email="tech@ikna.io",
     description="GraphSense TagPack Management Tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -38,7 +38,7 @@ setup(
         "pyyaml==6.0",
         "tabulate==0.8.9",
         "cassandra-driver==3.25.0",
-        "psycopg2==2.9.1",
+        "psycopg2-binary==2.9.3",
         "pandas>=1.3.5",
         "pyyaml-include~=1.3",
         "GitPython~=3.1",
