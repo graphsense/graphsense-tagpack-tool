@@ -68,6 +68,11 @@ Create and activate the conda environment
     conda env create -f environment.yml
     conda activate tagpack-tool
 
+Once the *conda environment is active*, install giturlparse and this tagpack-tool package using pip:
+
+    pip install giturlparse
+    pip install .
+
 ## Handling Taxonomies
 
 Create a default config.yaml (interactively)
