@@ -70,7 +70,7 @@ Create and activate a python environment for required dependencies
 
 Install package and dependencies in local environment
 
-    pip install .h
+    pip install .
 
 ### Using Conda
 
