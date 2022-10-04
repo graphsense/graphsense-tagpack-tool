@@ -184,6 +184,10 @@ def test_validate(tagpack):
     assert tagpack.validate()
 
 
+def test_verify_addresses(tagpack):
+    assert tagpack.verify_addresses() is None
+
+
 def test_context_is_valid_json(tagpack):
     assert json.loads(tagpack.contents['tags'][1]['context'])
 

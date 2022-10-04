@@ -167,6 +167,10 @@ def validate_tagpack(args):
 
             tagpack.validate()
             print_success("PASSED")
+
+            # verify valid blockchain addresses using internal checksum
+            tagpack.verify_addresses()
+
             no_passed += 1
     except (ValidationError, TagPackFileError) as e:
         print_fail("FAILED", e)
