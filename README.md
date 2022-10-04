@@ -16,7 +16,7 @@ To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
 ## Prerequisites: TagStore - PostgreSQL database
 
-### Option 1: dockerized database
+### Option 1: Start a dockerized PostgreSQL database
 
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
@@ -38,10 +38,21 @@ Start an PostgreSQL instance using Docker Compose:
 This will automatically create the database schema as defined
 in `scripts/tagstore_schema.sql`.
 
-### Option 2: create the schema and tables in a PostgreSQL instance of your choice
+### Option 2: Use an existing PostgreSQL database
+
+Create the schema and tables in a PostgreSQL instance of your choice    
 
     psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
+Insert pre-defined data
+
+    psql \
+        -h $DBHOST \
+        -p $DBPORT \
+        -d $DB \
+        -U $DBUSER \
+        --password \
+        -c "\copy tagstore.confidence(id,label,description,level) from 'tagpack/db/confidence.csv' delimiter ',' csv header;"
 
 ## Installation
 
@@ -59,7 +70,7 @@ Create and activate a python environment for required dependencies
 
 Install package and dependencies in local environment
 
-    pip install .
+    pip install .h
 
 ### Using Conda
 

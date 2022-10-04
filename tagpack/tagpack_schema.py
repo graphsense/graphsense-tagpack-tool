@@ -9,6 +9,7 @@ import yaml
 import importlib.resources as pkg_resources
 
 from . import conf
+from . import db
 from tagpack import ValidationError
 
 TAGPACK_SCHEMA_FILE = 'tagpack_schema.yaml'
@@ -21,7 +22,7 @@ class TagPackSchema(object):
     def __init__(self):
         schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
-        confidence = pkg_resources.open_text(conf, CONFIDENCE_FILE)
+        confidence = pkg_resources.open_text(db, CONFIDENCE_FILE)
         self.confidences = pd.read_csv(confidence, index_col='id')
         self.definition = TAGPACK_SCHEMA_FILE
 
