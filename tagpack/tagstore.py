@@ -84,7 +84,8 @@ class TagStore(object):
                             ROW_NUMBER() OVER (PARTITION BY t.address,
                                 t.label,
                                 t.source,
-                                tp.creator ORDER BY t.id DESC) AS duplicate_count
+                                tp.creator ORDER BY t.id DESC)
+                                    AS duplicate_count
                         FROM
                             tag t,
                             tagpack tp

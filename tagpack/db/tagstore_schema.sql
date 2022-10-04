@@ -226,3 +226,27 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         HAVING 
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
+-- Tag quality helper views
+
+CREATE VIEW duplicate_tags AS
+    SELECT
+        t.address,
+        t.label,
+        t.source,
+        tp.creator,
+        COUNT(*)
+    FROM
+        tag t,
+        tagpack tp
+    WHERE
+        t.tagpack = tp.id
+    GROUP BY
+        t.address,
+        t.label,
+        t.source,
+        tp.creator
+    HAVING
+        COUNT(*) > 1
+    ORDER BY
+        count DESC;
+
