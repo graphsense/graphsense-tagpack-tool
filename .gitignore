@@ -9,3 +9,5 @@ config.yaml
 /.env
 /ks_map.json
 build
+.DS_Store
+data

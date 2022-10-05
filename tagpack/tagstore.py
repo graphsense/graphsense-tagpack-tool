@@ -69,6 +69,31 @@ class TagStore(object):
         self.conn.commit()
 
     def refresh_db(self):
+        self.cursor.execute("""
+            DELETE
+                FROM tag
+                WHERE id IN
+                (
+                    SELECT id FROM
+                        (SELECT
+                            t.id,
+                            t.address,
+                            t.label,
+                            t.source,
+                            tp.creator,
+                            ROW_NUMBER() OVER (PARTITION BY t.address,
+                                t.label,
+                                t.source,
+                                tp.creator ORDER BY t.id DESC)
+                                    AS duplicate_count
+                        FROM
+                            tag t,
+                            tagpack tp
+                        WHERE
+                            t.tagpack = tp.id) as x
+                    WHERE duplicate_count > 1
+                )
+            """)
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
         self.cursor.execute('REFRESH MATERIALIZED VIEW tag_count_by_cluster')

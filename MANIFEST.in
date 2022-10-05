@@ -1,3 +1,4 @@
 include tagpack/db/*.cql
+include tagpack/db/*.csv
 include tagpack/conf/tagpack_schema.yaml
 include tagpack/conf/confidence.csv
