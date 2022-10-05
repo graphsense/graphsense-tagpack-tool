@@ -42,7 +42,7 @@ class TagStore(object):
         if force_insert:
             print(f"evicting and re-inserting tagpack {tagpack_id}")
             self.cursor.execute("DELETE FROM tagpack WHERE id = (%s)", (tagpack_id,))
-        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, uri, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), tagpack.uri, is_public))
+        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, uri, is_public) VALUES (%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), tagpack.uri, is_public))
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
@@ -151,8 +151,9 @@ def _get_header(tagpack, tid):
     return {
         'id': tid,
         'title': tc['title'],
-        'source': tc.get('source', os.path.split(tagpack.tags[0].all_fields.get('source'))[0]),
+#        'source': tc.get('source', os.path.split(tagpack.tags[0].all_fields.get('source'))[0]),
         'creator': tc['creator'],
         'description': tc.get('description', 'not provided'),
-        'owner': tc.get('owner', 'unknown')}
+#        'owner': tc.get('owner', 'unknown')
+        }
 
