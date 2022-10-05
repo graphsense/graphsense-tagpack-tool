@@ -82,7 +82,6 @@ def test_all_fields(schema):
 def test_field_type(schema):
     assert schema.field_type('title') == 'text'
     assert schema.field_type('creator') == 'text'
-    assert schema.field_type('owner') == 'text'
     assert schema.field_type('description') == 'text'
     assert schema.field_type('address') == 'text'
     assert schema.field_type('label') == 'text'
