@@ -183,8 +183,12 @@ def insert_tagpack(args):
     print_line("TagPack insert starts")
     print(f"Path: {args.path}")
 
-    base_url = get_repository(args.path)
-    print_line(f"Detected repository root in {base_url}")
+    if args.no_git:
+        base_url = args.path
+        print_line('No repository detection done.')
+    else:
+        base_url = get_repository(args.path)
+        print_line(f"Detected repository root in {base_url}")
 
     tagstore = TagStore(args.url, args.schema)
 
