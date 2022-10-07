@@ -188,6 +188,23 @@ def test_verify_addresses(tagpack):
     assert tagpack.verify_addresses() is None
 
 
+def test_valid_addresses(tagpack, capsys):
+    tagpack.contents['tags'] = [
+        {'label': 'binance',
+         'address': '1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s'},
+    ]
+    tagpack.verify_addresses()
+    captured = capsys.readouterr()
+    assert captured.out == ''
+
+
+def test_invalid_addresses(tagpack, capsys):
+    tagpack.verify_addresses()
+    captured = capsys.readouterr()
+    assert "Not a valid BTC address: 123Bitcoin45" in captured.out
+    assert "Not a valid ETH address: 123Bitcoin66" in captured.out
+
+
 def test_context_is_valid_json(tagpack):
     assert json.loads(tagpack.contents['tags'][1]['context'])
 
