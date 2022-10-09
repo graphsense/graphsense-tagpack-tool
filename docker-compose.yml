@@ -12,7 +12,9 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      -  ./tagpack/db/tagstore_schema.sql:/docker-entrypoint-initdb.d/tagstore_schema.sql:Z
+      - ./tagpack/db/tagstore_schema.sql:/tmp/schema.sql
+      - ./tagpack/db/confidence.csv:/tmp/confidence.csv
+      - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh
     ports:
       - 5432:5432
     shm_size: "2048mb"

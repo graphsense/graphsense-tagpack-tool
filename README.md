@@ -21,8 +21,8 @@ To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
 
-Setup and start a PostgreSQL instance. First, copy `tagpack/conf/env.template` to `.env`
-and fill in all parameters:
+Setup and start a PostgreSQL instance. First, copy `docker/env.template`
+to `.env` and fill in all parameters:
 
 `LOCAL_DATA_DIR`, the persisted PostgreSQL data directory on the local machine,
 and all PostgreSQL connection parameters
@@ -30,6 +30,8 @@ and all PostgreSQL connection parameters
 - `POSTGRES_USER`
 - `POSTGRES_DB`
 - `POSTGRES_PASSWORD`
+- `POSTGRES_USER_TAGSTORE`
+- `POSTGRES_PASSWORD_TAGSTORE`
 
 Start an PostgreSQL instance using Docker Compose:
 
