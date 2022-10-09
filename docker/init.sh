@@ -18,4 +18,4 @@ ALTER MATERIALIZED VIEW tagstore.label OWNER TO "$POSTGRES_USER_TAGSTORE";
 ALTER MATERIALIZED VIEW tagstore.statistics OWNER TO "$POSTGRES_USER_TAGSTORE";
 EOF
 # insert confidence table
-psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\copy tagstore.confidence(id,level,label,description) from 'tmp/confidence.csv' delimiter ',' csv header;"
+psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\copy tagstore.confidence(id,label,description,level) from 'tmp/confidence.csv' DELIMITER ',' CSV HEADER;"
