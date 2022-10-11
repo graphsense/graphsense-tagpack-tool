@@ -1,5 +1,22 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.1.0] 2022-10-11
+### Added
+- Support for connection pooling
+- Removal of duplicate tags
+### Fixed
+- Fix cluster mapping of ETH addresses without external txs
+- consolidate tagpack-level properties
+- `conda` setup
+
+## [1.0.1] 2022-08-26
+### Added
+- Optional prefix for tagpack
+- View for tag count by cluster 
+- View for cluster defining tags by frequency and maxconfidence 
+### Fixed
+- Bug with --add_new flag
+
 ## [1.0.0] 2022-07-14
 ### Changed
 - improved ingest: improved schema validation feedback for user, remove duplicates in tagpacks

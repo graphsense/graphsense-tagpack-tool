@@ -16,13 +16,13 @@ To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
 ## Prerequisites: TagStore - PostgreSQL database
 
-### Option 1: dockerized database
+### Option 1: Start a dockerized PostgreSQL database
 
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
 
-Setup and start a PostgreSQL instance. First, copy `tagpack/conf/env.template` to `.env`
-and fill in all parameters:
+Setup and start a PostgreSQL instance. First, copy `docker/env.template`
+to `.env` and fill in all parameters:
 
 `LOCAL_DATA_DIR`, the persisted PostgreSQL data directory on the local machine,
 and all PostgreSQL connection parameters
@@ -30,6 +30,8 @@ and all PostgreSQL connection parameters
 - `POSTGRES_USER`
 - `POSTGRES_DB`
 - `POSTGRES_PASSWORD`
+- `POSTGRES_USER_TAGSTORE`
+- `POSTGRES_PASSWORD_TAGSTORE`
 
 Start an PostgreSQL instance using Docker Compose:
 
@@ -38,10 +40,21 @@ Start an PostgreSQL instance using Docker Compose:
 This will automatically create the database schema as defined
 in `scripts/tagstore_schema.sql`.
 
-### Option 2: create the schema and tables in a PostgreSQL instance of your choice    
+### Option 2: Use an existing PostgreSQL database
+
+Create the schema and tables in a PostgreSQL instance of your choice    
 
     psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
 
+Insert pre-defined data
+
+    psql \
+        -h $DBHOST \
+        -p $DBPORT \
+        -d $DB \
+        -U $DBUSER \
+        --password \
+        -c "\copy tagstore.confidence(id,label,description,level) from 'tagpack/db/confidence.csv' delimiter ',' csv header;"
 
 ## Installation
 
@@ -59,7 +72,7 @@ Create and activate a python environment for required dependencies
 
 Install package and dependencies in local environment
 
-    pip install .
+    pip install .h
 
 ### Using Conda
 
@@ -67,6 +80,11 @@ Create and activate the conda environment
 
     conda env create -f environment.yml
     conda activate tagpack-tool
+
+Once the *conda environment is active*, install giturlparse and this tagpack-tool package using pip:
+
+    pip install giturlparse
+    pip install .
 
 ## Handling Taxonomies
 
@@ -85,6 +103,7 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 Insert concepts from a remote taxonomy into database, e.g. abuse:
 
     tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool taxonomy insert entity -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
 resp. to insert all configured taxonomies at once, simply omit taxonomy name
 
@@ -159,6 +178,15 @@ To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
     tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
+
+## Connection Pooling for PostgreSQL
+
+For setups which expect many parallel connections to the tagstore it can be a good option to run all connections over a dedicated connection-pooler (to avoid exhausting the connections). The docker-compose file used to start the postgres instance automatically starts a pg-bounce container as well. The pg-bounce instance runs on port 6432 and can be used as a drop in replacement for the standard pgsql connections over port 5432. To use pg-bounce as connection-pooler configure the additional environment variables
+
+    POSTGRES_USER_TAGSTORE=<user that is used to connect to the tagstore>
+    POSTGRES_PASSWORD_TAGSTORE=<PASSWORD>
+
+for example in the your local .env file. Currently, the pg-bounce setup only allows connections with this specific user configured in POSTGRES_USER_TAGSTORE.
 
 ## Development / Testing
 

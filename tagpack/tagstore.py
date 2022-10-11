@@ -17,6 +17,7 @@ class TagStore(object):
 
         self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
         self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+        self.existing_packs = None
 
     def insert_taxonomy(self, taxonomy):
         self.cursor.execute("""INSERT INTO taxonomy (id, source, description) VALUES (%s, %s, %s)""", (taxonomy.key, taxonomy.uri, f"Imported at {datetime.now().isoformat()}"))
@@ -26,14 +27,22 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def insert_tagpack(self, tagpack, is_public, force_insert, batch=1000):
-        tagpack_id = _get_id(tagpack)
+    def tp_exists(self, prefix, rel_path):
+        if not self.existing_packs:
+            self.existing_packs = self.get_ingested_tagpacks()
+        return self.create_id(prefix, rel_path) in self.existing_packs
+
+    def create_id(self, prefix, rel_path):
+        return ":".join([prefix, rel_path]) if prefix else rel_path
+
+    def insert_tagpack(self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000):
+        tagpack_id = self.create_id(prefix, rel_path)
         h = _get_header(tagpack, tagpack_id)
 
         if force_insert:
             print(f"evicting and re-inserting tagpack {tagpack_id}")
             self.cursor.execute("DELETE FROM tagpack WHERE id = (%s)", (tagpack_id,))
-        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, owner, source, uri, is_public) VALUES (%s, %s,%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), h.get('owner'), h.get('source'), tagpack.uri, is_public))
+        self.cursor.execute("INSERT INTO tagpack (id, title, description, creator, uri, is_public) VALUES (%s,%s,%s,%s,%s,%s)", (h.get('id'), h.get('title'), h.get('description'), h.get('creator'), tagpack.uri, is_public))
         self.conn.commit()
 
         addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) ON CONFLICT DO NOTHING"
@@ -60,8 +69,35 @@ class TagStore(object):
         self.conn.commit()
 
     def refresh_db(self):
+        self.cursor.execute("""
+            DELETE
+                FROM tag
+                WHERE id IN
+                (
+                    SELECT id FROM
+                        (SELECT
+                            t.id,
+                            t.address,
+                            t.label,
+                            t.source,
+                            tp.creator,
+                            ROW_NUMBER() OVER (PARTITION BY t.address,
+                                t.label,
+                                t.source,
+                                tp.creator ORDER BY t.id DESC)
+                                    AS duplicate_count
+                        FROM
+                            tag t,
+                            tagpack tp
+                        WHERE
+                            t.tagpack = tp.id) as x
+                    WHERE duplicate_count > 1
+                )
+            """)
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
+        self.cursor.execute('REFRESH MATERIALIZED VIEW tag_count_by_cluster')
+        self.cursor.execute('REFRESH MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence') # noqa
         self.conn.commit()
 
     def get_addresses(self, update_existing):
@@ -110,17 +146,14 @@ def _get_address(tag):
     return tag.all_fields.get('currency'), tag.all_fields.get('address')
 
 
-def _get_id(tagpack):
-    return os.path.split(tagpack.uri)[1]
-
-
 def _get_header(tagpack, tid):
     tc = tagpack.contents
     return {
         'id': tid,
         'title': tc['title'],
-        'source': tc.get('source', os.path.split(tagpack.tags[0].all_fields.get('source'))[0]),
+#        'source': tc.get('source', os.path.split(tagpack.tags[0].all_fields.get('source'))[0]),
         'creator': tc['creator'],
         'description': tc.get('description', 'not provided'),
-        'owner': tc.get('owner', 'unknown')}
+#        'owner': tc.get('owner', 'unknown')
+        }
 

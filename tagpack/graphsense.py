@@ -185,25 +185,34 @@ class GraphSense(object):
 
         addresses = df.copy()
 
-        if currency == 'ETH':
+        if currency == "ETH":
             # tagpacks include invalid ETH addresses, ignore those
             addresses.drop(addresses[~addresses.address.str.startswith("0x")].index, inplace=True)
             addresses.rename(columns={"address": "checksum_address"}, inplace=True)
-            addresses.loc[:, 'address'] = addresses["checksum_address"].str.lower()
+            addresses.loc[:, "address"] = addresses["checksum_address"].str.lower()
 
         df_address_ids = self.get_address_ids(addresses, currency)
         if len(df_address_ids) == 0:
             return DataFrame()
-        if currency == 'ETH':
-            df_address_ids['cluster_id'] = df_address_ids['address_id']
-            df_address_ids['no_addresses'] = 1
+        if currency == "ETH":
+            df_address_ids["cluster_id"] = df_address_ids["address_id"]
+            df_address_ids["no_addresses"] = 1
             degrees = self.get_address_statistics(df_address_ids, currency)
 
-            result = df_address_ids.merge(degrees, on="address_id", how='left').merge(addresses, on='address')
+            result = df_address_ids.merge(addresses, on="address")
+            if len(degrees):
+                result = result.merge(degrees, on="address_id", how="left")
+            else:
+                # no external txs
+                result["in_degree"] = 0
+                result["out_degree"] = 0
+
             result.drop("address", axis="columns", inplace=True)
             result.rename(columns={"checksum_address": "address"}, inplace=True)
-            result['cluster_defining_address'] = result['address']
-            result.fillna(value={'in_degree': 0, 'out_degree': 0}, inplace=True)  # no txs have been recorded
+            result["cluster_defining_address"] = result["address"]
+            # no txs have been recorded
+            result.fillna(value={"in_degree": 0, "out_degree": 0}, inplace=True)
+
             return result
 
         df_cluster_ids = self.get_cluster_ids(df_address_ids, currency)
