@@ -3,6 +3,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [1.0.2] Unreleased
 ### Added
 - Removal of duplicate tags
+### Fixed
+- Fix cluster mapping of ETH addresses without external txs
 
 ## [1.0.1] 2022-08-26
 ### Added
