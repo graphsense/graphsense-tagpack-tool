@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Fix cluster mapping of ETH addresses without external txs
 - consolidate tagpack-level properties
+- `conda` setup
 
 ## [1.0.1] 2022-08-26
 ### Added
