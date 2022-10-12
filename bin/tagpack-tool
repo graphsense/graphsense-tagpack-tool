@@ -137,7 +137,7 @@ def _load_config(cfile):
 def show_config(args):
     print("Config File:", args.config)
     if args.verbose:
-        list_taxonomies()
+        list_taxonomies(args)
 
 
 def validate_tagpack(args):
