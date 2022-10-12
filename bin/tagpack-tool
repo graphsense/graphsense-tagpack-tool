@@ -18,6 +18,7 @@ from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files, ge
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
+from tagpack.confidence import Confidence
 
 CONFIG_FILE = "config.yaml"
 
@@ -27,6 +28,9 @@ DEFAULT_CONFIG = {
     'taxonomies': {
         'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
         'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
+    },
+    'confidence': {
+        'scores': 'tagpack/db/confidence.csv'
     }
 }
 
@@ -51,6 +55,15 @@ def _remote_load_taxonomy(config, key):
     taxonomy = Taxonomy(key, uri)
     taxonomy.load_from_remote()
     return taxonomy
+
+
+def _local_load_confidence_scores(config):
+    if 'confidence' not in config:
+        return None
+    path = config['confidence']['scores']
+    confidence = Confidence(path)
+    confidence.load_from_local()
+    return confidence
 
 
 def list_taxonomies(args=None):
@@ -122,6 +135,71 @@ def insert_taxonomy(args):
         except Exception as e:
             print_fail(e)
             print_line("Aborted insert", 'fail')
+
+
+def list_confidence_scores(args):
+    config = _load_config(args.config)
+
+    print_line("Show configured confidence scores")
+    print_line(f"Configuration: {args.config}", 'info')
+    count = 0
+    if 'confidence' not in config:
+        print_line("No confidence scores configured", 'fail')
+    else:
+        for key, value in config['confidence'].items():
+            print_line(value)
+            count += 1
+        print_line(f"{count} configured confidence scores", 'success')
+
+
+def show_confidence_scores(args):
+    config = _load_config(args.config)
+
+    if 'confidence' not in config:
+        print_line("No confidence scores configured", 'fail')
+        return
+
+    print_line("Showing confidence scores")
+    print("Local path: ", config['confidence']['scores'], "\n")
+    confidence = _local_load_confidence_scores(config)
+    if args.verbose:
+        headers = ['id', 'label', 'description', 'level']
+        table = [[c.id, c.label, c.description, c.level]
+                 for c in confidence.scores]
+    else:
+        headers = ['Level', 'Label']
+        table = [[c.level, c.label] for c in confidence.scores]
+
+    print(tabulate(table, headers=headers))
+    print_line(f"{len(confidence.scores)} confidence scores", 'success')
+
+
+def ingest_confidence_scores(args):
+    config = _load_config(args.config)
+
+    if 'confidence' not in config:
+        print_line("No confidence scores configured", 'fail')
+        return
+
+    t0 = time.time()
+    print_line("Confidence scores ingest starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        confidence = _local_load_confidence_scores(config)
+        tagstore.insert_confidence_scores(confidence, args.force)
+
+        print(f"{confidence.path}:", end=' ')
+        print_success("INSERTED")
+
+        duration = round(time.time() - t0, 2)
+        print_line(
+            f"Inserted {len(confidence.scores)} scores in {duration}s",
+            'success')
+    except Exception as e:
+        print_fail(e)
+        print_line("Aborted ingestion", 'fail')
 
 
 def _load_config(cfile):
@@ -318,6 +396,35 @@ def main():
     parser_t_s.add_argument('-v', '--verbose', action='store_true',
                             help="verbose concepts")
     parser_t_s.set_defaults(func=show_taxonomy_concepts)
+
+
+    # parser for confidence command
+    parser_s = subparsers.add_parser("confidence",
+                                     help="show confidence scores")
+    parser_s.set_defaults(func=list_confidence_scores)
+
+    parser_s_subparsers = parser_s.add_subparsers(title='Confidence commands')
+
+    # parser for confidence ingest command
+    parser_s_i = parser_s_subparsers.add_parser(
+        'ingest', help='ingest confidence scores into GraphSense')
+    parser_s_i.add_argument("--force", action='store_true',
+                            help='Force re-insertion of confidence scores.')
+    parser_s_i.add_argument('--schema',
+                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                            help="PostgreSQL schema for confidence tables")
+    parser_s_i.add_argument('-u', '--url',
+                    help="postgresql://user:password@db_host:port/database")
+    parser_s_i.set_defaults(func=ingest_confidence_scores)
+
+    # parser for confidence show command
+    parser_s_s = parser_s_subparsers.add_parser(
+        'show', help='show confidence scores')
+    parser_s_s.add_argument('-v', '--verbose', action='store_true',
+                            help="verbose concepts")
+    parser_s_s.set_defaults(func=show_confidence_scores)
+
+
 
     # parser for config command
     parser_c = subparsers.add_parser("config",
