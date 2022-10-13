@@ -88,8 +88,6 @@ CREATE TABLE address_cluster_mapping (
     gs_cluster_id       INTEGER     NOT NULL,
     gs_cluster_def_addr VARCHAR     NOT NULL,
     gs_cluster_no_addr  INTEGER     DEFAULT NULL,
-    gs_cluster_in_degr  INTEGER     DEFAULT NULL,
-    gs_cluster_out_degr INTEGER     DEFAULT NULL,
     PRIMARY KEY(currency, address),
     FOREIGN KEY (currency, address) REFERENCES address (currency, address) ON DELETE CASCADE
 );

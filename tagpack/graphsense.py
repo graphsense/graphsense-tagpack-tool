@@ -197,21 +197,12 @@ class GraphSense(object):
         if currency == "ETH":
             df_address_ids["cluster_id"] = df_address_ids["address_id"]
             df_address_ids["no_addresses"] = 1
-            degrees = self.get_address_statistics(df_address_ids, currency)
 
             result = df_address_ids.merge(addresses, on="address")
-            if len(degrees):
-                result = result.merge(degrees, on="address_id", how="left")
-            else:
-                # no external txs
-                result["in_degree"] = 0
-                result["out_degree"] = 0
 
             result.drop("address", axis="columns", inplace=True)
             result.rename(columns={"checksum_address": "address"}, inplace=True)
             result["cluster_defining_address"] = result["address"]
-            # no txs have been recorded
-            result.fillna(value={"in_degree": 0, "out_degree": 0}, inplace=True)
 
             return result
 
@@ -233,23 +224,3 @@ class GraphSense(object):
 
         return result
 
-    def get_address_statistics(self, df, currency):
-        """Get statistics for address ids."""
-        self._check_passed_params(df, currency, 'address_id')
-
-        keyspace = self.ks_map[currency]['transformed']
-        ks_config = self._query_keyspace_config(keyspace)
-        self.session.set_keyspace(keyspace)
-
-        df_temp = df[['address_id']].copy()
-        df_temp = df_temp.drop_duplicates()
-        df_temp['address_id_group'] = np.floor(
-            df_temp['address_id'] / ks_config['bucket_size']).astype(int)
-
-        query = "SELECT address_id, in_degree, out_degree  " + \
-                "FROM address WHERE address_id_group=? and address_id=?"
-        statement = self.session.prepare(query)
-        parameters = df_temp[
-            ['address_id_group', 'address_id']].to_records(index=False)
-
-        return self._execute_query(statement, parameters)

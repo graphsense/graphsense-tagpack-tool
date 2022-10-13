@@ -110,12 +110,11 @@ class TagStore(object):
 
     def insert_cluster_mappings(self, clusters):
         if not clusters.empty:
-            q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr , gs_cluster_in_degr , gs_cluster_out_degr)" \
-                "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (currency, address) DO UPDATE SET " \
-                "gs_cluster_id = EXCLUDED.gs_cluster_id , gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr , gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr , " \
-                "gs_cluster_in_degr = EXCLUDED.gs_cluster_in_degr , gs_cluster_out_degr = EXCLUDED.gs_cluster_out_degr"
+            q = "INSERT INTO address_cluster_mapping (address, currency, gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr )" \
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (currency, address) DO UPDATE SET " \
+                "gs_cluster_id = EXCLUDED.gs_cluster_id , gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr , gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr  "
 
-            data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses', 'in_degree', 'out_degree']].to_records(index=False)
+            data = clusters[['address', 'currency', 'cluster_id', 'cluster_defining_address', 'no_addresses']].to_records(index=False)
 
             execute_batch(self.cursor, q, data)
             self.conn.commit()
