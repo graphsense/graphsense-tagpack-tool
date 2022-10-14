@@ -142,7 +142,10 @@ def _get_tag(tag, tagpack_id):
 
 
 def _get_address(tag):
-    return tag.all_fields.get('currency'), tag.all_fields.get('address')
+    curr = tag.all_fields.get('currency')
+    addr = tag.all_fields.get('address')
+    addr = addr.lower() if 'ETH' == curr.upper() else addr
+    return curr, addr
 
 
 def _get_header(tagpack, tid):
