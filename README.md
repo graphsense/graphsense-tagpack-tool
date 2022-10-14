@@ -83,7 +83,7 @@ Create and activate the conda environment
 
 Once the *conda environment is active*, install giturlparse and this tagpack-tool package using pip:
 
-    pip install giturlparse
+    pip install giturlparse coinaddrvalidator
     pip install .
 
 ## Handling Taxonomies

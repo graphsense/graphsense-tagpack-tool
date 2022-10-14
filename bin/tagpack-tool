@@ -245,6 +245,11 @@ def validate_tagpack(args):
 
             tagpack.validate()
             print_success("PASSED")
+
+            # verify valid blockchain addresses using internal checksum
+            if not args.no_address_validation:
+                tagpack.verify_addresses()
+
             no_passed += 1
     except (ValidationError, TagPackFileError) as e:
         print_fail("FAILED", e)
@@ -467,6 +472,8 @@ def main():
     parser_v.add_argument('path', nargs='?', metavar='PATH',
                           default=[os.getcwd()],
                           help='TagPacks file or folder root path')
+    parser_v.add_argument("--no_address_validation", action='store_true',
+                          help='Disables checksum validation of addresses')
     parser_v.set_defaults(func=validate_tagpack)
 
     # parser for cluster command

@@ -7,10 +7,12 @@ import yaml
 from git import Repo
 import giturlparse as gup
 import pathlib
+import coinaddrvalidator
+from collections import defaultdict
 from tagpack import TagPackFileError, ValidationError
 from yamlinclude import YamlIncludeConstructor
 
-from tagpack.cmd_utils import print_info
+from tagpack.cmd_utils import print_info, print_warn
 
 
 def get_repository(path: str) -> pathlib.Path:
@@ -131,6 +133,9 @@ class TagPack(object):
         self.taxonomies = taxonomies
         self._unique_tags = []
         self._duplicates = []
+
+    verifiable_currencies = [a.ticker \
+            for a in coinaddrvalidator.currency.Currencies.instances.values()]
 
     def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=header_dir)
@@ -259,6 +264,35 @@ class TagPack(object):
         if self._duplicates:
             print_info(f"{len(self._duplicates)} duplicate(s) found, starting with {self._duplicates[0]}\n")
         return True
+
+
+    def verify_addresses(self):
+        """
+        Verify valid blockchain addresses using coinaddrvalidator library. In
+        general, this is done by decoding the address (e.g. to base58) and
+        calculating a checksum using the first bytes of the decoded value,
+        which should match with the last bytes of the decoded value.
+        """
+
+        unsupported = defaultdict(set)
+
+        for tag in self.get_unique_tags():
+
+            currency = tag.all_fields.get('currency', '').lower()
+            cupper = currency.upper()
+            address = tag.all_fields.get('address')
+            if currency in self.verifiable_currencies:
+                v = coinaddrvalidator.validate(currency, address)
+                if not v:
+                    print_warn(f"\tNot a valid {cupper} address: {address}")
+            else:
+                unsupported[cupper].add(address)
+
+        for c, addrs in unsupported.items():
+            print_warn(f"\tAddress verification is not supported for {c}:")
+            for a in sorted(addrs):
+                print_warn(f"\t\t{a}")
+
 
     def to_json(self):
         """Returns a JSON representation of a TagPack's header"""

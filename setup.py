@@ -42,7 +42,8 @@ setup(
         "pandas>=1.3.5",
         "pyyaml-include~=1.3",
         "GitPython~=3.1",
-        "giturlparse~=0.10"
+        "giturlparse~=0.10",
+        "coinaddrvalidator~=1.1.3"
     ],
     test_suite="tests"
 )

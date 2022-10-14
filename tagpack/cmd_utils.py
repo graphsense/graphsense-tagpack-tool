@@ -52,3 +52,8 @@ def print_fail(text, exception=None):
     print(f"{bcolors.FAIL}{text}{bcolors.ENDC}")
     if exception:
         print(f"{bcolors.FAIL}{exception}{bcolors.ENDC}")
+
+
+def print_warn(text, **args):
+    print(f"{bcolors.WARNING}{text}{bcolors.ENDC}", **args)
+
