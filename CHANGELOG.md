@@ -3,6 +3,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [..] unreleased
 ### Changed
 - removed unnecessary columns in cluster mapping table [#45](https://github.com/graphsense/graphsense-tagpack-tool/issues/45)
+- ETH addresses are normalized to lower-case before inserting them to the db
+### Added
+- Address validation for currencies supported by coinaddrvalidator library
+- Confidence scoring handling: ingest confidence scores from local file
 
 ## [1.1.0] 2022-10-11
 ### Added
