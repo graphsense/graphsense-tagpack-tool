@@ -27,6 +27,21 @@ class TagStore(object):
 
         self.conn.commit()
 
+    def insert_confidence_scores(self, confidence, force):
+        statement = "INSERT INTO confidence (id, label, description, level)"
+        statement += " VALUES (%s, %s, %s, %s)"
+
+        # TODO What to do with foreign key restrictions?
+#        if force:
+#            print(f"evicting and re-inserting all confidence scores")
+#            self.cursor.execute("DELETE FROM confidence")
+
+        for c in confidence.scores:
+            values = (c.id, c.label, c.description, c.level)
+            self.cursor.execute(statement, values)
+
+        self.conn.commit()
+
     def tp_exists(self, prefix, rel_path):
         if not self.existing_packs:
             self.existing_packs = self.get_ingested_tagpacks()
