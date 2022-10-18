@@ -198,6 +198,25 @@ def test_valid_addresses(tagpack, capsys):
     assert captured.out == ''
 
 
+def test_addresses_whitespace(tagpack, capsys):
+    tagpack.contents['tags'] = [
+        {'label': 'binance1',
+         'address': '1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s '},
+        {'label': 'binance2',
+         'address': '1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s\t'},
+        {'label': 'binance3',
+         'address': '\n1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s'},
+    ]
+    tagpack.verify_addresses()
+    captured = capsys.readouterr()
+    msg1 = "Address contains whitespace: '1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s '"
+    msg2 = "Address contains whitespace: '1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s\\t'"
+    msg3 = "Address contains whitespace: '\\n1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s'"
+    assert msg1 in captured.out
+    assert msg2 in captured.out
+    assert msg3 in captured.out
+
+
 def test_invalid_addresses(tagpack, capsys):
     tagpack.verify_addresses()
     captured = capsys.readouterr()

@@ -281,9 +281,11 @@ class TagPack(object):
             currency = tag.all_fields.get('currency', '').lower()
             cupper = currency.upper()
             address = tag.all_fields.get('address')
-            if currency in self.verifiable_currencies:
+            if len(address) != len(address.strip()):
+                print_warn(f"\tAddress contains whitespace: {repr(address)}")
+            elif currency in self.verifiable_currencies:
                 v = coinaddrvalidator.validate(currency, address)
-                if not v:
+                if not v.valid:
                     print_warn(f"\tNot a valid {cupper} address: {address}")
             else:
                 unsupported[cupper].add(address)
