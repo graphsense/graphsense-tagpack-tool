@@ -286,7 +286,7 @@ class TagPack(object):
             elif currency in self.verifiable_currencies:
                 v = coinaddrvalidator.validate(currency, address)
                 if not v.valid:
-                    print_warn(f"\tNot a valid {cupper} address: {address}")
+                    print_warn(f"\tPossible invalid {cupper} address: {address}")
             else:
                 unsupported[cupper].add(address)
 
