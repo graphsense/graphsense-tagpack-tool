@@ -220,8 +220,8 @@ def test_addresses_whitespace(tagpack, capsys):
 def test_invalid_addresses(tagpack, capsys):
     tagpack.verify_addresses()
     captured = capsys.readouterr()
-    assert "Not a valid BTC address: 123Bitcoin45" in captured.out
-    assert "Not a valid ETH address: 123Bitcoin66" in captured.out
+    assert "Possible invalid BTC address: 123Bitcoin45" in captured.out
+    assert "Possible invalid ETH address: 123Bitcoin66" in captured.out
 
 
 def test_context_is_valid_json(tagpack):
