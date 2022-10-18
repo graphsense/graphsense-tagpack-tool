@@ -386,6 +386,7 @@ def main():
     parser_t_i = parser_t_subparsers.add_parser(
         'insert', help='insert taxonomy into GraphSense')
     parser_t_i.add_argument('taxonomy', metavar='TAXONOMY_KEY', nargs='?',
+                            choices=['abuse', 'entity'],
                             help='the selected taxonomy', default=None)
     parser_t_i.add_argument('--schema',
                             default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
@@ -397,11 +398,11 @@ def main():
     parser_t_s = parser_t_subparsers.add_parser(
         'show', help='show taxonomy concepts')
     parser_t_s.add_argument('taxonomy', metavar='TAXONOMY_KEY',
+                            choices=['abuse', 'entity'],
                             help='the selected taxonomy')
     parser_t_s.add_argument('-v', '--verbose', action='store_true',
                             help="verbose concepts")
     parser_t_s.set_defaults(func=show_taxonomy_concepts)
-
 
     # parser for confidence command
     parser_s = subparsers.add_parser("confidence",
@@ -428,8 +429,6 @@ def main():
     parser_s_s.add_argument('-v', '--verbose', action='store_true',
                             help="verbose concepts")
     parser_s_s.set_defaults(func=show_confidence_scores)
-
-
 
     # parser for config command
     parser_c = subparsers.add_parser("config",
@@ -470,8 +469,9 @@ def main():
     # parser for validate command
     parser_v = subparsers.add_parser("validate", help="validate TagPacks")
     parser_v.add_argument('path', nargs='?', metavar='PATH',
-                          default=[os.getcwd()],
-                          help='TagPacks file or folder root path')
+                          default=os.getcwd(),
+                          help='TagPacks file or folder root path (current folder\
+                                  by default)')
     parser_v.add_argument("--no_address_validation", action='store_true',
                           help='Disables checksum validation of addresses')
     parser_v.set_defaults(func=validate_tagpack)
