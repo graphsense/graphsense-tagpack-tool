@@ -68,7 +68,7 @@ class TagStore(object):
         for tag in tagpack.get_unique_tags():
             if self._supports_currency(tag):
                 tag_data.append(_get_tag(tag, tagpack_id))
-                address_data.append(_get_address(tag))
+                address_data.append(_get_currency_and_address(tag))
             if len(tag_data) > batch:
                 execute_batch(self.cursor, addr_sql, address_data)
                 execute_batch(self.cursor, tag_sql, tag_data)
@@ -150,13 +150,15 @@ def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get('label').lower().strip()
     lastmod = tag.all_fields.get('lastmod', datetime.now().isoformat())
 
+    _, address = _get_currency_and_address(tag)
+
     return (label, tag.all_fields.get('source'), tag.all_fields.get('category', None),
-            tag.all_fields.get('abuse', None), tag.all_fields.get('address'), tag.all_fields.get('currency'),
+            tag.all_fields.get('abuse', None), address, tag.all_fields.get('currency'),
             tag.all_fields.get('is_cluster_definer'), tag.all_fields.get('confidence'),
             lastmod, tag.all_fields.get('context'), tagpack_id)
 
 
-def _get_address(tag):
+def _get_currency_and_address(tag):
     curr = tag.all_fields.get('currency')
     addr = tag.all_fields.get('address')
     addr = addr.lower() if 'ETH' == curr.upper() else addr
