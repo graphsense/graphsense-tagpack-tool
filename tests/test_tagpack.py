@@ -322,30 +322,65 @@ def test_validate_fail_empty_body_field(tagpack):
 
 
 def test_simple_file_collection():
-    prefix = 'tests/testfiles/simple/'
-    files, headerfile_path = collect_tagpack_files(prefix)
+    prefix = 'tests/testfiles/simple'
+    h_files = collect_tagpack_files(prefix)
+    header_dir, files = h_files.popitem()
 
     assert len(files) == 4
-    assert f'{prefix}ex_addr_tagpack.yaml' in files
-    assert f'{prefix}duplicate_tag.yaml' in files
-    assert f'{prefix}empty_tag_list.yaml' in files
-    assert f'{prefix}multiple_tags_for_address.yaml' in files
+    assert f'{prefix}/ex_addr_tagpack.yaml' in files
+    assert f'{prefix}/duplicate_tag.yaml' in files
+    assert f'{prefix}/empty_tag_list.yaml' in files
+    assert f'{prefix}/multiple_tags_for_address.yaml' in files
 
 
 def test_file_collection_with_yaml_include():
-    files, headerfile_path = collect_tagpack_files('tests/testfiles/yaml_inclusion/')
+    bdir = 'tests/testfiles/yaml_inclusion'
+    h_files = collect_tagpack_files(bdir)
+    header_dir, files = h_files.popitem()
 
     assert len(files) == 4
-    assert 'tests/testfiles/yaml_inclusion/2021/01/20210101.yaml' in files
-    assert 'tests/testfiles/yaml_inclusion/2021/01/20210102.yaml' in files
-    assert 'tests/testfiles/yaml_inclusion/2021/02/20210201.yaml' in files
-    assert 'tests/testfiles/yaml_inclusion/2021/01/special/20210106-special.yaml' in files
+    assert f"{bdir}/2021/01/20210101.yaml" in files
+    assert f"{bdir}/2021/01/20210102.yaml" in files
+    assert f"{bdir}/2021/02/20210201.yaml" in files
+    assert f"{bdir}/2021/01/special/20210106-special.yaml" in files
 
-    assert headerfile_path == 'tests/testfiles/yaml_inclusion'
+    assert header_dir == bdir
+
+
+def test_file_collection_with_multiple_yaml_include():
+    bdir = 'tests/testfiles/yaml_inclusion_multiple'
+    h_files = collect_tagpack_files(bdir)
+    files = [f for fs in h_files.values() for f in fs]
+    header_dirs = h_files.keys()
+
+    assert len(files) == 4
+    assert f"{bdir}/2021/01/20210101.yaml" in files
+    assert f"{bdir}/2021/01/20210102.yaml" in files
+    assert f"{bdir}/2021/02/20210201.yaml" in files
+    assert f"{bdir}/2021/01/special/20210106-special.yaml" in files
+
+    assert len(header_dirs) == 2
+    assert f"{bdir}" in header_dirs
+    assert f"{bdir}/2021/01" in header_dirs
+
+    files = h_files.pop(f"{bdir}")
+    assert f"{bdir}/2021/01/20210101.yaml" in files
+    assert f"{bdir}/2021/01/20210102.yaml" in files
+    assert f"{bdir}/2021/02/20210201.yaml" in files
+    assert f"{bdir}/2021/01/special/20210106-special.yaml" not in files
+
+    files = h_files.pop(f"{bdir}/2021/01")
+    assert f"{bdir}/2021/01/20210101.yaml" not in files
+    assert f"{bdir}/2021/01/20210102.yaml" not in files
+    assert f"{bdir}/2021/02/20210201.yaml" not in files
+    assert f"{bdir}/2021/01/special/20210106-special.yaml" in files
 
 
 def test_file_collection_with_missing_yaml_include_raises_exception():
-    files, headerfile_path = collect_tagpack_files('tests/testfiles/yaml_inclusion_missing_header/')
+    bdir = 'tests/testfiles/yaml_inclusion_missing_header'
+    h_files = collect_tagpack_files(bdir)
+    headerfile_path, files = h_files.popitem()
+    files = list(files)
 
     assert not headerfile_path
 

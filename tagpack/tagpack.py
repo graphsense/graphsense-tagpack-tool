@@ -78,37 +78,54 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
 
 
 def collect_tagpack_files(path):
-    """Collect Tagpack YAML files from given paths"""
-    tagpack_files = []
-    header_path = None
+    """
+    Collect Tagpack YAML files from the given path. This function returns a
+    dict made of sets. Each key of the dict is the corresponding header path of
+    the values included in its set (the one in the closest parent directory).
+    The None value is the key for files without header path. By convention, the
+    name of a header file should be header.yaml
+    """
+    tagpack_files = {}
 
     if os.path.isdir(path):
-        files = glob.glob(path + '/**/*.yaml', recursive=True)
-        tagpack_files = tagpack_files + files
+        files = set(glob.glob(path + '/**/*.yaml', recursive=True))
     elif os.path.isfile(path):  # validate single file
-        tagpack_files.append(path)
+        files = set([path])
+    else: # TODO Error! Should we validate the path within __main__?
+        print_warn(f"Not a valid path: {path}")
+        return {}
 
-    # check if corresponding yaml header file exists in a parent directory
-    header_dir = path
-    while header_dir and header_dir != os.path.sep:
-        header_dir, _ = os.path.split(header_dir)
-        res = glob.glob(os.path.join(header_dir, 'header.yaml'))
-        if res:
-            tagpack_files += res
-            break
+    files = set([f for f in files if not f.endswith('config.yaml')])
 
-    # deal with yaml includes
-    tagpack_files = set(tagpack_files)
-    for p in tagpack_files:
-        if p.endswith('header.yaml'):
-            header_path = p
-    if header_path:
-        tagpack_files.remove(header_path)
-        header_path = os.path.dirname(header_path)
+    # Sort files, deepest first
+    sfiles = sorted(files, key=lambda x: len(x.split(os.sep)), reverse=True)
+    # Select headers
+    hfiles = [f for f in sfiles if f.endswith('header.yaml')]
+    # Remove header files from the search
+    files -= set(hfiles)
+    # Map files and headers
+    for f in hfiles:
+        header = os.path.dirname(f)
+        # Select files in the same path than header, subdirs only
+        match_files = set([mfile for mfile in files if (header in mfile \
+                and len(mfile.split(os.sep)) > len(f.split(os.sep)))])
+        tagpack_files[header] = match_files
+        files -= match_files
 
-    tagpack_files = [a for a in tagpack_files if not a.endswith('config.yaml')]
+    # Files without headers
+    if (files):
+        tagpack_files[None] = files
 
-    return tagpack_files, header_path
+    # Avoid to include header files without files
+    for t, fs in tagpack_files.items():
+        if not fs:
+            msj = f"\tThe header file in {os.path.realpath(t)} won't be "
+            msj += f"included in any tagpack"
+            print_warn(msj)
+
+    tagpack_files = {k: v for k, v in tagpack_files.items() if v}
+
+    return tagpack_files
 
 
 # https://gist.github.com/pypt/94d747fe5180851196eb

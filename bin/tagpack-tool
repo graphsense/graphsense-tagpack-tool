@@ -14,7 +14,8 @@ from tabulate import tabulate
 from tagpack import __version__ as version
 from tagpack.cmd_utils import print_line, print_info, print_fail, print_success
 from tagpack.graphsense import GraphSense
-from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files, get_repository, get_uri_for_tagpack
+from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files,\
+        get_repository, get_uri_for_tagpack
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
@@ -232,33 +233,35 @@ def validate_tagpack(args):
     schema = TagPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
-    print_info(f"Collected {len(tagpack_files)} TagPack files\n")
+    tagpack_files = collect_tagpack_files(args.path)
+    n_tagpacks = len([f for fs in tagpack_files.values() for f in fs])
+    print_info(f"Collected {n_tagpacks} TagPack files\n")
 
     no_passed = 0
     try:
-        for tagpack_file in tagpack_files:
-            tagpack = TagPack.load_from_file('', tagpack_file,
-                                             schema, taxonomies, headerfile_dir)
+        for headerfile_dir, files in tagpack_files.items():
+            for tagpack_file in files:
+                tagpack = TagPack.load_from_file('', tagpack_file, schema,
+                                                 taxonomies, headerfile_dir)
 
-            print(f'{tagpack_file}: ', end='')
+                print(f'{tagpack_file}: ', end='')
 
-            tagpack.validate()
-            print_success("PASSED")
+                tagpack.validate()
+                print_success("PASSED")
 
-            # verify valid blockchain addresses using internal checksum
-            if not args.no_address_validation:
-                tagpack.verify_addresses()
+                # verify valid blockchain addresses using internal checksum
+                if not args.no_address_validation:
+                    tagpack.verify_addresses()
 
-            no_passed += 1
+                no_passed += 1
     except (ValidationError, TagPackFileError) as e:
         print_fail("FAILED", e)
 
-    status = 'fail' if no_passed < len(tagpack_files) else 'success'
+    status = 'fail' if no_passed < n_tagpacks else 'success'
 
     duration = round(time.time() - t0, 2)
     print_line("{}/{} TagPacks passed in {}s"
-               .format(no_passed, len(tagpack_files), duration), status)
+               .format(no_passed, n_tagpacks, duration), status)
 
 
 def insert_tagpack(args):
@@ -283,40 +286,48 @@ def insert_tagpack(args):
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    tagpack_files, headerfile_dir = collect_tagpack_files(args.path)
+    tagpack_files = collect_tagpack_files(args.path)
 
     # resolve backlinks to remote repository and relative paths
-    prepared_packs = [(m, n[0], n[1]) for m, n in
-                      [(a, get_uri_for_tagpack(base_url, a, not args.no_strict_check, args.no_git)) for a in tagpack_files]]
+    scheck, nogit = not args.no_strict_check, args.no_git
+    prepared_packs = [(m, h, n[0], n[1]) for m, h, n in
+                      [(a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))\
+                              for h, fs in tagpack_files.items() for a in fs]]
 
+    prefix = config.get('prefix', '')
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which files are new to the tagstore:")
-        prepared_packs = [(t, u, r) for (t, u, r) in prepared_packs if not tagstore.tp_exists(config.get('prefix'), r)]
+        prepared_packs = [(t, h, u, r) for (t, h, u, r) in prepared_packs \
+                if not tagstore.tp_exists(prefix, r)]
 
-    print_info(f"Collected {len(prepared_packs)} TagPack files\n")
+    n_ppacks = len(prepared_packs)
+    print_info(f"Collected {n_ppacks} TagPack files\n")
 
     no_passed = 0
     no_tags = 0
+    public, force = args.public, args.force
+    supported = tagstore.supported_currencies
     for i, tp in enumerate(sorted(prepared_packs), start=1):
-        tagpack_file, uri, relpath = tp
+        tagpack_file, headerfile_dir, uri, relpath = tp
 
         tagpack = TagPack.load_from_file(uri, tagpack_file,
                                          schema, taxonomies, headerfile_dir)
 
         print(f'{i} {tagpack_file}: ', end='')
         try:
-            tagstore.insert_tagpack(tagpack, args.public, args.force, config.get('prefix', ''), relpath)
+            tagstore.insert_tagpack(tagpack, public, force, prefix, relpath)
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
         except Exception as e:
             print_fail("FAILED", e)
 
-    status = 'fail' if no_passed < len(prepared_packs) else 'success'
+    status = 'fail' if no_passed < n_ppacks else 'success'
 
     duration = round(time.time() - t0, 2)
-    print_line("Processed {}/{} TagPacks with {} Tags in {}s. Only tags for supported currencies {} are inserted."
-               .format(no_passed, len(prepared_packs), no_tags, duration, tagstore.supported_currencies),
+    msg = "Processed {}/{} TagPacks with {} Tags in {}s. "
+    msg += "Only tags for supported currencies {} are inserted."
+    print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported),
                status)
 
 
