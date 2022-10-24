@@ -80,10 +80,9 @@ class TagStore(object):
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
 
-        self.refresh_db()
         self.conn.commit()
 
-    def refresh_db(self):
+    def remove_duplicates(self):
         self.cursor.execute("""
             DELETE
                 FROM tag
@@ -109,6 +108,10 @@ class TagStore(object):
                     WHERE duplicate_count > 1
                 )
             """)
+        self.conn.commit()
+        return self.cursor.rowcount
+
+    def refresh_db(self):
         self.cursor.execute('REFRESH MATERIALIZED VIEW label')
         self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
         self.cursor.execute('REFRESH MATERIALIZED VIEW tag_count_by_cluster')

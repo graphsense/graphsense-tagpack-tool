@@ -161,6 +161,15 @@ To instead write local file paths instead, add the ``--no_git`` command-line par
 
     tagpack-tool insert --no_git --add_new tests/testfiles/
 
+### IMPORTANT: Keeping data consistency after tagpack insertion
+
+After all required tagpacks have been ingested, run
+
+    tagpack-tool db refresh_views
+
+to update all materialized views. 
+Depending on the amount of tags contained in the tagstore, this may take a while.
+
 ## Insert GraphSense cluster mappings into database
 
 The final step after inserting a tagpack is to fetch the corresponding
@@ -178,6 +187,12 @@ To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
     tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
 
+## Remove tag duplicates
+
+Different tagpacks may contain identical tags - the same label and source for a particular address. 
+To remove such redundant information, run
+
+    tagpack db remove_duplicates
 
 ## Connection Pooling for PostgreSQL
 

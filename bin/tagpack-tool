@@ -318,6 +318,7 @@ def insert_tagpack(args):
     print_line("Processed {}/{} TagPacks with {} Tags in {}s. Only tags for supported currencies {} are inserted."
                .format(no_passed, len(prepared_packs), no_tags, duration, tagstore.supported_currencies),
                status)
+    print_info("Don't forget to run 'db refresh_views' soon to keep the database consistent!")
 
 
 def _split_into_chunks(seq, size):
@@ -357,6 +358,13 @@ def insert_cluster_mapping(args, batch_size=5_000):
 def update_db(args):
     tagstore = TagStore(args.url, args.schema)
     tagstore.refresh_db()
+    print_info("All relevant views have been updated.")
+
+
+def remove_duplicates(args):
+    tagstore = TagStore(args.url, args.schema)
+    rows_deleted = tagstore.remove_duplicates()
+    print_info(f'{rows_deleted} duplicate tags have been deleted from the database.')
 
 
 def show_version():
@@ -493,14 +501,25 @@ def main():
     parser_cl.set_defaults(update=False)
     parser_cl.set_defaults(func=insert_cluster_mapping)
 
-    # parser for database statistics refresh
+    # parsers for database housekeeping
     parser_db = subparsers.add_parser("db",
-                            help="refresh database statistics")
-    parser_db.add_argument('--schema',
+                            help="database housekeeping commands")
+
+    pdp = parser_db.add_subparsers(title="DB commands")
+
+    pd = pdp.add_parser("refresh_views", help='update views')
+    pd.add_argument('--schema',
                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                            help="PostgreSQL schema for GraphSense cluster mapping table")
-    parser_db.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
-    parser_db.set_defaults(func=update_db)
+    pd.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    pd.set_defaults(func=update_db)
+
+    pr = pdp.add_parser("remove_duplicates", help='remove duplicate tags')
+    pr.add_argument('--schema',
+                                  default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                                  help="PostgreSQL schema for GraphSense cluster mapping table")
+    pr.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    pr.set_defaults(func=remove_duplicates)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
