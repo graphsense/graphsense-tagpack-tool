@@ -173,6 +173,7 @@ class TagStore(object):
     def calculate_quality_measures(self) -> float:
         self.cursor.execute("CALL calculate_quality()")
         self.cursor.execute("CALL insert_address_quality()")
+        self.conn.commit()
         return self.get_quality_measures()
 
 
