@@ -7,6 +7,7 @@ This repository provides a command line tool for managing [GraphSense TagPacks](
 1. [validating TagPacks against the TagPack schema](#validation)
 2. [handling taxonomies and concepts](#taxonomies)
 3. [ingesting TagPacks and related data into a TagStore](#tagstore)
+4. [calculating the quality of the tags in the TagStore](#quality)
 
 Please note that the last feature requires (installation of) a [Postgresql](https://www.postgresql.org/) database.
 
@@ -159,6 +160,18 @@ For setups which expect many parallel connections to the tagstore it can be a go
     POSTGRES_PASSWORD_TAGSTORE=<PASSWORD>
 
 for example in the your local .env file. Currently, the pg-bounce setup only allows connections with this specific user configured in POSTGRES_USER_TAGSTORE.
+
+## Calculate the quality of the tags in the TagStore <a name="quality"></a>
+
+To assess on the quality of address tags we define a quality measure. For an address, it is calculated as the weighted similarity distance between all pairs of distinct tags assigned to the same address. For instance, an address with a unique tag has a quality equal to 1, while an address with several similar tags has a quality close to 0.
+
+To calculate the quality measure for all the tags in the database, run:
+
+    tagpack-tool quality calculate -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+
+To show the quality measures of all the tags in the database, or those of a specific crypto-currency, run:
+
+    tagpack-tool quality show -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore [--currency [BCH|BTC|ETH|LTC|ZEC]]
 
 ## Working in development / testing mode
 
