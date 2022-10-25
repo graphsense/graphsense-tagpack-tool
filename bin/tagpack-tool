@@ -202,6 +202,51 @@ def ingest_confidence_scores(args):
         print_line("Aborted ingestion", 'fail')
 
 
+def show_quality_measures(args):
+    print_line("Show quality measures")
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.get_quality_measures(args.currency)
+        c = args.currency if args.currency else 'Global '
+        print(f"{c} quality measures:")
+        if qm:
+            print(f"\tCOUNT:  {qm['count']}")
+            print(f"\tAVG:    {qm['avg']}")
+            print(f"\tSTDDEV: {qm['stddev']}")
+        else:
+            print("\tNone")
+
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", 'fail')
+
+
+def calc_quality_measures(args):
+    t0 = time.time()
+    print_line("Calculate quality measures starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.calculate_quality_measures()
+        print(f"Global quality measures:")
+        if qm is not None:
+            print(f"\tCOUNT:  {qm['count']}")
+            print(f"\tAVG:    {qm['avg']}")
+            print(f"\tSTDDEV: {qm['stddev']}")
+        else:
+            print("\tNone")
+
+        duration = round(time.time() - t0, 2)
+        print_line(
+            f"Done in {duration}s",
+            'success')
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", 'fail')
+
+
 def _load_config(cfile):
     if not os.path.isfile(cfile):
         print_line(
@@ -414,29 +459,59 @@ def main():
 
     # parser for confidence command
     parser_s = subparsers.add_parser("confidence",
-                                     help="show confidence scores")
+            help="show confidence scores")
     parser_s.set_defaults(func=list_confidence_scores)
 
     parser_s_subparsers = parser_s.add_subparsers(title='Confidence commands')
 
     # parser for confidence ingest command
-    parser_s_i = parser_s_subparsers.add_parser(
-        'ingest', help='ingest confidence scores into GraphSense')
+    parser_s_i = parser_s_subparsers.add_parser('ingest',
+            help='ingest confidence scores into GraphSense')
     parser_s_i.add_argument("--force", action='store_true',
-                            help='Force re-insertion of confidence scores.')
+            help='Force re-insertion of confidence scores.')
     parser_s_i.add_argument('--schema',
-                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
-                            help="PostgreSQL schema for confidence tables")
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for confidence tables")
     parser_s_i.add_argument('-u', '--url',
-                    help="postgresql://user:password@db_host:port/database")
+            help="postgresql://user:password@db_host:port/database")
     parser_s_i.set_defaults(func=ingest_confidence_scores)
 
     # parser for confidence show command
-    parser_s_s = parser_s_subparsers.add_parser(
-        'show', help='show confidence scores')
+    parser_s_s = parser_s_subparsers.add_parser('show',
+            help='show confidence scores')
     parser_s_s.add_argument('-v', '--verbose', action='store_true',
-                            help="verbose concepts")
+            help="verbose concepts")
     parser_s_s.set_defaults(func=show_confidence_scores)
+
+    # parser for quality measures
+    parser_q = subparsers.add_parser("quality",
+            help="calculate tags quality measures")
+    parser_q.set_defaults(func=show_quality_measures)
+
+    parser_q_subparsers = parser_q.add_subparsers(title='Quality commands')
+
+    # parser for quality measures calculation
+    parser_q_i = parser_q_subparsers.add_parser('calculate',
+            help='calculate quality measures for all tags in the DB')
+    parser_q_i.add_argument('--schema',
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for quality measures tables")
+    parser_q_i.add_argument('-u', '--url',
+            help="postgresql://user:password@db_host:port/database")
+    parser_q_i.set_defaults(func=calc_quality_measures)
+
+    # parser for quality measures show
+    parser_q_s = parser_q_subparsers.add_parser('show',
+            help='show average quality measures')
+    parser_q_s.add_argument('--currency',
+            default='', choices=['BCH', 'BTC', 'ETH', 'LTC', 'ZEC'],
+            help="Show the avg quality measure for a specific crypto-currency")
+    parser_q_s.add_argument('--schema',
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for quality measures tables")
+    parser_q_s.add_argument('-u', '--url',
+            help="postgresql://user:password@db_host:port/database")
+    parser_q_s.set_defaults(func=show_quality_measures)
 
     # parser for config command
     parser_c = subparsers.add_parser("config",

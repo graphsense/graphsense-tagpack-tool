@@ -148,6 +148,33 @@ class TagStore(object):
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
+    def get_quality_measures(self, currency='') -> float:
+        '''
+        This function returns a dict with the quality measures (count, avg, and
+        stddev) for a specific currency, or for all if currency is not
+        specified.
+        '''
+        currency = currency.upper()
+        if currency not in ['', 'BCH', 'BTC', 'ETH', 'LTC', 'ZEC']:
+            raise ValidationError("Currency not supported: {currency}")
+
+        query = 'SELECT COUNT(quality), AVG(quality), STDDEV(quality)'
+        query += ' FROM address_quality'
+        if currency:
+            query += ' WHERE currency=%s'
+            self.cursor.execute(query, (currency,))
+        else:
+            self.cursor.execute(query)
+
+        keys = ['count', 'avg', 'stddev']
+        return {keys[i]:v for row in self.cursor.fetchall() \
+                    for i,v in enumerate(row)}
+
+    def calculate_quality_measures(self) -> float:
+        self.cursor.execute("CALL calculate_quality()")
+        self.cursor.execute("CALL insert_address_quality()")
+        return self.get_quality_measures()
+
 
 def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get('label').lower().strip()
