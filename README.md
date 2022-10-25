@@ -1,18 +1,13 @@
 ![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
 
-# TagPack Management Tool
+# GraphSense TagPack Management Tool
 
-This repository defines a common structure (schema) for TagPacks and provides a
-tool for  
+This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for 
 
-* validating TagPacks
+* validating TagPacks against the TagPack schema
 * handling taxonomies and concepts
 * ingesting TagPacks into a PostgreSQL database, a so-called TagStore
 * ingesting GraphSense cluster mappings  
-
-A TagPack is a collection of attribution tags, which associate cryptoasset addresses or GraphSense entities with real-world actors such as exchanges. 
-
-To learn more about TagPacks, continue [reading here](README_tagpacks.md).
 
 ## Prerequisites: TagStore - PostgreSQL database
 

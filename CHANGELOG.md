@@ -2,6 +2,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [..] unreleased
 ### Changed
+- moved TagPack documentation to [GraphSense public tagpacks repo](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks)
 - removed unnecessary columns in cluster mapping table [#45](https://github.com/graphsense/graphsense-tagpack-tool/issues/45)
 - ETH addresses are normalized to lower-case before inserting them to the db
 ### Added
