@@ -75,6 +75,15 @@ Create the schema and tables in a PostgreSQL instance of your choice
         --password \
         -c "\copy tagstore.confidence(id,label,description,level) from 'tagpack/db/confidence.csv' delimiter ',' csv header;"
 
+### Export .env variables
+
+tagpack-tool is able to use the variables configured in the `.env` file to avoid specifying the parameter `--url` each time it connects to the database. The `--url` parameter will override the environment values if needed. To export the environment variables in `.env` from a linux shell (e.g. bash), first use:
+
+    source .env
+    export $(grep --regexp ^[A-Z] .env | cut -d= -f1)
+
+Then call tagpack-tool.
+
 ### Ingest taxonomies
 
 Insert concepts from a remote taxonomy into database, e.g. abuse:

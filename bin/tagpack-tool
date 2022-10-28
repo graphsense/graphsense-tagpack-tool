@@ -417,25 +417,21 @@ def show_version():
     return "GraphSense TagPack management tool v" + version
 
 
-def read_url_from_env(env='.env'):
+def read_url_from_env():
     '''
-    Read variables from the .env file, and build a postgres URL.
-    If the file doesn't exist, or if the URL cannot be built, return None.
+    Read environment variables from the OS, and build a postgresql connection
+    URL. If the URL cannot be built, return None and an error message.
     '''
+    ev = dict(os.environ)
     try:
-        with open(env, 'r') as f:
-            ev = {l.split('=')[0].strip(): l.split('=')[1].strip() \
-                    for l in f.readlines() \
-                        if '=' in l and not l.startswith('#')}
         url = f"postgresql://{ev['POSTGRES_USER']}:{ev['POSTGRES_PASSWORD']}"
         url += f"@{ev['POSTGRES_HOST']}:5432/{ev['POSTGRES_DB']}"
         msg = ''
-    except FileNotFoundError as e:
-        msg = f"Unable to read postgresql URL from file {env}"
-        url = None
     except KeyError as e:
-        msg = f"Unable to build postgresql URL from file {env}:"
-        msg += f" {e} parameter is missing"
+        miss = set([f"POSTGRES_{a}" for a in ['USER','PASSWORD','HOST','DB']])
+        miss -= set(ev.keys())
+        msg = f"Unable to build postgresql URL from environmnet variables: "
+        msg += ', '.join(miss) + ' not found.'
         url = None
     return url, msg
 
