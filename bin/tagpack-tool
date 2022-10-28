@@ -203,6 +203,51 @@ def ingest_confidence_scores(args):
         print_line("Aborted ingestion", 'fail')
 
 
+def show_quality_measures(args):
+    print_line("Show quality measures")
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.get_quality_measures(args.currency)
+        c = args.currency if args.currency else 'Global '
+        print(f"{c} quality measures:")
+        if qm:
+            print(f"\tCOUNT:  {qm['count']}")
+            print(f"\tAVG:    {qm['avg']}")
+            print(f"\tSTDDEV: {qm['stddev']}")
+        else:
+            print("\tNone")
+
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", 'fail')
+
+
+def calc_quality_measures(args):
+    t0 = time.time()
+    print_line("Calculate quality measures starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.calculate_quality_measures()
+        print(f"Global quality measures:")
+        if qm is not None:
+            print(f"\tCOUNT:  {qm['count']}")
+            print(f"\tAVG:    {qm['avg']}")
+            print(f"\tSTDDEV: {qm['stddev']}")
+        else:
+            print("\tNone")
+
+        duration = round(time.time() - t0, 2)
+        print_line(
+            f"Done in {duration}s",
+            'success')
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", 'fail')
+
+
 def _load_config(cfile):
     if not os.path.isfile(cfile):
         print_line(
@@ -329,6 +374,7 @@ def insert_tagpack(args):
     msg += "Only tags for supported currencies {} are inserted."
     print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported),
                status)
+    print_info("Don't forget to run 'db refresh_views' soon to keep the database consistent!")
 
 
 def _split_into_chunks(seq, size):
@@ -368,6 +414,13 @@ def insert_cluster_mapping(args, batch_size=5_000):
 def update_db(args):
     tagstore = TagStore(args.url, args.schema)
     tagstore.refresh_db()
+    print_info("All relevant views have been updated.")
+
+
+def remove_duplicates(args):
+    tagstore = TagStore(args.url, args.schema)
+    rows_deleted = tagstore.remove_duplicates()
+    print_info(f'{rows_deleted} duplicate tags have been deleted from the database.')
 
 
 def show_version():
@@ -417,29 +470,59 @@ def main():
 
     # parser for confidence command
     parser_s = subparsers.add_parser("confidence",
-                                     help="show confidence scores")
+            help="show confidence scores")
     parser_s.set_defaults(func=list_confidence_scores)
 
     parser_s_subparsers = parser_s.add_subparsers(title='Confidence commands')
 
     # parser for confidence ingest command
-    parser_s_i = parser_s_subparsers.add_parser(
-        'ingest', help='ingest confidence scores into GraphSense')
+    parser_s_i = parser_s_subparsers.add_parser('ingest',
+            help='ingest confidence scores into GraphSense')
     parser_s_i.add_argument("--force", action='store_true',
-                            help='Force re-insertion of confidence scores.')
+            help='Force re-insertion of confidence scores.')
     parser_s_i.add_argument('--schema',
-                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
-                            help="PostgreSQL schema for confidence tables")
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for confidence tables")
     parser_s_i.add_argument('-u', '--url',
-                    help="postgresql://user:password@db_host:port/database")
+            help="postgresql://user:password@db_host:port/database")
     parser_s_i.set_defaults(func=ingest_confidence_scores)
 
     # parser for confidence show command
-    parser_s_s = parser_s_subparsers.add_parser(
-        'show', help='show confidence scores')
+    parser_s_s = parser_s_subparsers.add_parser('show',
+            help='show confidence scores')
     parser_s_s.add_argument('-v', '--verbose', action='store_true',
-                            help="verbose concepts")
+            help="verbose concepts")
     parser_s_s.set_defaults(func=show_confidence_scores)
+
+    # parser for quality measures
+    parser_q = subparsers.add_parser("quality",
+            help="calculate tags quality measures")
+    parser_q.set_defaults(func=show_quality_measures)
+
+    parser_q_subparsers = parser_q.add_subparsers(title='Quality commands')
+
+    # parser for quality measures calculation
+    parser_q_i = parser_q_subparsers.add_parser('calculate',
+            help='calculate quality measures for all tags in the DB')
+    parser_q_i.add_argument('--schema',
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for quality measures tables")
+    parser_q_i.add_argument('-u', '--url',
+            help="postgresql://user:password@db_host:port/database")
+    parser_q_i.set_defaults(func=calc_quality_measures)
+
+    # parser for quality measures show
+    parser_q_s = parser_q_subparsers.add_parser('show',
+            help='show average quality measures')
+    parser_q_s.add_argument('--currency',
+            default='', choices=['BCH', 'BTC', 'ETH', 'LTC', 'ZEC'],
+            help="Show the avg quality measure for a specific crypto-currency")
+    parser_q_s.add_argument('--schema',
+            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for quality measures tables")
+    parser_q_s.add_argument('-u', '--url',
+            help="postgresql://user:password@db_host:port/database")
+    parser_q_s.set_defaults(func=show_quality_measures)
 
     # parser for config command
     parser_c = subparsers.add_parser("config",
@@ -504,14 +587,25 @@ def main():
     parser_cl.set_defaults(update=False)
     parser_cl.set_defaults(func=insert_cluster_mapping)
 
-    # parser for database statistics refresh
+    # parsers for database housekeeping
     parser_db = subparsers.add_parser("db",
-                            help="refresh database statistics")
-    parser_db.add_argument('--schema',
+                            help="database housekeeping commands")
+
+    pdp = parser_db.add_subparsers(title="DB commands")
+
+    pd = pdp.add_parser("refresh_views", help='update views')
+    pd.add_argument('--schema',
                            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
                            help="PostgreSQL schema for GraphSense cluster mapping table")
-    parser_db.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
-    parser_db.set_defaults(func=update_db)
+    pd.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    pd.set_defaults(func=update_db)
+
+    pr = pdp.add_parser("remove_duplicates", help='remove duplicate tags')
+    pr.add_argument('--schema',
+                                  default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+                                  help="PostgreSQL schema for GraphSense cluster mapping table")
+    pr.add_argument('-u', '--url', help="postgresql://user:password@db_host:port/database")
+    pr.set_defaults(func=remove_duplicates)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
