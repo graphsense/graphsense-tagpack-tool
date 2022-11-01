@@ -313,6 +313,7 @@ CREATE PROCEDURE insert_address_quality()
 LANGUAGE PLPGSQL
 AS $$
 BEGIN
+TRUNCATE address_quality;
 INSERT INTO address_quality
 	(currency, address, n_tags, n_dif_tags, total_pairs, q1, q2, q3, q4, quality)
 SELECT
