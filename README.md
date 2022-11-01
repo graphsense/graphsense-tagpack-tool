@@ -82,18 +82,25 @@ tagpack-tool is able to use the variables configured in the `.env` file to avoid
     source .env
     export $(grep --regexp ^[A-Z] .env | cut -d= -f1)
 
+Or just export each variable using:
+
+    export POSTGRES_USER=VALUE
+    export POSTGRES_PASSWORD=VALUE
+    export POSTGRES_HOST=VALUE
+    export POSTGRES_DB=VALUE
+
 Then call tagpack-tool.
 
 ### Ingest taxonomies
 
 Insert concepts from a remote taxonomy into database, e.g. abuse:
 
-    tagpack-tool taxonomy insert abuse -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
-    tagpack-tool taxonomy insert entity -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool taxonomy insert abuse
+    tagpack-tool taxonomy insert entity
 
 resp. to insert all configured taxonomies at once, simply omit taxonomy name
 
-    tagpack-tool taxonomy insert -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool taxonomy insert
 
 ### Ingest TagPacks
 
@@ -139,11 +146,11 @@ suit your Graphsense setup.
 Then fetch the cluster mappings from your Graphsense instance and insert them
 into the tagstore database:  
     
-    tagpack-tool cluster -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool cluster -d $CASSANDRA_HOST -f ks_map.json
 
 To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
-    tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json
 
 ### Remove duplicate tags
 
@@ -176,11 +183,11 @@ To assess on the quality of address tags we define a quality measure. For an add
 
 To calculate the quality measure for all the tags in the database, run:
 
-    tagpack-tool quality calculate -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore
+    tagpack-tool quality calculate
 
 To show the quality measures of all the tags in the database, or those of a specific crypto-currency, run:
 
-    tagpack-tool quality show -u postgresql://$USER:$PASSWORD@$DBHOST:$DBPORT/tagstore [--currency [BCH|BTC|ETH|LTC|ZEC]]
+    tagpack-tool quality show [--currency [BCH|BTC|ETH|LTC|ZEC]]
 
 ## Working in development / testing mode
 
