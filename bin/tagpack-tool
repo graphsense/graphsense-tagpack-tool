@@ -635,7 +635,7 @@ def main():
         sys.exit(1)
 
     args = parser.parse_args()
-    if not args.url:
+    if hasattr(args, 'url') and not args.url:
         print_warn(url_msg)
         parser.error(f"No postgresql URL connection was provided. Exiting.")
 
