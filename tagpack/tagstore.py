@@ -22,23 +22,29 @@ class TagStore(object):
         self.existing_packs = None
 
     def insert_taxonomy(self, taxonomy):
-        self.cursor.execute("""INSERT INTO taxonomy (id, source, description) VALUES (%s, %s, %s)""", (taxonomy.key, taxonomy.uri, f"Imported at {datetime.now().isoformat()}"))
+        if taxonomy.key == 'confidence':
+            self.insert_confidence_scores(taxonomy)
+            return
+
+        statement = "INSERT INTO taxonomy (id, source, description) "
+        statement += "VALUES (%s, %s, %s)"
+        desc = f"Imported at {datetime.now().isoformat()}"
+        v = (taxonomy.key, taxonomy.uri, desc)
+        self.cursor.execute(statement, v)
 
         for c in taxonomy.concepts:
-            self.cursor.execute("""INSERT INTO concept (id, label, taxonomy, source, description) VALUES (%s, %s, %s, %s, %s)""", (c.id, c.label, c.taxonomy.key, c.uri, c.description))
+            statement = "INSERT INTO concept (id, label, taxonomy, source, "
+            statement += "description) VALUES (%s, %s, %s, %s, %s)"
+            v = (c.id, c.label, c.taxonomy.key, c.uri, c.description)
+            self.cursor.execute(statement, v)
 
         self.conn.commit()
 
-    def insert_confidence_scores(self, confidence, force):
+    def insert_confidence_scores(self, confidence):
         statement = "INSERT INTO confidence (id, label, description, level)"
         statement += " VALUES (%s, %s, %s, %s)"
 
-        # TODO What to do with foreign key restrictions?
-#        if force:
-#            print(f"evicting and re-inserting all confidence scores")
-#            self.cursor.execute("DELETE FROM confidence")
-
-        for c in confidence.scores:
+        for c in confidence.concepts:
             values = (c.id, c.label, c.description, c.level)
             self.cursor.execute(statement, values)
 

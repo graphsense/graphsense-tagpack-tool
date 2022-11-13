@@ -29,10 +29,8 @@ TAXONOMY_URL = 'https://graphsense.github.io'
 DEFAULT_CONFIG = {
     'taxonomies': {
         'entity': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv',
-        'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv'
-    },
-    'confidence': {
-        'scores': 'tagpack/db/confidence.csv'
+        'abuse': f'{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv',
+        'confidence': 'tagpack/db/confidence.csv'
     }
 }
 
@@ -40,32 +38,27 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
-def _remote_load_taxonomies(config):
+def _load_taxonomies(config):
     if 'taxonomies' not in config:
         return None
     taxonomies = {}
     for key in config['taxonomies']:
-        taxonomy = _remote_load_taxonomy(config, key)
+        remote = not (key == 'confidence')
+        taxonomy = _load_taxonomy(config, key, remote=remote)
         taxonomies[key] = taxonomy
     return taxonomies
 
 
-def _remote_load_taxonomy(config, key):
+def _load_taxonomy(config, key, remote=False):
     if 'taxonomies' not in config:
         return None
     uri = config['taxonomies'][key]
     taxonomy = Taxonomy(key, uri)
-    taxonomy.load_from_remote()
+    if remote:
+        taxonomy.load_from_remote()
+    else:
+        taxonomy.load_from_local()
     return taxonomy
-
-
-def _local_load_confidence_scores(config):
-    if 'confidence' not in config:
-        return None
-    path = config['confidence']['scores']
-    confidence = Confidence(path)
-    confidence.load_from_local()
-    return confidence
 
 
 def list_taxonomies(args=None):
@@ -83,19 +76,25 @@ def list_taxonomies(args=None):
         print_line(f"{count} configured taxonomies", 'success')
 
 
-def show_taxonomy_concepts(args):
+def show_taxonomy_concepts(args, remote=False):
     config = _load_config(args.config)
 
     if 'taxonomies' not in config:
         print_line("No taxonomies configured", 'fail')
         return
+
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    print("Remote URI: ", config['taxonomies'][args.taxonomy], "\n")
-    taxonomy = _remote_load_taxonomy(config, args.taxonomy)
+    remote = not (args.taxonomy == 'confidence')
+    uri = config['taxonomies'][args.taxonomy]
+    print(f"{'Remote' if remote else 'Local'} URI: {uri}\n")
+    taxonomy = _load_taxonomy(config, args.taxonomy, remote=remote)
     if args.verbose:
-        headers = ['Id', 'Label', 'Uri', 'Description']
-        table = [[c.id, c.label, c.uri, c.description]
+        headers = ['Id', 'Label', 'Level', 'Uri', 'Description']
+        table = [[c.id, c.label, c.level, c.uri, c.description]
                  for c in taxonomy.concepts]
+    elif args.taxonomy == 'confidence':
+        headers = ['Level', 'Label']
+        table = [[c.level, c.label] for c in taxonomy.concepts]
     else:
         headers = ['Id', 'Label']
         table = [[c.id, c.label] for c in taxonomy.concepts]
@@ -104,7 +103,7 @@ def show_taxonomy_concepts(args):
     print_line(f"{len(taxonomy.concepts)} taxonomy concepts", 'success')
 
 
-def insert_taxonomy(args):
+def insert_taxonomy(args, remote=False):
     config = _load_config(args.config)
 
     if 'taxonomies' not in config:
@@ -124,7 +123,9 @@ def insert_taxonomy(args):
     for t in tax_keys:
         print(f"Taxonomy: {t}")
         try:
-            taxonomy = _remote_load_taxonomy(config, t)
+            # TODO this should change when having local taxonomies
+            remote = not (t == 'confidence')
+            taxonomy = _load_taxonomy(config, t, remote=remote)
             tagstore.insert_taxonomy(taxonomy)
 
             print(f"{taxonomy.key} | {taxonomy.uri}:", end=' ')
@@ -137,71 +138,6 @@ def insert_taxonomy(args):
         except Exception as e:
             print_fail(e)
             print_line("Aborted insert", 'fail')
-
-
-def list_confidence_scores(args):
-    config = _load_config(args.config)
-
-    print_line("Show configured confidence scores")
-    print_line(f"Configuration: {args.config}", 'info')
-    count = 0
-    if 'confidence' not in config:
-        print_line("No confidence scores configured", 'fail')
-    else:
-        for key, value in config['confidence'].items():
-            print_line(value)
-            count += 1
-        print_line(f"{count} configured confidence scores", 'success')
-
-
-def show_confidence_scores(args):
-    config = _load_config(args.config)
-
-    if 'confidence' not in config:
-        print_line("No confidence scores configured", 'fail')
-        return
-
-    print_line("Showing confidence scores")
-    print("Local path: ", config['confidence']['scores'], "\n")
-    confidence = _local_load_confidence_scores(config)
-    if args.verbose:
-        headers = ['id', 'label', 'description', 'level']
-        table = [[c.id, c.label, c.description, c.level]
-                 for c in confidence.scores]
-    else:
-        headers = ['Level', 'Label']
-        table = [[c.level, c.label] for c in confidence.scores]
-
-    print(tabulate(table, headers=headers))
-    print_line(f"{len(confidence.scores)} confidence scores", 'success')
-
-
-def ingest_confidence_scores(args):
-    config = _load_config(args.config)
-
-    if 'confidence' not in config:
-        print_line("No confidence scores configured", 'fail')
-        return
-
-    t0 = time.time()
-    print_line("Confidence scores ingest starts")
-
-    tagstore = TagStore(args.url, args.schema)
-
-    try:
-        confidence = _local_load_confidence_scores(config)
-        tagstore.insert_confidence_scores(confidence, args.force)
-
-        print(f"{confidence.path}:", end=' ')
-        print_success("INSERTED")
-
-        duration = round(time.time() - t0, 2)
-        print_line(
-            f"Inserted {len(confidence.scores)} scores in {duration}s",
-            'success')
-    except Exception as e:
-        print_fail(e)
-        print_line("Aborted ingestion", 'fail')
 
 
 def show_quality_measures(args):
@@ -272,7 +208,7 @@ def validate_tagpack(args):
     print_line("TagPack validation starts")
     print(f"Path: {args.path}")
 
-    taxonomies = _remote_load_taxonomies(config)
+    taxonomies = _load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
@@ -328,7 +264,7 @@ def insert_tagpack(args):
     print_info(f"Loaded TagPack schema definition: {schema.definition}")
 
     config = _load_config(args.config)
-    taxonomies = _remote_load_taxonomies(config)
+    taxonomies = _load_taxonomies(config)
     taxonomy_keys = [key for key in taxonomies.keys()]
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
@@ -531,7 +467,7 @@ def main():
     pxp_s = pxp.add_parser('show',
             help='show taxonomy concepts')
     pxp_s.add_argument('taxonomy', metavar='TAXONOMY_KEY',
-            choices=['abuse', 'entity'],
+            choices=['abuse', 'entity', 'confidence'],
             help='the selected taxonomy')
     pxp_s.add_argument('-v', '--verbose', action='store_true',
             help="verbose concepts")
@@ -541,7 +477,7 @@ def main():
     pxp_i = pxp.add_parser('insert',
             help='insert taxonomy into GraphSense')
     pxp_i.add_argument('taxonomy', metavar='TAXONOMY_KEY', nargs='?',
-            choices=['abuse', 'entity'], default=None,
+            choices=['abuse', 'entity', 'confidence'], default=None,
             help='the selected taxonomy')
     pxp_i.add_argument('--schema',
             default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
@@ -551,31 +487,31 @@ def main():
     pxp_i.set_defaults(func=insert_taxonomy, url=def_url)
 
 
-    # parser for confidence command
-    parser_s = subparsers.add_parser("confidence",
-            help="show confidence scores")
-    parser_s.set_defaults(func=list_confidence_scores)
-
-    pcp = parser_s.add_subparsers(title='Confidence commands')
-
-    # parser for confidence ingest command
-    pcp_i = pcp.add_parser('ingest',
-            help='ingest confidence scores into GraphSense')
-    pcp_i.add_argument("--force", action='store_true',
-            help='Force re-insertion of confidence scores.')
-    pcp_i.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
-            help="PostgreSQL schema for confidence tables")
-    pcp_i.add_argument('-u', '--url',
-            help="postgresql://user:password@db_host:port/database")
-    pcp_i.set_defaults(func=ingest_confidence_scores, url=def_url)
-
-    # parser for confidence show command
-    pcp_s = pcp.add_parser('show',
-            help='show confidence scores')
-    pcp_s.add_argument('-v', '--verbose', action='store_true',
-            help="verbose concepts")
-    pcp_s.set_defaults(func=show_confidence_scores)
+#    # parser for confidence command
+#    parser_s = subparsers.add_parser("confidence",
+#            help="show confidence scores")
+#    parser_s.set_defaults(func=list_confidence_scores)
+#
+#    pcp = parser_s.add_subparsers(title='Confidence commands')
+#
+#    # parser for confidence insert command
+#    pcp_i = pcp.add_parser('insert',
+#            help='insert confidence scores into GraphSense')
+#    pcp_i.add_argument("--force", action='store_true',
+#            help='Force re-insertion of confidence scores.')
+#    pcp_i.add_argument('--schema',
+#            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+#            help="PostgreSQL schema for confidence tables")
+#    pcp_i.add_argument('-u', '--url',
+#            help="postgresql://user:password@db_host:port/database")
+#    pcp_i.set_defaults(func=ingest_confidence_scores, url=def_url)
+#
+#    # parser for confidence show command
+#    pcp_s = pcp.add_parser('show',
+#            help='show confidence scores')
+#    pcp_s.add_argument('-v', '--verbose', action='store_true',
+#            help="verbose concepts")
+#    pcp_s.set_defaults(func=show_confidence_scores)
 
 
     # parsers for database housekeeping
