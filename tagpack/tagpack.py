@@ -63,11 +63,14 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     repo = Repo(repo_path)
 
     if strict_check and repo.is_dirty():
-        print_info(f"Local modifications in {repo.common_dir} detected, please push first.")
+        msg = f"Local modifications in {repo.common_dir} detected, please "
+        msg += "push first."
+        print_info(msg)
         sys.exit(0)
 
     if len(repo.remotes) > 1:
-        raise ValidationError("Multiple remotes present, cannot decide on backlink. ")
+        msg = "Multiple remotes present, cannot decide on backlink."
+        raise ValidationError(msg)
 
     rel_path = str(pathlib.Path(tagpack_file).relative_to(repo_path))
 
@@ -91,7 +94,7 @@ def collect_tagpack_files(path):
         files = set(glob.glob(path + '/**/*.yaml', recursive=True))
     elif os.path.isfile(path):  # validate single file
         files = set([path])
-    else: # TODO Error! Should we validate the path within __main__?
+    else:   # TODO Error! Should we validate the path within __main__?
         print_warn(f"Not a valid path: {path}")
         return {}
 
@@ -107,8 +110,11 @@ def collect_tagpack_files(path):
     for f in hfiles:
         header = os.path.dirname(f)
         # Select files in the same path than header, subdirs only
-        match_files = set([mfile for mfile in files if (header in mfile \
-                and len(mfile.split(os.sep)) > len(f.split(os.sep)))])
+        match_files = set(
+                [mfile for mfile in files if (
+                    header in mfile
+                    and len(mfile.split(os.sep)) > len(f.split(os.sep))
+                )])
         tagpack_files[header] = match_files
         files -= match_files
 
@@ -120,7 +126,7 @@ def collect_tagpack_files(path):
     for t, fs in tagpack_files.items():
         if not fs:
             msj = f"\tThe header file in {os.path.realpath(t)} won't be "
-            msj += f"included in any tagpack"
+            msj += "included in any tagpack"
             print_warn(msj)
 
     tagpack_files = {k: v for k, v in tagpack_files.items() if v}
@@ -151,11 +157,13 @@ class TagPack(object):
         self._unique_tags = []
         self._duplicates = []
 
-    verifiable_currencies = [a.ticker \
+    verifiable_currencies = [
+            a.ticker
             for a in coinaddrvalidator.currency.Currencies.instances.values()]
 
     def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
-        YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=header_dir)
+        YamlIncludeConstructor.add_to_loader_class(
+                loader_class=yaml.FullLoader, base_dir=header_dir)
 
         if not os.path.isfile(pathname):
             sys.exit("This program requires {} to be a file"
@@ -212,8 +220,11 @@ class TagPack(object):
 
         for tag in self.tags:
             # check if duplicate entry
-            t = tuple([str(tag.all_fields.get(k)).lower() if k in tag.all_fields.keys() else ''
-                       for k in ['address', 'currency', 'label', 'source']])
+            t = tuple(
+                    [str(tag.all_fields.get(k)).lower()
+                        if k in tag.all_fields.keys() else ''
+                        for k in ['address', 'currency', 'label', 'source']]
+                )
             if t in seen:
                 duplicates.append(t)
             else:
@@ -251,6 +262,9 @@ class TagPack(object):
             raise ValidationError("no tags found.")
 
         # iterate over all tags, check types, taxonomy and mandatory use
+        e2 = "Mandatory tag field {} missing in {}"
+        e3 = "Field {} not allowed in {}"
+        e4 = "Value of body field {} must not be empty (None) in {}"
         for tag in self.get_unique_tags():
             # check if mandatory tag fields are defined
             if not isinstance(tag, Tag):
@@ -259,17 +273,16 @@ class TagPack(object):
             for schema_field in self.schema.mandatory_tag_fields:
                 if schema_field not in tag.explicit_fields and \
                    schema_field not in self.tag_fields:
-                    raise ValidationError(f"Mandatory tag field {schema_field} missing in {tag} ")
+                    raise ValidationError(e2.format(schema_field, tag))
 
             for field, value in tag.explicit_fields.items():
                 # check whether field is defined as body field
                 if field not in self.schema.tag_fields:
-                    raise ValidationError(f"Field {field} not allowed in {tag} ")
+                    raise ValidationError(e3.format(field, tag))
 
                 # check for None values
                 if value is None:
-                    raise ValidationError(
-                        f"Value of body field {field} must not be empty (None) in {tag}")
+                    raise ValidationError(e4.format(field, tag))
 
                 # check types and taxomomy use
                 try:
@@ -279,9 +292,10 @@ class TagPack(object):
                     raise ValidationError(f'{e} in {tag}')
 
         if self._duplicates:
-            print_info(f"{len(self._duplicates)} duplicate(s) found, starting with {self._duplicates[0]}\n")
+            msg = f"{len(self._duplicates)} duplicate(s) found, starting "
+            msg += f"with {self._duplicates[0]}\n"
+            print_info(msg)
         return True
-
 
     def verify_addresses(self):
         """
@@ -292,9 +306,8 @@ class TagPack(object):
         """
 
         unsupported = defaultdict(set)
-
+        msg = "\tPossible invalid {} address: {}"
         for tag in self.get_unique_tags():
-
             currency = tag.all_fields.get('currency', '').lower()
             cupper = currency.upper()
             address = tag.all_fields.get('address')
@@ -303,7 +316,7 @@ class TagPack(object):
             elif currency in self.verifiable_currencies:
                 v = coinaddrvalidator.validate(currency, address)
                 if not v.valid:
-                    print_warn(f"\tPossible invalid {cupper} address: {address}")
+                    print_warn(msg.format(cupper, address))
             else:
                 unsupported[cupper].add(address)
 
@@ -311,7 +324,6 @@ class TagPack(object):
             print_warn(f"\tAddress verification is not supported for {c}:")
             for a in sorted(addrs):
                 print_warn(f"\t\t{a}")
-
 
     def to_json(self):
         """Returns a JSON representation of a TagPack's header"""
