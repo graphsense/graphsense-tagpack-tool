@@ -20,7 +20,6 @@ from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files,\
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
-from tagpack.confidence import Confidence
 
 CONFIG_FILE = "config.yaml"
 
@@ -168,7 +167,7 @@ def calc_quality_measures(args):
 
     try:
         qm = tagstore.calculate_quality_measures()
-        print(f"Global quality measures:")
+        print("Global quality measures:")
         if qm is not None:
             print(f"\tCOUNT:  {qm['count']}")
             print(f"\tAVG:    {qm['avg']}")
@@ -273,14 +272,16 @@ def insert_tagpack(args):
     # resolve backlinks to remote repository and relative paths
     scheck, nogit = not args.no_strict_check, args.no_git
     prepared_packs = [(m, h, n[0], n[1]) for m, h, n in
-                      [(a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))\
-                              for h, fs in tagpack_files.items() for a in fs]]
+                      [(a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))
+                      for h, fs in tagpack_files.items() for a in fs]]
 
     prefix = config.get('prefix', '')
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which files are new to the tagstore:")
-        prepared_packs = [(t, h, u, r) for (t, h, u, r) in prepared_packs \
-                if not tagstore.tp_exists(prefix, r)]
+        prepared_packs = [
+            (t, h, u, r) for (t, h, u, r) in prepared_packs
+            if not tagstore.tp_exists(prefix, r)
+        ]
 
     n_ppacks = len(prepared_packs)
     print_info(f"Collected {n_ppacks} TagPack files\n")
@@ -311,7 +312,9 @@ def insert_tagpack(args):
     msg += "Only tags for supported currencies {} are inserted."
     print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported),
                status)
-    print_info("Don't forget to run 'db refresh_views' soon to keep the database consistent!")
+    msg = "Don't forget to run 'db refresh_views' soon to keep the database"
+    msg += " consistent!"
+    print_info(msg)
 
 
 def _split_into_chunks(seq, size):
@@ -320,7 +323,8 @@ def _split_into_chunks(seq, size):
 
 def insert_cluster_mapping(args, batch_size=5_000):
     tagstore = TagStore(args.url, args.schema)
-    df = pd.DataFrame(tagstore.get_addresses(args.update), columns=['address', 'currency'])
+    df = pd.DataFrame(tagstore.get_addresses(args.update),
+                      columns=['address', 'currency'])
 
     ks_mapping = json.load(open(args.ks_file))
     gs = GraphSense(args.db_nodes, ks_mapping)
@@ -338,13 +342,17 @@ def insert_cluster_mapping(args, batch_size=5_000):
                     tagstore.insert_cluster_mappings(clusters)
                     mappings_count += len(clusters)
 
-                print_success(f"INSERTED/UPDATED {mappings_count} {currency} cluster mappings")
+                msg = f"INSERTED/UPDATED {mappings_count} {currency} cluster"
+                msg += " mappings"
+                print_success(msg)
                 processed_currencies.append(currency)
             except Exception as e:
                 print_fail("FAILED", e)
 
     duration = round(time.time() - t0, 2)
-    print_line(f"Inserted {'missing' if not args.update else 'all'} cluster mappings for {processed_currencies} in {duration}s", "success")
+    msg = f"Inserted {'missing' if not args.update else 'all'} cluster "
+    msg += f"mappings for {processed_currencies} in {duration}s"
+    print_line(msg, "success")
     tagstore.finish_mappings_update(gs.ks_map.keys())
 
 
@@ -357,7 +365,8 @@ def update_db(args):
 def remove_duplicates(args):
     tagstore = TagStore(args.url, args.schema)
     rows_deleted = tagstore.remove_duplicates()
-    print_info(f'{rows_deleted} duplicate tags have been deleted from the database.')
+    msg = f"{rows_deleted} duplicate tags have been deleted from the database."
+    print_info(msg)
 
 
 def show_version():
@@ -374,10 +383,11 @@ def read_url_from_env():
         url = f"postgresql://{ev['POSTGRES_USER']}:{ev['POSTGRES_PASSWORD']}"
         url += f"@{ev['POSTGRES_HOST']}:5432/{ev['POSTGRES_DB']}"
         msg = ''
-    except KeyError as e:
-        miss = set([f"POSTGRES_{a}" for a in ['USER','PASSWORD','HOST','DB']])
+    except KeyError:
+        fields = ['USER', 'PASSWORD', 'HOST', 'DB']
+        miss = set([f"POSTGRES_{a}" for a in fields])
         miss -= set(ev.keys())
-        msg = f"Unable to build postgresql URL from environmnet variables: "
+        msg = "Unable to build postgresql URL from environmnet variables: "
         msg += ', '.join(miss) + ' not found.'
         url = None
     return url, msg
@@ -398,196 +408,189 @@ def main():
 
     subparsers = parser.add_subparsers(title='Commands')
 
-
     # parser for config command
-    parser_c = subparsers.add_parser("config",
-            help="show TagPack Repository config")
-    parser_c.add_argument('-v', '--verbose', action='store_true',
+    parser_c = subparsers.add_parser(
+            "config", help="show TagPack Repository config")
+    parser_c.add_argument(
+            '-v', '--verbose', action='store_true',
             help='verbose configuration')
     parser_c.set_defaults(func=show_config)
 
-
     # parsers for tagpack command
-    parser_tp = subparsers.add_parser("tagpack",
-            help="tagpack commands")
+    parser_tp = subparsers.add_parser(
+            "tagpack", help="tagpack commands")
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
 
     # parser for validate command
     ptp_v = ptp.add_parser("validate", help="validate TagPacks")
-    ptp_v.add_argument('path', nargs='?', metavar='PATH', default=os.getcwd(),
-            help='TagPacks file or folder root path (current folder by \
+    ptp_v.add_argument(
+            'path', nargs='?', metavar='PATH', default=os.getcwd(),
+            help='TagPack file or folder root path (current folder by \
                     default)')
-    ptp_v.add_argument("--no_address_validation", action='store_true',
+    ptp_v.add_argument(
+            "--no_address_validation", action='store_true',
             help='Disables checksum validation of addresses')
     ptp_v.set_defaults(func=validate_tagpack)
 
     # parser for insert command
     ptp_i = ptp.add_parser("insert", help="insert TagPacks")
-    ptp_i.add_argument('path', nargs='?', metavar='PATH', default=os.getcwd(),
+    ptp_i.add_argument(
+            'path', nargs='?', metavar='PATH', default=os.getcwd(),
             help='TagPacks file or folder root path')
-    ptp_i.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    ptp_i.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for tagpack tables")
-    ptp_i.add_argument('-u', '--url',
+    ptp_i.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
-    ptp_i.add_argument('-b', '--batch_size', nargs='?', type=int, default=1000,
+    ptp_i.add_argument(
+            '-b', '--batch_size', nargs='?', type=int, default=1000,
             help='batch size for insert)')
-    ptp_i.add_argument("--public", action='store_true',
-            help='By default, tagpacks are declared private in the database. '
-                    'Use this switch to declare them public.')
-    ptp_i.add_argument("--force", action='store_true',
+    ptp_i.add_argument(
+            "--public", action='store_true',
+            help='By default, tagpacks are declared private in the database.\
+                    Use this switch to declare them public.')
+    ptp_i.add_argument(
+            "--force", action='store_true',
             help='By default, tagpack insertion stops when an already ingested\
                     tagpack exists in the database. Use this switch to force \
                     re-insertion.')
-    ptp_i.add_argument("--add_new", action='store_true',
+    ptp_i.add_argument(
+            "--add_new", action='store_true',
             help='By default, tagpack insertion stops when an already ingested\
                     tagpack exists in the database. Use this switch to ingest \
                     new tagpacks while skipping over existing ones.')
-    ptp_i.add_argument("--no_strict_check", action='store_true',
+    ptp_i.add_argument(
+            "--no_strict_check", action='store_true',
             help='Disables check for local modifications in git repository')
-    ptp_i.add_argument("--no_git", action='store_true',
+    ptp_i.add_argument(
+            "--no_git", action='store_true',
             help='Disables check for local git repository')
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 
-
     # parser for taxonomy command
-    parser_t = subparsers.add_parser("taxonomy",
-            help="taxonomy commands")
+    parser_t = subparsers.add_parser(
+            "taxonomy", help="taxonomy commands")
     parser_t.set_defaults(func=list_taxonomies)
 
     pxp = parser_t.add_subparsers(title='Taxonomy commands')
 
     # parser for taxonomy list command
-    pxp_l = pxp.add_parser('list',
-            help='list taxonomy concepts')
+    pxp_l = pxp.add_parser(
+            'list', help='list taxonomy concepts')
     pxp_l.set_defaults(func=list_taxonomies)
 
     # parser for taxonomy show command
-    pxp_s = pxp.add_parser('show',
-            help='show taxonomy concepts')
-    pxp_s.add_argument('taxonomy', metavar='TAXONOMY_KEY',
+    pxp_s = pxp.add_parser(
+            'show', help='show taxonomy concepts')
+    pxp_s.add_argument(
+            'taxonomy', metavar='TAXONOMY_KEY',
             choices=['abuse', 'entity', 'confidence'],
             help='the selected taxonomy')
-    pxp_s.add_argument('-v', '--verbose', action='store_true',
+    pxp_s.add_argument(
+            '-v', '--verbose', action='store_true',
             help="verbose concepts")
     pxp_s.set_defaults(func=show_taxonomy_concepts)
 
     # parser for taxonomy insert command
-    pxp_i = pxp.add_parser('insert',
-            help='insert taxonomy into GraphSense')
-    pxp_i.add_argument('taxonomy', metavar='TAXONOMY_KEY', nargs='?',
+    pxp_i = pxp.add_parser(
+            'insert', help='insert taxonomy into GraphSense')
+    pxp_i.add_argument(
+            'taxonomy', metavar='TAXONOMY_KEY', nargs='?',
             choices=['abuse', 'entity', 'confidence'], default=None,
             help='the selected taxonomy')
-    pxp_i.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pxp_i.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for taxonomy tables")
-    pxp_i.add_argument('-u', '--url',
+    pxp_i.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
     pxp_i.set_defaults(func=insert_taxonomy, url=def_url)
 
-
-#    # parser for confidence command
-#    parser_s = subparsers.add_parser("confidence",
-#            help="show confidence scores")
-#    parser_s.set_defaults(func=list_confidence_scores)
-#
-#    pcp = parser_s.add_subparsers(title='Confidence commands')
-#
-#    # parser for confidence insert command
-#    pcp_i = pcp.add_parser('insert',
-#            help='insert confidence scores into GraphSense')
-#    pcp_i.add_argument("--force", action='store_true',
-#            help='Force re-insertion of confidence scores.')
-#    pcp_i.add_argument('--schema',
-#            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
-#            help="PostgreSQL schema for confidence tables")
-#    pcp_i.add_argument('-u', '--url',
-#            help="postgresql://user:password@db_host:port/database")
-#    pcp_i.set_defaults(func=ingest_confidence_scores, url=def_url)
-#
-#    # parser for confidence show command
-#    pcp_s = pcp.add_parser('show',
-#            help='show confidence scores')
-#    pcp_s.add_argument('-v', '--verbose', action='store_true',
-#            help="verbose concepts")
-#    pcp_s.set_defaults(func=show_confidence_scores)
-
-
     # parsers for database housekeeping
-    parser_db = subparsers.add_parser("tagstore",
-            help="database housekeeping commands")
+    parser_db = subparsers.add_parser(
+            "tagstore", help="database housekeeping commands")
 
     pdp = parser_db.add_subparsers(title="TagStore commands")
 
     # insert_cluster_mappings [update]
-    pc = pdp.add_parser("insert_cluster_mappings",
-            help="insert cluster mappings")
-    pc.add_argument('-d', '--db_nodes', nargs='+',
+    pc = pdp.add_parser(
+            "insert_cluster_mappings", help="insert cluster mappings")
+    pc.add_argument(
+            '-d', '--db_nodes', nargs='+',
             default=['localhost'], metavar='DB_NODE',
             help='Cassandra node(s); default "localhost")')
-    pc.add_argument('-f', '--ks_file',
+    pc.add_argument(
+            '-f', '--ks_file',
             metavar='KEYSPACE_FILE',
             help="JSON file with Cassandra keyspaces that contain GraphSense \
                     cluster mappings")
-    pc.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pc.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for GraphSense cluster mapping table")
-    pc.add_argument('-u', '--url',
+    pc.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
-    pc.add_argument('--update', action='store_true',
-            help='update  all cluster mappings')
-#    pc.set_defaults(update=False)
+    pc.add_argument(
+            '--update', action='store_true',
+            help='update all cluster mappings')
     pc.set_defaults(func=insert_cluster_mapping, url=def_url)
 
     # refresh_views
     pd = pdp.add_parser("refresh_views", help='update views')
-    pd.add_argument('--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pd.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for GraphSense cluster mapping table")
-    pd.add_argument('-u', '--url',
+    pd.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
     pd.set_defaults(func=update_db, url=def_url)
 
     # remove_duplicates
     pr = pdp.add_parser("remove_duplicates", help='remove duplicate tags')
-    pr.add_argument('--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pr.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for GraphSense cluster mapping table")
-    pr.add_argument('-u', '--url',
+    pr.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
     pr.set_defaults(func=remove_duplicates, url=def_url)
 
-
     # parser for quality measures
-    parser_q = subparsers.add_parser("quality",
-            help="calculate tags quality measures")
-    parser_q.set_defaults(func=show_quality_measures, url=def_url,
+    parser_q = subparsers.add_parser(
+            "quality", help="calculate tags quality measures")
+    parser_q.set_defaults(
+            func=show_quality_measures, url=def_url,
             schema=_DEFAULT_SCHEMA, currency='')
 
     pqp = parser_q.add_subparsers(title='Quality commands')
 
     # parser for quality measures calculation
-    pqp_i = pqp.add_parser('calculate',
+    pqp_i = pqp.add_parser(
+            'calculate',
             help='calculate quality measures for all tags in the DB')
-    pqp_i.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pqp_i.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for quality measures tables")
-    pqp_i.add_argument('-u', '--url',
+    pqp_i.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
     pqp_i.set_defaults(func=calc_quality_measures, url=def_url)
 
     # parser for quality measures show
-    pqp_s = pqp.add_parser('show',
-            help='show average quality measures')
-    pqp_s.add_argument('--currency',
-            default='', choices=['BCH', 'BTC', 'ETH', 'LTC', 'ZEC'],
+    pqp_s = pqp.add_parser('show', help='show average quality measures')
+    pqp_s.add_argument(
+            '--currency', default='',
+            choices=['BCH', 'BTC', 'ETH', 'LTC', 'ZEC'],
             help="Show the avg quality measure for a specific crypto-currency")
-    pqp_s.add_argument('--schema',
-            default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+    pqp_s.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
             help="PostgreSQL schema for quality measures tables")
-    pqp_s.add_argument('-u', '--url',
+    pqp_s.add_argument(
+            '-u', '--url',
             help="postgresql://user:password@db_host:port/database")
     pqp_s.set_defaults(func=show_quality_measures, url=def_url)
-
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -597,10 +600,10 @@ def main():
 
     if hasattr(args, 'url') and not args.url:
         print_warn(url_msg)
-        parser.error(f"No postgresql URL connection was provided. Exiting.")
+        parser.error("No postgresql URL connection was provided. Exiting.")
 
     if not hasattr(args, 'func'):
-        parser.error(f"No action was requested. Exiting.")
+        parser.error("No action was requested. Exiting.")
 
     args.func(args)
 
