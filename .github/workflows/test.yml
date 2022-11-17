@@ -42,4 +42,4 @@ jobs:
     - name: Install tool and test tagpack validation
       run: |
           pip install .
-          tagpack-tool validate tests/testfiles/
+          tagpack-tool tagpack validate tests/testfiles/
