@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from argparse import ArgumentParser
+from multiprocessing import Pool, cpu_count
 
 import pandas as pd
 import yaml
@@ -20,6 +21,12 @@ from tagpack.tagpack import TagPack, TagPackFileError, collect_tagpack_files,\
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
+
+"""
+    colorama fixes issues with redirecting colored outputs to files
+"""
+from colorama import init
+init()
 
 CONFIG_FILE = "config.yaml"
 
@@ -321,39 +328,46 @@ def _split_into_chunks(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
-def insert_cluster_mapping(args, batch_size=5_000):
+def insert_cluster_mapping_wp(currency, ks_mapping, args, batch):
     tagstore = TagStore(args.url, args.schema)
-    df = pd.DataFrame(tagstore.get_addresses(args.update),
-                      columns=['address', 'currency'])
+    gs = GraphSense(args.db_nodes, ks_mapping)
+    clusters = gs.get_address_clusters(batch, currency)
+    clusters['currency'] = currency
+    tagstore.insert_cluster_mappings(clusters)
+    return (currency, len(clusters))
 
+
+def insert_cluster_mapping(args, batch_size=5_000):
+    t0 = time.time()
+    tagstore = TagStore(args.url, args.schema)
+    df = pd.DataFrame(tagstore.get_addresses(args.update), columns=['address', 'currency'])
     ks_mapping = json.load(open(args.ks_file))
+    currencies = ks_mapping.keys()
     gs = GraphSense(args.db_nodes, ks_mapping)
 
     processed_currencies = []
-    t0 = time.time()
+
+    workpackages = []
     for currency, data in df.groupby('currency'):
         if gs.contains_keyspace_mapping(currency):
-            try:
-                print(currency)
-                mappings_count = 0
-                for batch in _split_into_chunks(data, batch_size):
-                    clusters = gs.get_address_clusters(batch, currency)
-                    clusters['currency'] = currency
-                    tagstore.insert_cluster_mappings(clusters)
-                    mappings_count += len(clusters)
+            for batch in _split_into_chunks(data, batch_size):
+                workpackages.append((currency, ks_mapping, args, batch))
 
-                msg = f"INSERTED/UPDATED {mappings_count} {currency} cluster"
-                msg += " mappings"
-                print_success(msg)
-                processed_currencies.append(currency)
-            except Exception as e:
-                print_fail("FAILED", e)
+    nr_workers = int(cpu_count() / 2)
+    print(f"Processing {len(workpackages)} batches for {len(currencies)} currencies on {nr_workers} workers.")
 
+    with Pool(processes=nr_workers, maxtasksperchild=1) as pool:
+        processed_workpackages = pool.starmap(insert_cluster_mapping_wp, workpackages)
+
+    processed_currencies = {currency for currency, _ in processed_workpackages}
+
+    for pc in processed_currencies:
+        mappings_count = sum([items for currency, items in processed_workpackages if currency == pc])
+        print_success(f"INSERTED/UPDATED {mappings_count} {pc} cluster mappings")
+
+    tagstore.finish_mappings_update(currencies)
     duration = round(time.time() - t0, 2)
-    msg = f"Inserted {'missing' if not args.update else 'all'} cluster "
-    msg += f"mappings for {processed_currencies} in {duration}s"
-    print_line(msg, "success")
-    tagstore.finish_mappings_update(gs.ks_map.keys())
+    print_line(f"Inserted {'missing' if not args.update else 'all'} cluster mappings for {processed_currencies} in {duration}s", "success")
 
 
 def update_db(args):

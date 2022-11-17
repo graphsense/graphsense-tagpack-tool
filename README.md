@@ -106,8 +106,8 @@ resp. to insert all configured taxonomies at once, simply omit taxonomy name
 
 Insert a single TagPack file or all TagPacks from a given folder
 
-    tagpack-tool insert tests/testfiles/ex_addr_tagpack.yaml
-    tagpack-tool insert tests/testfiles/ex_entity_tagpack.yaml
+    tagpack-tool insert tests/testfiles/simple/ex_addr_tagpack.yaml
+    tagpack-tool insert tests/testfiles/simple/multiple_tags_for_address.yaml
     tagpack-tool insert tests/testfiles/
 
 By default, TagPacks are declared as non-public in the database.
