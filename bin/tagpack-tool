@@ -370,6 +370,19 @@ def insert_cluster_mapping(args, batch_size=5_000):
     print_line(f"Inserted {'missing' if not args.update else 'all'} cluster mappings for {processed_currencies} in {duration}s", "success")
 
 
+def init_db(args):
+    config = _load_config(args.config)
+
+    if 'taxonomies' not in config:
+        print_line("No taxonomies configured to init the db", 'fail')
+        return
+
+    t0 = time.time()
+    print_line("Init database starts")
+    insert_taxonomy(args)
+    duration = round(time.time() - t0, 2)
+    print_line(f"Init database in {duration}s", 'success')
+
 def update_db(args):
     tagstore = TagStore(args.url, args.schema)
     tagstore.refresh_db()
@@ -527,6 +540,16 @@ def main():
             "tagstore", help="database housekeeping commands")
 
     pdp = parser_db.add_subparsers(title="TagStore commands")
+
+    # init the database
+    pbp = pdp.add_parser("init", help='init the database')
+    pbp.add_argument(
+            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
+            help="PostgreSQL schema for GraphSense cluster mapping table")
+    pbp.add_argument(
+            '-u', '--url',
+            help="postgresql://user:password@db_host:port/database")
+    pbp.set_defaults(func=init_db, url=def_url, taxonomy=None)
 
     # insert_cluster_mappings [update]
     pc = pdp.add_parser(
