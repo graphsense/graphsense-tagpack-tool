@@ -17,21 +17,23 @@ class Concept(object):
 
     """
 
-    def __init__(self, taxonomy, id, uri, label, description):
+    def __init__(self, taxonomy, id, uri, label, level, description):
         self.taxonomy = taxonomy
         self.id = id
         self.uri = uri
         self.label = label
+        self.level = level
         self.description = description
 
     def to_json(self):
         return json.dumps(
             {'taxonomy': self.taxonomy.key, 'id': self.id, 'uri': self.uri,
-             'label': self.label, 'description': self.description})
+                'label': self.label, 'level': self.level,
+                'description': self.description})
 
     def __str__(self):
         s = [str(self.taxonomy.key), str(self.id), str(self.uri),
-             str(self.label), str(self.description)]
+             str(self.label), str(self.level), str(self.description)]
         return "[" + " | ".join(s) + "]"
 
 
@@ -55,17 +57,28 @@ class Taxonomy(object):
         f = StringIO(response.text)
         csv_reader = csv.DictReader(f, delimiter=',')
         for row in csv_reader:
+            level = row['level'] if 'level' in row else None
             concept = Concept(self, row['id'], row['uri'],
-                              row['label'], row['description'])
+                              row['label'], level, row['description'])
             self.concepts.append(concept)
+
+    def load_from_local(self):
+        with open(self.uri, 'r') as f:
+            csv_reader = csv.DictReader(f, delimiter=',')
+            for row in csv_reader:
+                level = row['level'] if 'level' in row else None
+                concept = Concept(self, row['id'], self.uri,
+                        row['label'], level, row['description'])
+                self.concepts.append(concept)
 
     @property
     def concept_ids(self):
         return [concept.id for concept in self.concepts]
 
-    def add_concept(self, concept_id, label, description):
+    def add_concept(self, concept_id, label, level, description):
         concept_uri = self.uri + '/' + concept_id
-        concept = Concept(self, concept_id, concept_uri, label, description)
+        concept = Concept(self, concept_id, concept_uri, label, level,
+                        description)
         self.concepts.append(concept)
 
     def to_json(self):

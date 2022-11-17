@@ -15,10 +15,10 @@ def schema(monkeypatch):
 @pytest.fixture
 def taxonomies():
     tax_entity = Taxonomy('entity', 'http://example.com/entity')
-    tax_entity.add_concept('exchange', 'Exchange', 'Some description')
+    tax_entity.add_concept('exchange', 'Exchange', None, 'Some description')
 
     tax_abuse = Taxonomy('abuse', 'http://example.com/abuse')
-    tax_abuse.add_concept('bad_coding', 'Bad coding', 'Really bad')
+    tax_abuse.add_concept('bad_coding', 'Bad coding', None, 'Really bad')
 
     taxonomies = {'entity': tax_entity, 'abuse': tax_abuse}
     return taxonomies
