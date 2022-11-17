@@ -19,12 +19,12 @@ Please note that the last feature requires (installation of) a [Postgresql](http
 
 Validate a single TagPack file
 
-    tagpack-tool validate tests/testfiles/ex_addr_tagpack.yaml
-    tagpack-tool validate tests/testfiles/ex_entity_tagpack.yaml
+    tagpack-tool tagpack validate tests/testfiles/ex_addr_tagpack.yaml
+    tagpack-tool tagpack validate tests/testfiles/ex_entity_tagpack.yaml
 
 Recursively validate all TagPacks in (a) given folder(s).
 
-    tagpack-tool validate tests/testfiles/
+    tagpack-tool tagpack validate tests/testfiles/
 
 Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
 
@@ -34,7 +34,7 @@ Confidence settings are validated against a set of acceptable [confidence](tagpa
 
 List configured taxonomy keys and URIs
 
-    tagpack-tool taxonomy
+    tagpack-tool taxonomy list
 
 Fetch and show concepts of a specific remote taxonomy (referenced by key)
 
@@ -52,28 +52,18 @@ Fetch and show concepts of a specific remote taxonomy (referenced by key)
 Setup and start a PostgreSQL instance. First, copy `docker/env.template`
 to `.env` and fill the fields `POSTGRES_PASSWORD` and `POSTGRES_PASSWORD_TAGSTORE`.
 
-Start an PostgreSQL instance using Docker Compose:
+Start a PostgreSQL instance using Docker Compose:
 
     docker-compose up -d
 
 This will automatically create the database schema as defined
-in `scripts/tagstore_schema.sql`.
+in `tagpack/db/tagstore_schema.sql`.
 
 #### Option 2: Use an existing PostgreSQL database
 
 Create the schema and tables in a PostgreSQL instance of your choice    
 
-    psql -h $DBHOST -p $DBPORT -d $DB -U $DBUSER --password -f tagpack/db/tagstore_schema.sql
-
-### Ingest confidence scores
-
-    psql \
-        -h $DBHOST \
-        -p $DBPORT \
-        -d $DB \
-        -U $DBUSER \
-        --password \
-        -c "\copy tagstore.confidence(id,label,description,level) from 'tagpack/db/confidence.csv' delimiter ',' csv header;"
+    psql -h $POSTGRES_HOST -d $POSTGRES_DB -U $POSTGRES_USER --password -f tagpack/db/tagstore_schema.sql
 
 ### Export .env variables
 
@@ -91,14 +81,26 @@ Or just export each variable using:
 
 Then call tagpack-tool.
 
-### Ingest taxonomies
+### Initialize the database
 
-Insert concepts from a remote taxonomy into database, e.g. abuse:
+To initialize the database with all the taxonomies needed for ingesting the tagpacks, use:
+
+    tagpack-tool tagstore init
+
+This will generate a default config.yaml file for the taxonomies. 
+To create the default configuration file from scratch (when config.yaml does not exist) use:
+
+    tagpack-tool config --verbose
+
+### Ingest taxonomies and confidence scores
+
+To insert individual taxonomies into database, use:
 
     tagpack-tool taxonomy insert abuse
     tagpack-tool taxonomy insert entity
+    tagpack-tool taxonomy insert confidence
 
-resp. to insert all configured taxonomies at once, simply omit taxonomy name
+To insert all configured taxonomies at once, simply omit taxonomy name
 
     tagpack-tool taxonomy insert
 
@@ -106,34 +108,34 @@ resp. to insert all configured taxonomies at once, simply omit taxonomy name
 
 Insert a single TagPack file or all TagPacks from a given folder
 
-    tagpack-tool insert tests/testfiles/simple/ex_addr_tagpack.yaml
-    tagpack-tool insert tests/testfiles/simple/multiple_tags_for_address.yaml
-    tagpack-tool insert tests/testfiles/
+    tagpack-tool tagpack insert tests/testfiles/simple/ex_addr_tagpack.yaml
+    tagpack-tool tagpack insert tests/testfiles/simple/multiple_tags_for_address.yaml
+    tagpack-tool tagpack insert tests/testfiles/
 
 By default, TagPacks are declared as non-public in the database.
 For public TagPacks, add the `--public` flag to your arguments:
 
-    tagpack-tool insert --public tests/testfiles/
+    tagpack-tool tagpack insert --public tests/testfiles/
 
 If you try to insert tagpacks that already exist in the database, the ingestion process will be stopped.
 
 To force **re-insertion** (if tagpack file contents have been modified), add the `--force` flag to your arguments:
 
-    tagpack-tool insert --force tests/testfiles/
+    tagpack-tool tagpack insert --force tests/testfiles/
 
 To ingest **new** tagpacks and **skip** over already ingested tagpacks, add the `--add_new` flag to  your arguments:
 
-    tagpack-tool insert --add_new tests/testfiles/
+    tagpack-tool tagpack insert --add_new tests/testfiles/
 
 By default, trying to insert tagpacks from a repository with **local** modifications will **fail**.
 To force insertion despite local modifications, add the ``--no_strict_check`` command-line parameter
 
-    tagpack-tool insert --force --add_new tests/testfiles/
+    tagpack-tool tagpack insert --force --add_new tests/testfiles/
 
 By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository ([see here](README_tagpacks.md#versioning-with-git)).
 To instead write local file paths instead, add the ``--no_git`` command-line parameter
 
-    tagpack-tool insert --no_git --add_new tests/testfiles/
+    tagpack-tool tagpack insert --no_git --add_new tests/testfiles/
 
 ### Align ingested attribution tags with GraphSense cluster Ids
 
@@ -146,24 +148,24 @@ suit your Graphsense setup.
 Then fetch the cluster mappings from your Graphsense instance and insert them
 into the tagstore database:  
     
-    tagpack-tool cluster -d $CASSANDRA_HOST -f ks_map.json
+    tagpack-tool tagstore insert_cluster_mappings -d $CASSANDRA_HOST -f ks_map.json
 
 To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
-    tagpack-tool cluster --update -d $CASSANDRA_HOST -f ks_map.json
+    tagpack-tool tagstore insert_cluster_mappings --update -d $CASSANDRA_HOST -f ks_map.json
 
 ### Remove duplicate tags
 
 Different tagpacks may contain identical tags - the same label and source for a particular address. 
 To remove such redundant information, run
 
-    tagpack db remove_duplicates
+    tagpack-tool tagstore remove_duplicates
 
 ### IMPORTANT: Keeping data consistency after tagpack insertion
 
 After all required tagpacks have been ingested, run
 
-    tagpack-tool db refresh_views
+    tagpack-tool tagstore refresh_views
 
 to update all materialized views. 
 Depending on the amount of tags contained in the tagstore, this may take a while.
