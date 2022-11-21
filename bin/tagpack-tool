@@ -422,7 +422,7 @@ def read_url_from_env():
 
 def main():
     parser = ArgumentParser(
-        description='GraphSense TagPack validation and ingest tool',
+        description='GraphSense TagPack validation and insert tool',
         epilog='GraphSense TagPack Tool v{} - https://graphsense.info'
         .format(version))
     parser.add_argument('-v', '--version', action='version',
@@ -480,13 +480,13 @@ def main():
                     Use this switch to declare them public.')
     ptp_i.add_argument(
             "--force", action='store_true',
-            help='By default, tagpack insertion stops when an already ingested\
+            help='By default, tagpack insertion stops when an already inserted\
                     tagpack exists in the database. Use this switch to force \
                     re-insertion.')
     ptp_i.add_argument(
             "--add_new", action='store_true',
-            help='By default, tagpack insertion stops when an already ingested\
-                    tagpack exists in the database. Use this switch to ingest \
+            help='By default, tagpack insertion stops when an already inserted\
+                    tagpack exists in the database. Use this switch to insert \
                     new tagpacks while skipping over existing ones.')
     ptp_i.add_argument(
             "--no_strict_check", action='store_true',
