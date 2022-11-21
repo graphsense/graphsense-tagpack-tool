@@ -1,7 +1,7 @@
 """Confidence - A proxy for a local confidence definition"""
 
-import csv, json
-from io import StringIO
+import csv
+import json
 
 
 class Score(object):
@@ -17,8 +17,13 @@ class Score(object):
 
     def to_json(self):
         return json.dumps(
-            {'id': self.id, 'label': self.label,
-                'description': self.description, 'level': self.level})
+            {
+                "id": self.id,
+                "label": self.label,
+                "description": self.description,
+                "level": self.level,
+            }
+        )
 
     def __str__(self):
         return f"[{self.id}|{self.label}|{self.description}|{self.level}]"
@@ -34,11 +39,10 @@ class Confidence(object):
         self.scores = []
 
     def load_from_local(self):
-        with open(self.path, 'r') as f:
-            csv_reader = csv.DictReader(f, delimiter=',')
+        with open(self.path, "r") as f:
+            csv_reader = csv.DictReader(f, delimiter=",")
             for row in csv_reader:
-                score = Score(row['id'], row['label'], row['description'],
-                            row['level'])
+                score = Score(row["id"], row["label"], row["description"], row["level"])
                 self.scores.append(score)
 
     @property
@@ -46,8 +50,12 @@ class Confidence(object):
         return [score.id for score in self.scores]
 
     def to_json(self):
-        return json.dumps({'path': self.path,
-            'scores': [json.loads(score.to_json()) for score in self.scores]})
+        return json.dumps(
+            {
+                "path": self.path,
+                "scores": [json.loads(score.to_json()) for score in self.scores],
+            }
+        )
 
     def __str__(self):
         return f"[{self.path}|n_scores:{len(self.score_ids)}]"

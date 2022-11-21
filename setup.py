@@ -43,7 +43,8 @@ setup(
         "pyyaml-include~=1.3",
         "GitPython~=3.1",
         "giturlparse~=0.10",
-        "coinaddrvalidator~=1.1.3"
+        "coinaddrvalidator~=1.1.3",
+        "colorama~=0.4.6"
     ],
     test_suite="tests"
 )

@@ -27,13 +27,25 @@ class Concept(object):
 
     def to_json(self):
         return json.dumps(
-            {'taxonomy': self.taxonomy.key, 'id': self.id, 'uri': self.uri,
-                'label': self.label, 'level': self.level,
-                'description': self.description})
+            {
+                "taxonomy": self.taxonomy.key,
+                "id": self.id,
+                "uri": self.uri,
+                "label": self.label,
+                "level": self.level,
+                "description": self.description,
+            }
+        )
 
     def __str__(self):
-        s = [str(self.taxonomy.key), str(self.id), str(self.uri),
-             str(self.label), str(self.level), str(self.description)]
+        s = [
+            str(self.taxonomy.key),
+            str(self.id),
+            str(self.uri),
+            str(self.label),
+            str(self.level),
+            str(self.description),
+        ]
         return "[" + " | ".join(s) + "]"
 
 
@@ -55,20 +67,22 @@ class Taxonomy(object):
     def load_from_remote(self):
         response = requests.get(self.uri)
         f = StringIO(response.text)
-        csv_reader = csv.DictReader(f, delimiter=',')
+        csv_reader = csv.DictReader(f, delimiter=",")
         for row in csv_reader:
-            level = row['level'] if 'level' in row else None
-            concept = Concept(self, row['id'], row['uri'],
-                              row['label'], level, row['description'])
+            level = row["level"] if "level" in row else None
+            concept = Concept(
+                self, row["id"], row["uri"], row["label"], level, row["description"]
+            )
             self.concepts.append(concept)
 
     def load_from_local(self):
-        with open(self.uri, 'r') as f:
-            csv_reader = csv.DictReader(f, delimiter=',')
+        with open(self.uri, "r") as f:
+            csv_reader = csv.DictReader(f, delimiter=",")
             for row in csv_reader:
-                level = row['level'] if 'level' in row else None
-                concept = Concept(self, row['id'], self.uri,
-                        row['label'], level, row['description'])
+                level = row["level"] if "level" in row else None
+                concept = Concept(
+                    self, row["id"], self.uri, row["label"], level, row["description"]
+                )
                 self.concepts.append(concept)
 
     @property
@@ -76,13 +90,12 @@ class Taxonomy(object):
         return [concept.id for concept in self.concepts]
 
     def add_concept(self, concept_id, label, level, description):
-        concept_uri = self.uri + '/' + concept_id
-        concept = Concept(self, concept_id, concept_uri, label, level,
-                        description)
+        concept_uri = self.uri + "/" + concept_id
+        concept = Concept(self, concept_id, concept_uri, label, level, description)
         self.concepts.append(concept)
 
     def to_json(self):
-        return json.dumps({'key': self.key, 'uri': self.uri})
+        return json.dumps({"key": self.key, "uri": self.uri})
 
     def __str__(self):
         s = [str(self.key), str(self.uri)]

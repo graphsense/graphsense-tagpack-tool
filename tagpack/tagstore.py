@@ -21,7 +21,7 @@ class TagStore(object):
         self.existing_packs = None
 
     def insert_taxonomy(self, taxonomy):
-        if taxonomy.key == 'confidence':
+        if taxonomy.key == "confidence":
             self.insert_confidence_scores(taxonomy)
             return
 
@@ -57,8 +57,9 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
-    def insert_tagpack(self, tagpack, is_public, force_insert, prefix,
-                       rel_path, batch=1000):
+    def insert_tagpack(
+        self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
+    ):
 
         tagpack_id = self.create_id(prefix, rel_path)
         h = _get_header(tagpack, tagpack_id)
@@ -71,8 +72,14 @@ class TagStore(object):
         q = "INSERT INTO tagpack \
             (id, title, description, creator, uri, is_public) \
             VALUES (%s,%s,%s,%s,%s,%s)"
-        v = (h.get('id'), h.get('title'), h.get('description'),
-             h.get('creator'), tagpack.uri, is_public)
+        v = (
+            h.get("id"),
+            h.get("title"),
+            h.get("description"),
+            h.get("creator"),
+            tagpack.uri,
+            is_public,
+        )
         self.cursor.execute(q, v)
         self.conn.commit()
 
@@ -103,7 +110,8 @@ class TagStore(object):
         self.conn.commit()
 
     def remove_duplicates(self):
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             DELETE
                 FROM tag
                 WHERE id IN
@@ -127,15 +135,19 @@ class TagStore(object):
                             t.tagpack = tp.id) as x
                     WHERE duplicate_count > 1
                 )
-            """)
+            """
+        )
         self.conn.commit()
         return self.cursor.rowcount
 
     def refresh_db(self):
-        self.cursor.execute('REFRESH MATERIALIZED VIEW label')
-        self.cursor.execute('REFRESH MATERIALIZED VIEW statistics')
-        self.cursor.execute('REFRESH MATERIALIZED VIEW tag_count_by_cluster')
-        self.cursor.execute('REFRESH MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence') # noqa
+        self.cursor.execute("REFRESH MATERIALIZED VIEW label")
+        self.cursor.execute("REFRESH MATERIALIZED VIEW statistics")
+        self.cursor.execute("REFRESH MATERIALIZED VIEW tag_count_by_cluster")
+        self.cursor.execute(
+            "REFRESH MATERIALIZED VIEW "
+            "cluster_defining_tags_by_frequency_and_maxconfidence"
+        )  # noqa
         self.conn.commit()
 
     def get_addresses(self, update_existing):
@@ -144,6 +156,16 @@ class TagStore(object):
         else:
             q = "SELECT address, currency FROM address WHERE NOT is_mapped"
             self.cursor.execute(q)
+
+    def get_tagstore_composition(self):
+        self.cursor.execute(
+            "SELECT creator, "
+            "category, "
+            "tp.is_public as is_public, "
+            "count(distinct t.label) as labels_count "
+            "FROM tag t, tagpack tp where t.tagpack = tp.id "
+            "group by creator, category, is_public;"
+        )
         for record in self.cursor:
             yield record
 
@@ -156,19 +178,24 @@ class TagStore(object):
                 gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr, \
                 gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr"
 
-            cols = ['address', 'currency', 'cluster_id',
-                    'cluster_defining_address', 'no_addresses']
+            cols = [
+                "address",
+                "currency",
+                "cluster_id",
+                "cluster_defining_address",
+                "no_addresses",
+            ]
             data = clusters[cols].to_records(index=False)
 
             execute_batch(self.cursor, q, data)
             self.conn.commit()
 
     def _supports_currency(self, tag):
-        return tag.all_fields.get('currency') in self.supported_currencies
+        return tag.all_fields.get("currency") in self.supported_currencies
 
     def finish_mappings_update(self, keys):
-        q = 'UPDATE address SET is_mapped=true WHERE NOT is_mapped \
-                AND currency IN %s'
+        q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
+                AND currency IN %s"
         self.cursor.execute(q, (tuple(keys),))
         self.conn.commit()
 
@@ -176,29 +203,26 @@ class TagStore(object):
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_quality_measures(self, currency='') -> float:
-        '''
+    def get_quality_measures(self, currency="") -> float:
+        """
         This function returns a dict with the quality measures (count, avg, and
         stddev) for a specific currency, or for all if currency is not
         specified.
-        '''
+        """
         currency = currency.upper()
-        if currency not in ['', 'BCH', 'BTC', 'ETH', 'LTC', 'ZEC']:
+        if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
             raise ValidationError("Currency not supported: {currency}")
 
-        query = 'SELECT COUNT(quality), AVG(quality), STDDEV(quality)'
-        query += ' FROM address_quality'
+        query = "SELECT COUNT(quality), AVG(quality), STDDEV(quality)"
+        query += " FROM address_quality"
         if currency:
-            query += ' WHERE currency=%s'
+            query += " WHERE currency=%s"
             self.cursor.execute(query, (currency,))
         else:
             self.cursor.execute(query)
 
-        keys = ['count', 'avg', 'stddev']
-        return {
-            keys[i]: v for row in self.cursor.fetchall()
-            for i, v in enumerate(row)
-        }
+        keys = ["count", "avg", "stddev"]
+        return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
     def calculate_quality_measures(self) -> float:
         self.cursor.execute("CALL calculate_quality()")
@@ -208,32 +232,38 @@ class TagStore(object):
 
 
 def _get_tag(tag, tagpack_id):
-    label = tag.all_fields.get('label').lower().strip()
-    lastmod = tag.all_fields.get('lastmod', datetime.now().isoformat())
+    label = tag.all_fields.get("label").lower().strip()
+    lastmod = tag.all_fields.get("lastmod", datetime.now().isoformat())
 
     _, address = _get_currency_and_address(tag)
 
-    return (label, tag.all_fields.get('source'),
-            tag.all_fields.get('category', None),
-            tag.all_fields.get('abuse', None), address,
-            tag.all_fields.get('currency'),
-            tag.all_fields.get('is_cluster_definer'),
-            tag.all_fields.get('confidence'),
-            lastmod, tag.all_fields.get('context'), tagpack_id)
+    return (
+        label,
+        tag.all_fields.get("source"),
+        tag.all_fields.get("category", None),
+        tag.all_fields.get("abuse", None),
+        address,
+        tag.all_fields.get("currency"),
+        tag.all_fields.get("is_cluster_definer"),
+        tag.all_fields.get("confidence"),
+        lastmod,
+        tag.all_fields.get("context"),
+        tagpack_id,
+    )
 
 
 def _get_currency_and_address(tag):
-    curr = tag.all_fields.get('currency')
-    addr = tag.all_fields.get('address')
-    addr = addr.lower() if 'ETH' == curr.upper() else addr
+    curr = tag.all_fields.get("currency")
+    addr = tag.all_fields.get("address")
+    addr = addr.lower() if "ETH" == curr.upper() else addr
     return curr, addr
 
 
 def _get_header(tagpack, tid):
     tc = tagpack.contents
     return {
-        'id': tid,
-        'title': tc['title'],
-        'creator': tc['creator'],
-        'description': tc.get('description', 'not provided'),
-        }
+        "id": tid,
+        "title": tc["title"],
+        "creator": tc["creator"],
+        "description": tc.get("description", "not provided"),
+    }

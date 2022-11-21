@@ -11,7 +11,7 @@ from pandas import pandas as pd
 def eth_address_to_hex(address):
     if type(address) != bytes:
         return address
-    return '0x' + address.hex()
+    return "0x" + address.hex()
 
 
 def eth_address_from_hex(address):
@@ -27,7 +27,6 @@ _CONCURRENCY = 100
 
 
 class GraphSense(object):
-
     def __init__(self, hosts: list, ks_map: dict):
         self.hosts = hosts
         self.ks_map = ks_map
@@ -42,31 +41,31 @@ class GraphSense(object):
     def _execute_query(self, statement, parameters):
         """Generic query execution"""
         results = execute_concurrent_with_args(
-            self.session, statement, parameters, concurrency=_CONCURRENCY)
+            self.session, statement, parameters, concurrency=_CONCURRENCY
+        )
 
         i = 0
         all_results = []
         for (success, result) in results:
             if not success:
-                print('failed' + result)
+                print("failed" + result)
             else:
                 for row in result:
-                    i = i+1
+                    i = i + 1
                     all_results.append(row)
         return pd.DataFrame.from_dict(all_results)
 
     def contains_keyspace_mapping(self, currency: str) -> bool:
         return currency in self.ks_map
 
-    def _check_passed_params(self, df: DataFrame, currency: str,
-                             req_column: str):
+    def _check_passed_params(self, df: DataFrame, currency: str, req_column: str):
 
         if df.empty:
-            raise Exception(f'Received empty dataframe for currency {currency}')
+            raise Exception(f"Received empty dataframe for currency {currency}")
         if req_column not in df.columns:
-            raise Exception(f'Missing column {req_column}')
+            raise Exception(f"Missing column {req_column}")
         if not self.contains_keyspace_mapping(currency):
-            raise Exception(f'Currency {currency} not in keyspace mapping')
+            raise Exception(f"Currency {currency} not in keyspace mapping")
 
     def _query_keyspace_config(self, keyspace: str) -> dict:
         self.session.set_keyspace(keyspace)
@@ -76,118 +75,128 @@ class GraphSense(object):
 
     def get_address_ids(self, df: DataFrame, currency: str) -> DataFrame:
         """Get address ids for all passed addresses"""
-        self._check_passed_params(df, currency, 'address')
+        self._check_passed_params(df, currency, "address")
 
-        keyspace = self.ks_map[currency]['transformed']
+        keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
-        df_temp = df[['address']].copy()
+        df_temp = df[["address"]].copy()
         df_temp = df_temp.drop_duplicates()
-        if currency == 'ETH':
-            df_temp['address_prefix'] = df_temp['address'].str[2:2+ks_config['address_prefix_length']]
-            df_temp['address_prefix'] = df_temp['address_prefix'].apply(
-                lambda x: x.upper())
-            df_temp['address'] = df['address'].apply(
-                lambda x: eth_address_from_hex(x))
+        if currency == "ETH":
+            df_temp["address_prefix"] = df_temp["address"].str[
+                2 : 2 + ks_config["address_prefix_length"]
+            ]
+            df_temp["address_prefix"] = df_temp["address_prefix"].apply(
+                lambda x: x.upper()
+            )
+            df_temp["address"] = df["address"].apply(lambda x: eth_address_from_hex(x))
         else:
-            if 'bech_32_prefix' in ks_config:
-                df_temp['a'] = df_temp['address'].apply(
-                    lambda x: x.replace(ks_config['bech_32_prefix'], ''))
+            if "bech_32_prefix" in ks_config:
+                df_temp["a"] = df_temp["address"].apply(
+                    lambda x: x.replace(ks_config["bech_32_prefix"], "")
+                )
 
-            df_temp['address_prefix'] = df_temp[
-                'a'].str[:ks_config['address_prefix_length']]
+            df_temp["address_prefix"] = df_temp["a"].str[
+                : ks_config["address_prefix_length"]
+            ]
 
-        query = "SELECT address, address_id " + \
-                    "FROM address_ids_by_address_prefix " + \
-                    "WHERE address_prefix=? and address=?"
+        query = (
+            "SELECT address, address_id "
+            + "FROM address_ids_by_address_prefix "
+            + "WHERE address_prefix=? and address=?"
+        )
 
         statement = self.session.prepare(query)
-        parameters = df_temp[
-            ['address_prefix', 'address']].to_records(index=False)
+        parameters = df_temp[["address_prefix", "address"]].to_records(index=False)
 
         result = self._execute_query(statement, parameters)
-        if currency == 'ETH':
-            result['address'] = result['address'].apply(
-                lambda x: eth_address_to_hex(x))
+        if currency == "ETH":
+            result["address"] = result["address"].apply(lambda x: eth_address_to_hex(x))
 
         return result
 
     def get_cluster_ids(self, df: DataFrame, currency: str) -> DataFrame:
         """Get cluster ids for all passed address ids"""
-        self._check_passed_params(df, currency, 'address_id')
+        self._check_passed_params(df, currency, "address_id")
 
-        if currency == 'ETH':
-            raise Exception('eth does not have clusters')
+        if currency == "ETH":
+            raise Exception("eth does not have clusters")
 
-        keyspace = self.ks_map[currency]['transformed']
+        keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
-        df_temp = df[['address_id']].copy()
+        df_temp = df[["address_id"]].copy()
         df_temp = df_temp.drop_duplicates()
-        df_temp['address_id_group'] = np.floor(
-            df_temp['address_id'] / ks_config['bucket_size']).astype(int)
+        df_temp["address_id_group"] = np.floor(
+            df_temp["address_id"] / ks_config["bucket_size"]
+        ).astype(int)
 
-        query = "SELECT address_id, cluster_id " + \
-                "FROM address WHERE address_id_group=? and address_id=?"
+        query = (
+            "SELECT address_id, cluster_id "
+            + "FROM address WHERE address_id_group=? and address_id=?"
+        )
         statement = self.session.prepare(query)
-        parameters = df_temp[
-            ['address_id_group', 'address_id']].to_records(index=False)
+        parameters = df_temp[["address_id_group", "address_id"]].to_records(index=False)
 
         return self._execute_query(statement, parameters)
 
     def get_clusters(self, df: DataFrame, currency: str) -> DataFrame:
         """Get clusters for all passed cluster ids"""
-        self._check_passed_params(df, currency, 'cluster_id')
+        self._check_passed_params(df, currency, "cluster_id")
 
-        if currency == 'ETH':
-            raise Exception('eth does not have clusters')
+        if currency == "ETH":
+            raise Exception("eth does not have clusters")
 
-        keyspace = self.ks_map[currency]['transformed']
+        keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
-        df_temp = df[['cluster_id']].copy()
+        df_temp = df[["cluster_id"]].copy()
         df_temp = df_temp.drop_duplicates()
-        df_temp['cluster_id_group'] = np.floor(
-            df_temp['cluster_id'] / ks_config['bucket_size']).astype(int)
+        df_temp["cluster_id_group"] = np.floor(
+            df_temp["cluster_id"] / ks_config["bucket_size"]
+        ).astype(int)
 
-        query = "SELECT * FROM cluster " + \
-                "WHERE cluster_id_group=? and cluster_id=?"
+        query = "SELECT * FROM cluster " + "WHERE cluster_id_group=? and cluster_id=?"
         statement = self.session.prepare(query)
-        parameters = df_temp[
-            ['cluster_id_group', 'cluster_id']].to_records(index=False)
+        parameters = df_temp[["cluster_id_group", "cluster_id"]].to_records(index=False)
 
         return self._execute_query(statement, parameters)
 
     def _get_cluster_definers(self, df: DataFrame, currency: str) -> DataFrame:
-        keyspace = self.ks_map[currency]['transformed']
+        keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
-        df_temp = df[['cluster_id']].copy()
+        df_temp = df[["cluster_id"]].copy()
         df_temp.rename(columns={"cluster_id": "address_id"}, inplace=True)
         df_temp = df_temp.drop_duplicates()
-        df_temp['address_id_group'] = np.floor(
-            df_temp['address_id'] / ks_config['bucket_size']).astype(int)
+        df_temp["address_id_group"] = np.floor(
+            df_temp["address_id"] / ks_config["bucket_size"]
+        ).astype(int)
 
-        query = "SELECT address_id as cluster_id, address as cluster_defining_address FROM address " + \
-                "WHERE address_id_group=? and address_id=?"
+        query = (
+            "SELECT address_id as cluster_id, "
+            "address as cluster_defining_address FROM address "
+            + +"WHERE address_id_group=? and address_id=?"
+        )
         statement = self.session.prepare(query)
-        parameters = df_temp[
-            ['address_id_group', 'address_id']].to_records(index=False)
+        parameters = df_temp[["address_id_group", "address_id"]].to_records(index=False)
 
         return self._execute_query(statement, parameters)
 
     def get_address_clusters(self, df: DataFrame, currency: str) -> DataFrame:
-        self._check_passed_params(df, currency, 'address')
+        self._check_passed_params(df, currency, "address")
 
         addresses = df.copy()
 
         if currency == "ETH":
             # tagpacks include invalid ETH addresses, ignore those
-            addresses.drop(addresses[~addresses.address.str.startswith("0x")].index, inplace=True)
+            addresses.drop(
+                addresses[~addresses.address.str.startswith("0x")].index, inplace=True
+            )
             addresses.rename(columns={"address": "checksum_address"}, inplace=True)
             addresses.loc[:, "address"] = addresses["checksum_address"].str.lower()
 
@@ -216,11 +225,10 @@ class GraphSense(object):
         if len(df_address_clusters) == 0:
             return DataFrame()
 
-        result = df_address_ids.merge(
-            df_cluster_ids, on='address_id', how='left').merge(
-            df_address_clusters, on='cluster_id', how='left').merge(
-            df_cluster_definers, on='cluster_id', how='left'
+        result = (
+            df_address_ids.merge(df_cluster_ids, on="address_id", how="left")
+            .merge(df_address_clusters, on="cluster_id", how="left")
+            .merge(df_cluster_definers, on="cluster_id", how="left")
         )
 
         return result
-
