@@ -92,7 +92,7 @@ CREATE TABLE address_cluster_mapping (
     FOREIGN KEY (currency, address) REFERENCES address (currency, address) ON DELETE CASCADE
 );
 
-CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (gs_cluster_id);
+CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (currency, gs_cluster_id);
 
 
 -- setup fuzzy search resources
@@ -156,6 +156,8 @@ CREATE MATERIALIZED VIEW tag_count_by_cluster AS
         t.currency, 
         acm.gs_cluster_id, 
         tp.is_public;
+
+CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (currency, gs_cluster_id);
 
 /* In the end this view fulfils the following requirements in junction with
  * REST's `list_entity_tags_by_entity`:
@@ -221,6 +223,8 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
             acm.gs_cluster_id
         HAVING 
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
+
+CREATE INDEX cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (currency, gs_cluster_id);
 
 -- Tag quality helper views
 
