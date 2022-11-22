@@ -164,7 +164,8 @@ class TagStore(object):
             "SELECT creator, "
             "category, "
             "tp.is_public as is_public, "
-            "count(distinct t.label) as labels_count "
+            "count(distinct t.label) as labels_count, "
+            "count(*) as tags_count "
             "FROM tag t, tagpack tp where t.tagpack = tp.id "
             "group by creator, category, is_public;"
         )
