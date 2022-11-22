@@ -156,6 +156,8 @@ class TagStore(object):
         else:
             q = "SELECT address, currency FROM address WHERE NOT is_mapped"
             self.cursor.execute(q)
+        for record in self.cursor:
+            yield record
 
     def get_tagstore_composition(self):
         self.cursor.execute(
