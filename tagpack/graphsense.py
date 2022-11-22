@@ -180,7 +180,7 @@ class GraphSense(object):
         query = (
             "SELECT address_id as cluster_id, "
             "address as cluster_defining_address FROM address "
-            + +"WHERE address_id_group=? and address_id=?"
+            + "WHERE address_id_group=? and address_id=?"
         )
         statement = self.session.prepare(query)
         parameters = df_temp[["address_id_group", "address_id"]].to_records(index=False)
