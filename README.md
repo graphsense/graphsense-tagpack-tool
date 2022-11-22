@@ -81,16 +81,31 @@ Or just export each variable using:
 
 Then call tagpack-tool.
 
-### Initialize the database
+### Create and display a configuration file that defines which taxonomies to use
+
+To create a default configuration `config.yaml` file from scratch - i.e. when config.yaml does not exist - use:
+
+    tagpack-tool config 
+
+If a config.yaml already exists, it will not be replaced.
+
+Show the contents of the config file:
+
+    tagpack-tool config -v
+
+To use a specific config file pass the file's location:
+
+    tagpack-tool --config  path/to/config.yaml config
+
+
+
+
+### Initialize the tagstore database
 
 To initialize the database with all the taxonomies needed for ingesting the tagpacks, use:
 
     tagpack-tool tagstore init
 
-This will generate a default config.yaml file for the taxonomies. 
-To create the default configuration file from scratch (when config.yaml does not exist) use:
-
-    tagpack-tool config --verbose
 
 ### Ingest taxonomies and confidence scores
 
@@ -190,6 +205,12 @@ To calculate the quality measure for all the tags in the database, run:
 To show the quality measures of all the tags in the database, or those of a specific crypto-currency, run:
 
     tagpack-tool quality show [--currency [BCH|BTC|ETH|LTC|ZEC]]
+
+## Show tagstore contents/contributions 
+
+To list all tagpack creators and their contributions to a tagstore's content use:
+
+    tagpack-tool tagstore show_composition 
 
 ## Working in development / testing mode
 

@@ -211,6 +211,8 @@ def _load_config(cfile):
 
 
 def show_config(args):
+    if not os.path.exists(args.config):
+        _load_config(args.config)
     print("Config File:", args.config)
     if args.verbose:
         list_taxonomies(args)
