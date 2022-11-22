@@ -338,7 +338,7 @@ def insert_tagpack(args):
     msg = "Processed {}/{} TagPacks with {} Tags in {}s. "
     msg += "Only tags for supported currencies {} are inserted."
     print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported), status)
-    msg = "Don't forget to run 'db refresh_views' soon to keep the database"
+    msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
     msg += " consistent!"
     print_info(msg)
 
