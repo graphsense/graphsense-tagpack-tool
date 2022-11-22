@@ -16,7 +16,6 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA tagstore TO "$POSTGRES_USER_TAGS
 ALTER SCHEMA tagstore OWNER TO "$POSTGRES_USER_TAGSTORE";
 ALTER MATERIALIZED VIEW tagstore.label OWNER TO "$POSTGRES_USER_TAGSTORE";
 ALTER MATERIALIZED VIEW tagstore.statistics OWNER TO "$POSTGRES_USER_TAGSTORE";
+ALTER MATERIALIZED VIEW tagstore.statistics OWNER TO "$POSTGRES_USER_TAGSTORE";
+ALTER MATERIALIZED VIEW tagstore.tag_count_by_cluster OWNER TO "$POSTGRES_USER_TAGSTORE";
 EOF
-# insert confidence table
-# Now this values can be ingested by the tool
-#psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\copy tagstore.confidence(id,label,description,level) from 'tmp/confidence.csv' DELIMITER ',' CSV HEADER;"
