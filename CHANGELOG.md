@@ -1,19 +1,20 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [..] unreleased
+## [22.11] unreleased
 ### Changed
 - harmonised command structure [#59](https://github.com/graphsense/graphsense-tagpack-tool/issues/59)
 - moved TagPack documentation to [GraphSense public tagpacks repo](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks)
 - removed unnecessary columns in cluster mapping table [#45](https://github.com/graphsense/graphsense-tagpack-tool/issues/45)
-- ETH addresses are normalized to lower-case before inserting them to the db
+- ETH addresses are normalized to lower-case before inserting them to the db [#39](https://github.com/graphsense/graphsense-tagpack-tool/issues/39)
 ### Added
 - command to show tagstore content composition: listing of creators and their contributions
-- Address validation for currencies supported by coinaddrvalidator library
-- Confidence scoring handling: ingest confidence scores from local file
+- command to calculate tag quality measures [#49](https://github.com/graphsense/graphsense-tagpack-tool/issues/49)
+- Address validation for currencies supported by coinaddrvalidator library [#22](https://github.com/graphsense/graphsense-tagpack-tool/issues/22)
+- Confidence scoring handling: ingest confidence scores from local file [#35](https://github.com/graphsense/graphsense-tagpack-tool/issues/35)
 ### Fixed
 - colorama dependency
 
-## [1.1.0] 2022-10-11
+## [22.10] 2022-10-11
 ### Added
 - Support for PostgreSQL connection pooling
 - Removal of duplicate tags
