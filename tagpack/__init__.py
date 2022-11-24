@@ -31,5 +31,5 @@ class StorageError(Exception):
     def __str__(self):
         msg = super(StorageError, self).__str__()
         if self.nested_exception:
-            msg = msg + '\nError Details: ' + str(self.nested_exception)
+            msg = msg + "\nError Details: " + str(self.nested_exception)
         return msg
