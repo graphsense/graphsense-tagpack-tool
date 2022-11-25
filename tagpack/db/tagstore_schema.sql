@@ -175,8 +175,9 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         t.label, 
         t.category, 
         tp.is_public, 
+        MIN(t.address) as address,
         COUNT(t.address) AS no_addresses, 
-        MAX(c.level) AS max_level,
+        c.level AS max_level,
         true AS is_cluster_definer
     FROM 
         tag t, 
@@ -190,6 +191,7 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         AND t.confidence=c.id 
         AND tp.id=t.tagpack 
     GROUP BY 
+        c.level,
         t.label, 
         t.category, 
         t.currency, 
@@ -202,6 +204,7 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
             t.label,
             t.category, 
             every(tp.is_public) AS is_public, 
+            MIN(t.address) as address,
             1 AS no_addresses,
             MAX(c.level) AS max_level,
             false AS is_cluster_definer

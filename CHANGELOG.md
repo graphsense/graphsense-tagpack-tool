@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Removed unnecessary columns in cluster mapping table [#45](https://github.com/graphsense/graphsense-tagpack-tool/issues/45)
 - ETH addresses are normalized to lower-case before inserting them to the DB [#39](https://github.com/graphsense/graphsense-tagpack-tool/issues/39)
 - Parallel import of cluster mapping [#4](https://github.com/graphsense/graphsense-tagpack-tool/issues/4)
+- Improve `cluster_defining_tags_by_frequency_and_maxconfidence` view
 ### Added
 - Command to show tagstore content composition: listing of creators and their contributions
 - Command to calculate tag quality measures [#49](https://github.com/graphsense/graphsense-tagpack-tool/issues/49)
