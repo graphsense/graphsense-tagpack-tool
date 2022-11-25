@@ -3,7 +3,7 @@ from datetime import datetime
 
 import numpy as np
 from psycopg2 import connect
-from psycopg2.extensions import register_adapter, AsIs
+from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch
 
 from tagpack import ValidationError

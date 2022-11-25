@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import json
 import os
 import sys
@@ -9,14 +7,16 @@ from multiprocessing import Pool, cpu_count
 
 import pandas as pd
 import yaml
-from tabulate import tabulate
 
+# colorama fixes issues with redirecting colored outputs to files
+from colorama import init
+from tabulate import tabulate
 
 from tagpack import __version__ as version
 from tagpack.cmd_utils import (
-    print_line,
-    print_info,
     print_fail,
+    print_info,
+    print_line,
     print_success,
     print_warn,
 )
@@ -32,11 +32,6 @@ from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
 
-"""
-    colorama fixes issues with redirecting colored outputs to files
-"""
-from colorama import init
-
 init()
 
 CONFIG_FILE = "config.yaml"
@@ -47,7 +42,7 @@ DEFAULT_CONFIG = {
     "taxonomies": {
         "entity": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv",
         "abuse": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv",
-        "confidence": "tagpack/db/confidence.csv",
+        "confidence": "src/tagpack/db/confidence.csv",
     }
 }
 
@@ -466,6 +461,9 @@ def show_tagstore_composition(args):
 
 
 def main():
+    if sys.version_info < (3, 7):
+        sys.exit("This program requires python version 3.7 or later")
+
     parser = ArgumentParser(
         description="GraphSense TagPack validation and insert tool",
         epilog="GraphSense TagPack Tool v{} - https://graphsense.info".format(version),
@@ -758,6 +756,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 6):
-        sys.exit("This program requires python version 3.6 or later")
     main()
