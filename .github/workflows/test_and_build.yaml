@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - develop
+      - feature/harmonize_with_gslib
 
   workflow_dispatch:
 
