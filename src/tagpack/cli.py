@@ -12,7 +12,7 @@ import yaml
 from colorama import init
 from tabulate import tabulate
 
-from tagpack import __version__ as version
+from tagpack import get_version
 from tagpack.cmd_utils import (
     print_fail,
     print_info,
@@ -423,7 +423,7 @@ def remove_duplicates(args):
 
 
 def show_version():
-    return "GraphSense TagPack management tool v" + version
+    return f"GraphSense TagPack management tool {get_version()}"
 
 
 def read_url_from_env():
@@ -466,7 +466,9 @@ def main():
 
     parser = ArgumentParser(
         description="GraphSense TagPack validation and insert tool",
-        epilog="GraphSense TagPack Tool v{} - https://graphsense.info".format(version),
+        epilog="GraphSense TagPack Tool v{} - https://graphsense.info".format(
+            get_version()
+        ),
     )
     parser.add_argument("-v", "--version", action="version", version=show_version())
     parser.add_argument(
