@@ -1,4 +1,4 @@
-![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
+![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/actions/workflows/test_and_build.yaml/badge.svg)
 
 # GraphSense TagPack Management Tool
 
