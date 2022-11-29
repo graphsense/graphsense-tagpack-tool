@@ -109,6 +109,43 @@ class TagStore(object):
 
         self.conn.commit()
 
+    def low_quality_address_labels(self, th=0.25, currency='') -> dict:
+        '''
+        This function returns a list of addresses having a quality meassure
+        equal or lower than a threshold value, along with the corresponding
+        tags for each address.
+        '''
+        currency = currency.upper()
+        if currency not in ['', 'BCH', 'BTC', 'ETH', 'LTC', 'ZEC']:
+            raise ValidationError(f"Currency not supported: {currency}")
+
+        if not currency:
+            currency = '%'
+
+        msg = "Threshold must be a float number between 0 and 1"
+        try:
+            th = float(th)
+            if th < 0 or th > 1:
+                raise ValidationError(msg)
+        except ValueError:
+            raise ValidationError(msg)
+
+        q = "SELECT j.currency, j.address, array_agg(j.label) labels \
+            FROM ( \
+                SELECT q.currency, q.address, t.label \
+                FROM address_quality q, tag t \
+                WHERE q.currency::text LIKE %s \
+                    AND q.address=t.address \
+                    AND q.quality <= %s \
+            ) as j \
+            GROUP BY j.currency, j.address"
+
+        self.cursor.execute(q, (currency, th, ))
+
+        return {
+            (row[0], row[1]): row[2] for row in self.cursor.fetchall()
+        }
+
     def remove_duplicates(self):
         self.cursor.execute(
             """
@@ -206,7 +243,7 @@ class TagStore(object):
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_quality_measures(self, currency="") -> float:
+    def get_quality_measures(self, currency="") -> dict:
         """
         This function returns a dict with the quality measures (count, avg, and
         stddev) for a specific currency, or for all if currency is not
@@ -214,7 +251,7 @@ class TagStore(object):
         """
         currency = currency.upper()
         if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
-            raise ValidationError("Currency not supported: {currency}")
+            raise ValidationError(f"Currency not supported: {currency}")
 
         query = "SELECT COUNT(quality), AVG(quality), STDDEV(quality)"
         query += " FROM address_quality"
@@ -227,7 +264,7 @@ class TagStore(object):
         keys = ["count", "avg", "stddev"]
         return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
-    def calculate_quality_measures(self) -> float:
+    def calculate_quality_measures(self) -> dict:
         self.cursor.execute("CALL calculate_quality()")
         self.cursor.execute("CALL insert_address_quality()")
         self.conn.commit()
