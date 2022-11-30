@@ -159,16 +159,29 @@ class TagStore(object):
         for record in self.cursor:
             yield record
 
-    def get_tagstore_composition(self):
-        self.cursor.execute(
-            "SELECT creator, "
-            "category, "
-            "tp.is_public as is_public, "
-            "count(distinct t.label) as labels_count, "
-            "count(*) as tags_count "
-            "FROM tag t, tagpack tp where t.tagpack = tp.id "
-            "group by creator, category, is_public;"
-        )
+    def get_tagstore_composition(self, by_currency=False):
+        if by_currency:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "t.currency as currency, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by currency, creator, category, is_public;"
+            )
+        else:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by creator, category, is_public;"
+            )
+
         for record in self.cursor:
             yield record
 

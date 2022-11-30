@@ -453,8 +453,14 @@ def read_url_from_env():
 
 def show_tagstore_composition(args):
     tagstore = TagStore(args.url, args.schema)
-    headers = ["creator", "category", "is_public", "labels_count", "tags_count"]
-    df = pd.DataFrame(tagstore.get_tagstore_composition(), columns=headers)
+    headers = (
+        ["creator", "category", "is_public", "currency", "labels_count", "tags_count"]
+        if args.by_currency
+        else ["creator", "category", "is_public", "labels_count", "tags_count"]
+    )
+    df = pd.DataFrame(
+        tagstore.get_tagstore_composition(by_currency=args.by_currency), columns=headers
+    )
 
     if args.csv:
         print(df.to_csv(header=True, sep=",", index=True))
@@ -697,6 +703,9 @@ def main():
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
     )
     psc.add_argument("--csv", action="store_true", help="Show csv output.")
+    psc.add_argument(
+        "--by-currency", action="store_true", help="Include currency in statistic."
+    )
     psc.set_defaults(func=show_tagstore_composition, url=def_url)
 
     # parser for quality measures
