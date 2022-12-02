@@ -29,6 +29,8 @@ from tagpack.tagpack import (
     get_uri_for_tagpack,
 )
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
+from tagpack.actorpack_schema import ActorPackSchema
+from tagpack.actorpack import ActorPack
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
 
@@ -48,6 +50,7 @@ DEFAULT_CONFIG = {
         "entity": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv",
         "abuse": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv",
         "confidence": "tagpack/db/confidence.csv",
+        "country": "tagpack/db/countries.csv"
     }
 }
 
@@ -55,12 +58,17 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
+def _solve_remote(taxonomy):
+    # Actually we work local files for confidence and country taxonomies, but
+    # this may change in the future
+    return not (taxonomy == "confidence" or taxonomy == "country")
+
 def _load_taxonomies(config):
     if "taxonomies" not in config:
         return None
     taxonomies = {}
     for key in config["taxonomies"]:
-        remote = not (key == "confidence")
+        remote = _solve_remote(key)
         taxonomy = _load_taxonomy(config, key, remote=remote)
         taxonomies[key] = taxonomy
     return taxonomies
@@ -101,7 +109,7 @@ def show_taxonomy_concepts(args, remote=False):
         return
 
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    remote = not (args.taxonomy == "confidence")
+    remote = _solve_remote(args.taxonomy)
     uri = config["taxonomies"][args.taxonomy]
     print(f"{'Remote' if remote else 'Local'} URI: {uri}\n")
     taxonomy = _load_taxonomy(config, args.taxonomy, remote=remote)
@@ -142,7 +150,7 @@ def insert_taxonomy(args, remote=False):
         print(f"Taxonomy: {t}")
         try:
             # TODO this should change when having local taxonomies
-            remote = not (t == "confidence")
+            remote = _solve_remote(t)
             taxonomy = _load_taxonomy(config, t, remote=remote)
             tagstore.insert_taxonomy(taxonomy)
 
@@ -507,6 +515,127 @@ def show_tagstore_composition(args):
             print(tabulate(df, headers=headers, tablefmt="psql"))
 
 
+def validate_actorpack(args):
+    config = _load_config(args.config)
+
+    t0 = time.time()
+    print_line("ActorPack validation starts")
+    print(f"Path: {args.path}")
+
+    taxonomies = _load_taxonomies(config)
+    taxonomy_keys = taxonomies.keys()
+    print(f"Loaded taxonomies: {taxonomy_keys}")
+
+    schema = ActorPackSchema()
+    print(f"Loaded schema: {schema.definition}")
+
+    actorpack_files = collect_tagpack_files(args.path)
+    n_actorpacks = len([f for fs in actorpack_files.values() for f in fs])
+    print_info(f"Collected {n_actorpacks} ActorPack files\n")
+
+    no_passed = 0
+    try:
+        for headerfile_dir, files in actorpack_files.items():
+            for actorpack_file in files:
+                actorpack = ActorPack.load_from_file(
+                    '', actorpack_file, schema, taxonomies, headerfile_dir
+                )
+
+                print(f"{actorpack_file}: ", end="")
+
+                actorpack.validate()
+                print_success("PASSED")
+
+                no_passed += 1
+    except (ValidationError, TagPackFileError) as e:
+        print_fail("FAILED", e)
+
+    status = "fail" if no_passed < n_actorpacks else "success"
+
+    duration = round(time.time() - t0, 2)
+    msg = f"{no_passed}/{n_actorpacks} ActorPacks passed in {duration}s"
+    print_line(msg, status)
+
+
+def insert_actorpacks(args):
+    t0 = time.time()
+    print_line("ActorPack insert starts")
+    print(f"Path: {args.path}")
+
+    if args.no_git:
+        base_url = args.path
+        print_line("No repository detection done.")
+    else:
+        base_url = get_repository(args.path)
+        print_line(f"Detected repository root in {base_url}")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    schema = ActorPackSchema()
+    print_info(f"Loaded ActorPack schema definition: {schema.definition}")
+
+    config = _load_config(args.config)
+    taxonomies = _load_taxonomies(config)
+    taxonomy_keys = taxonomies.keys()
+    print(f"Loaded taxonomies: {taxonomy_keys}")
+
+    actorpack_files = collect_tagpack_files(args.path)
+
+    # resolve backlinks to remote repository and relative paths
+    # For the URI we use the same logic for ActorPacks than for TagPacks
+    scheck, nogit = not args.no_strict_check, args.no_git
+    prepared_packs = [
+        (m, h, n[0], n[1])
+        for m, h, n in [
+            (a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))
+            for h, fs in actorpack_files.items()
+            for a in fs
+        ]
+    ]
+
+    prefix = config.get("prefix", "")
+    if args.add_new:  # don't re-insert existing tagpacks
+        print_info("Checking which ActorPacks are new to the tagstore:")
+        prepared_packs = [
+            (t, h, u, r)
+            for (t, h, u, r) in prepared_packs
+            if not tagstore.actorpack_exists(prefix, r)
+        ]
+
+    n_ppacks = len(prepared_packs)
+    print_info(f"Collected {n_ppacks} ActorPack files\n")
+
+    no_passed = 0
+    no_actors = 0
+    public, force = args.public, args.force
+    supported = tagstore.supported_currencies
+    for i, pack in enumerate(sorted(prepared_packs), start=1):
+        actorpack_file, headerfile_dir, uri, relpath = pack
+
+        actorpack = ActorPack.load_from_file(
+            uri, actorpack_file, schema, taxonomies, headerfile_dir
+        )
+
+        print(f"{i} {actorpack_file}: ", end="")
+        try:
+            tagstore.insert_actorpack(actorpack, public, force, prefix, relpath)
+            print_success(f"PROCESSED {len(actorpack.actors)} Actors")
+            no_passed += 1
+            no_actors += len(actorpack.actors)
+        except Exception as e:
+            print_fail("FAILED", e)
+
+    status = "fail" if no_passed < n_ppacks else "success"
+
+    duration = round(time.time() - t0, 2)
+    msg = "Processed {}/{} ActorPacks with {} Tags in {}s."
+    print_line(msg.format(no_passed, n_ppacks, no_actors, duration), status)
+#    msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
+#    msg += " consistent!"
+#    print_info(msg)
+
+
+
 def main():
     parser = ArgumentParser(
         description="GraphSense TagPack validation and insert tool",
@@ -608,6 +737,84 @@ def main():
         "--no_git", action="store_true", help="Disables check for local git repository"
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
+
+
+
+    # parsers for actorpack command
+    parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
+
+    app = parser_ap.add_subparsers(title="ActorPack commands")
+
+    # TODO parser for list command
+#    app_l = app.add_parser("list", help="list ActorPacks")
+
+    # parser for validate command
+    app_v = app.add_parser("validate", help="validate ActorPacks")
+    app_v.add_argument(
+        "path",
+        nargs="?",
+        metavar="PATH",
+        default=os.getcwd(),
+        help="ActorPack file or folder root path (current folder by default)",
+    )
+    app_v.set_defaults(func=validate_actorpack)
+
+    # parser for insert command
+    app_i = app.add_parser("insert", help="insert ActorPacks")
+    app_i.add_argument(
+        "path",
+        nargs="?",
+        metavar="PATH",
+        default=os.getcwd(),
+        help="ActorPacks file or folder root path",
+    )
+    app_i.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for actorpack tables",
+    )
+    app_i.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    app_i.add_argument(
+        "-b",
+        "--batch_size",
+        nargs="?",
+        type=int,
+        default=1000,
+        help="batch size for insert",
+    )
+    app_i.add_argument(
+        "--public",
+        action="store_true",
+        help="By default, actorpacks are declared private in the database.\
+                    Use this switch to declare them public.",
+    )
+    app_i.add_argument(
+        "--force",
+        action="store_true",
+        help="By default, actorpack insertion stops when an already inserted \
+                actorpack exists in the database. Use this switch to force \
+                re-insertion.",
+    )
+    app_i.add_argument(
+        "--add_new",
+        action="store_true",
+        help="By default, actorpack insertion stops when an already inserted \
+                actorpack exists in the database. Use this switch to insert \
+                new actorpacks while skipping over existing ones.",
+    )
+    app_i.add_argument(
+        "--no_strict_check",
+        action="store_true",
+        help="Disables check for local modifications in git repository",
+    )
+    app_i.add_argument(
+        "--no_git", action="store_true", help="Disables check for local git repository"
+    )
+    app_i.set_defaults(func=insert_actorpacks, url=def_url)
+
 
     # parser for taxonomy command
     parser_t = subparsers.add_parser("taxonomy", help="taxonomy commands")

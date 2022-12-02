@@ -80,6 +80,39 @@ CREATE INDEX tag_label_index ON tag (label);
 CREATE INDEX tag_address_index ON tag (address);
 CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
 
+-- Actor and ActorPack tables
+
+CREATE TABLE actorpack (
+    id                  VARCHAR     PRIMARY KEY,
+    title               VARCHAR     NOT NULL,
+    creator             VARCHAR     NOT NULL,
+    description         VARCHAR     NOT NULL,
+    is_public           BOOLEAN     DEFAULT FALSE,
+    uri                 VARCHAR     ,
+    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE actor (
+    id                  VARCHAR     PRIMARY KEY,
+    uri                 VARCHAR     ,
+    label               VARCHAR     NOT NULL,
+    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actorpack           VARCHAR     REFERENCES actorpack(id) ON DELETE CASCADE,
+    CONSTRAINT unique_actor UNIQUE (id)
+);
+
+CREATE TABLE actor_categories (
+    id                  SERIAL      PRIMARY KEY,
+    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
+    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+);
+
+CREATE TABLE actor_jurisdictions (
+    id                  SERIAL      PRIMARY KEY,
+    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
+    country_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+);
+
 -- GraphSense mapping table
 
 CREATE TABLE address_cluster_mapping (

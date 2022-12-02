@@ -9,7 +9,7 @@ import giturlparse as gup
 import pathlib
 import coinaddrvalidator
 from collections import defaultdict
-from tagpack import TagPackFileError, ValidationError
+from tagpack import TagPackFileError, ValidationError, UniqueKeyLoader
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack.cmd_utils import print_info, print_warn
@@ -132,18 +132,6 @@ def collect_tagpack_files(path):
     tagpack_files = {k: v for k, v in tagpack_files.items() if v}
 
     return tagpack_files
-
-
-# https://gist.github.com/pypt/94d747fe5180851196eb
-class UniqueKeyLoader(yaml.FullLoader):
-    def construct_mapping(self, node, deep=False):
-        mapping = set()
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if key in mapping:
-                raise ValidationError(f"Duplicate {key!r} key found in YAML.")
-            mapping.add(key)
-        return super().construct_mapping(node, deep)
 
 
 class TagPack(object):

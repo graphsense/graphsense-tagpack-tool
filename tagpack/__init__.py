@@ -1,6 +1,7 @@
 """Module functions and classes for tagpack-tool"""
 
 from tagpack._version import __version__
+import yaml
 
 
 def get_version():
@@ -33,3 +34,15 @@ class StorageError(Exception):
         if self.nested_exception:
             msg = msg + "\nError Details: " + str(self.nested_exception)
         return msg
+
+
+# https://gist.github.com/pypt/94d747fe5180851196eb
+class UniqueKeyLoader(yaml.FullLoader):
+    def construct_mapping(self, node, deep=False):
+        mapping = set()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValidationError(f"Duplicate {key!r} key found in YAML.")
+            mapping.add(key)
+        return super().construct_mapping(node, deep)
