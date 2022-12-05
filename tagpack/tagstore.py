@@ -125,7 +125,6 @@ class TagStore(object):
 
     def insert_actorpack(self, actorpack, is_public, force_insert, prefix,
             rel_path, batch=1000):
-        print(f"Inserting: {rel_path}:{actorpack}")
         actorpack_id = self.create_actorpack_id(prefix, rel_path)
         h = _get_actor_header(actorpack, actorpack_id)
 

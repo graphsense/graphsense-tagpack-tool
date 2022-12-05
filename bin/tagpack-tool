@@ -831,7 +831,7 @@ def main():
     pxp_s.add_argument(
         "taxonomy",
         metavar="TAXONOMY_KEY",
-        choices=["abuse", "entity", "confidence"],
+        choices=["abuse", "entity", "confidence", "country"],
         help="the selected taxonomy",
     )
     pxp_s.add_argument("-v", "--verbose", action="store_true", help="verbose concepts")
