@@ -1,0 +1,15 @@
+title: Test ActorPack
+creator: GraphSense Core Team
+description: A collection of actors commonly used for demonstrating GraphSense features
+lastmod: 2022-11-29
+actors:
+- id: internet_archive
+  uri: https://archive.org
+  label: Internet Archive
+  jurisdictions: [US]
+  categories: [organization]
+- id: binance
+  uri: https://binance.com
+  label: Binance
+  jurisdictions: [US, AT]
+  categories: [exchange]
