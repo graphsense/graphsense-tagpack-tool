@@ -843,7 +843,7 @@ def main():
         "taxonomy",
         metavar="TAXONOMY_KEY",
         nargs="?",
-        choices=["abuse", "entity", "confidence"],
+        choices=["abuse", "entity", "confidence", "country"],
         default=None,
         help="the selected taxonomy",
     )
