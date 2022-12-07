@@ -240,7 +240,7 @@ Install package and dependencies in local environment
 
 The code in this repos will be autoformated via black and linted via a pre-commit hook. To manually format and lint the code run:
 
-    make format && make commit
+    make format && make pre-commit
 
 Or linting via tox
 
