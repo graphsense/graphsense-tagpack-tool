@@ -20,4 +20,3 @@ def test_eth_conversion():
     result = _perform_address_modifications(checksumaddr, 'ETH')
 
     assert expected == result
-
