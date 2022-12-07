@@ -2,12 +2,12 @@
 from datetime import datetime
 
 import numpy as np
+from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
 from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch
 
 from tagpack import ValidationError
-from cashaddress.convert import to_legacy_address
 
 register_adapter(np.int64, AsIs)
 
@@ -270,7 +270,7 @@ def _get_tag(tag, tagpack_id):
 
 
 def _perform_address_modifications(address, curr):
-    if "BCH" == curr.upper() and address.startswith('bitcoincash'):
+    if "BCH" == curr.upper() and address.startswith("bitcoincash"):
         address = to_legacy_address(address)
 
     elif "ETH" == curr.upper():
