@@ -79,11 +79,14 @@ class Taxonomy(object):
     def load_from_local(self):
         with open(self.uri, "r") as f:
             csv_reader = csv.DictReader(f, delimiter=",")
+            uri = self.uri
             for row in csv_reader:
+                ident = row["id"]
+                label = row["label"] if "label" in row else None
                 level = row["level"] if "level" in row else None
-                concept = Concept(
-                    self, row["id"], self.uri, row["label"], level, row["description"]
-                )
+                desc = row["description"] if "description" in row else ""
+
+                concept = Concept(self, ident, uri, label, level, desc)
                 self.concepts.append(concept)
 
     @property

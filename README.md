@@ -5,9 +5,10 @@
 This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for
 
 1. [validating TagPacks against the TagPack schema](#validation)
-2. [handling taxonomies and concepts](#taxonomies)
-3. [ingesting TagPacks and related data into a TagStore](#tagstore)
-4. [calculating the quality of the tags in the TagStore](#quality)
+2. [validating ActorPacks against the ActorPack schema](#actorpack_validation)
+3. [handling taxonomies and concepts](#taxonomies)
+4. [ingesting TagPacks and related data into a TagStore](#tagstore)
+5. [calculating the quality of the tags in the TagStore](#quality)
 
 Please note that the last feature requires (installation of) a [Postgresql](https://www.postgresql.org/) database.
 
@@ -19,8 +20,7 @@ Please note that the last feature requires (installation of) a [Postgresql](http
 
 Validate a single TagPack file
 
-    tagpack-tool tagpack validate tests/testfiles/ex_addr_tagpack.yaml
-    tagpack-tool tagpack validate tests/testfiles/ex_entity_tagpack.yaml
+    tagpack-tool tagpack validate tests/testfiles/simple/ex_addr_tagpack.yaml
 
 Recursively validate all TagPacks in (a) given folder(s).
 
@@ -28,7 +28,21 @@ Recursively validate all TagPacks in (a) given folder(s).
 
 Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
 
-Confidence settings are validated against a set of acceptable [confidence](tagpack/conf/confidence.csv) values.
+Confidence settings are validated against a set of acceptable [confidence](tagpack/db/confidence.csv) values.
+
+## Validate an ActorPack <a name="actorpack_validation"></a>
+
+Validate a single ActorPack file
+
+    tagpack-tool actorpack validate tests/testfiles/actors/ex_actorpack.yaml
+
+Recursively validate all TagPacks in (a) given folder(s).
+
+    tagpack-tool actorpack validate tests/testfiles/actors/
+
+Actorpacks are validated against the [actorpack schema](tagpack/conf/actorpack_schema.yaml).
+
+Values in the field jurisdictions are validated against a set of [country codes](src/tagpack/db/countries.csv).
 
 ## View available taxonomies and concepts <a name="taxonomies"></a>
 
@@ -36,7 +50,7 @@ List configured taxonomy keys and URIs
 
     tagpack-tool taxonomy list
 
-Fetch and show concepts of a specific remote taxonomy (referenced by key)
+Fetch and show concepts of a specific remote/local taxonomy (referenced by key: abuse, entity, confidence, country)
 
     tagpack-tool taxonomy show entity
 
@@ -97,15 +111,11 @@ To use a specific config file pass the file's location:
 
     tagpack-tool --config  path/to/config.yaml config
 
-
-
-
 ### Initialize the tagstore database
 
 To initialize the database with all the taxonomies needed for ingesting the tagpacks, use:
 
     tagpack-tool tagstore init
-
 
 ### Ingest taxonomies and confidence scores
 
@@ -114,6 +124,7 @@ To insert individual taxonomies into database, use:
     tagpack-tool taxonomy insert abuse
     tagpack-tool taxonomy insert entity
     tagpack-tool taxonomy insert confidence
+    tagpack-tool taxonomy insert country
 
 To insert all configured taxonomies at once, simply omit taxonomy name
 
@@ -145,12 +156,21 @@ To ingest **new** tagpacks and **skip** over already ingested tagpacks, add the 
 By default, trying to insert tagpacks from a repository with **local** modifications will **fail**.
 To force insertion despite local modifications, add the ``--no_strict_check`` command-line parameter
 
-    tagpack-tool tagpack insert --force --add_new tests/testfiles/
+    tagpack-tool tagpack insert --no_strict_check tests/testfiles/
 
 By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository ([see here](README_tagpacks.md#versioning-with-git)).
-To instead write local file paths instead, add the ``--no_git`` command-line parameter
+To write local file paths instead, add the ``--no_git`` command-line parameter
 
     tagpack-tool tagpack insert --no_git --add_new tests/testfiles/
+
+### Ingest ActorPacks
+
+Insert a single ActorPack file or all ActorPacks from a given folder:
+
+    tagpack-tool actorpack insert tests/testfiles/simple/ex_addr_actorpack.yaml
+    tagpack-tool actorpack insert tests/testfiles/
+
+You can use the parameters `--force`, `--add_new`, `--no_strict_check` and `--no_git` options in the same way as with the `tagpack` command.
 
 ### Align ingested attribution tags with GraphSense cluster Ids
 

@@ -2,6 +2,8 @@
 
 import sys
 
+import yaml
+
 if sys.version_info[:2] >= (3, 8):
     # TODO: Import directly (no need for conditional) when `python_requires = >= 3.8`
     from importlib.metadata import PackageNotFoundError, version  # pragma: no cover
@@ -48,3 +50,15 @@ class StorageError(Exception):
         if self.nested_exception:
             msg = msg + "\nError Details: " + str(self.nested_exception)
         return msg
+
+
+# https://gist.github.com/pypt/94d747fe5180851196eb
+class UniqueKeyLoader(yaml.FullLoader):
+    def construct_mapping(self, node, deep=False):
+        mapping = set()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValidationError(f"Duplicate {key!r} key found in YAML.")
+            mapping.add(key)
+        return super().construct_mapping(node, deep)

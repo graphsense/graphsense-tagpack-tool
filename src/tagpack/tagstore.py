@@ -20,6 +20,7 @@ class TagStore(object):
         self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
         self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
         self.existing_packs = None
+        self.existing_actorpacks = None
 
     def insert_taxonomy(self, taxonomy):
         if taxonomy.key == "confidence":
@@ -109,6 +110,115 @@ class TagStore(object):
         execute_batch(self.cursor, tag_sql, tag_data)
 
         self.conn.commit()
+
+    def actorpack_exists(self, prefix, actorpack_name):
+        if not self.existing_actorpacks:
+            self.existing_actorpacks = self.get_ingested_actorpacks()
+        actorpack_id = self.create_actorpack_id(prefix, actorpack_name)
+        return actorpack_id in self.existing_actorpacks
+
+    def create_actorpack_id(self, prefix, actorpack_name):
+        return ":".join([prefix, actorpack_name]) if prefix else actorpack_name
+
+    def get_ingested_actorpacks(self) -> list:
+        self.cursor.execute("SELECT id from actorpack")
+        return [i[0] for i in self.cursor.fetchall()]
+
+    def insert_actorpack(
+        self, actorpack, is_public, force_insert, prefix, rel_path, batch=1000
+    ):
+        actorpack_id = self.create_actorpack_id(prefix, rel_path)
+        h = _get_actor_header(actorpack, actorpack_id)
+
+        if force_insert:
+            print(f"Evicting and re-inserting actorpack {actorpack_id}")
+            q = "DELETE FROM actorpack WHERE id = (%s)"
+            self.cursor.execute(q, (actorpack_id,))
+
+        q = "INSERT INTO actorpack \
+            (id, title, creator, description, is_public, uri) \
+            VALUES (%s,%s,%s,%s,%s,%s)"
+        v = (
+            h.get("id"),
+            h.get("title"),
+            h.get("creator"),
+            h.get("description"),
+            is_public,
+            actorpack.uri,
+        )
+        self.cursor.execute(q, v)
+        self.conn.commit()
+
+        actor_sql = "INSERT INTO actor (id, label, uri, lastmod, actorpack) \
+            VALUES (%s, %s, %s, %s, %s)"
+        act_cat_sql = "INSERT INTO actor_categories (actor_id, category_id) \
+            VALUES (%s, %s)"
+        act_jur_sql = "INSERT INTO actor_jurisdictions (actor_id, country_id) \
+            VALUES (%s, %s)"
+
+        actor_data = []
+        cat_data = []
+        jur_data = []
+        for actor in actorpack.get_unique_actors():
+            actor_data.append(_get_actor(actor, actorpack_id))
+            cat_data.extend(_get_actor_categories(actor))
+            jur_data.extend(_get_actor_jurisdictions(actor))
+            if len(actor_data) > batch:
+                execute_batch(self.cursor, actor_sql, actor_data)
+                execute_batch(self.cursor, act_cat_sql, cat_data)
+                execute_batch(self.cursor, act_jur_sql, jur_data)
+
+                actor_data = []
+                cat_data = []
+                jur_data = []
+
+        # insert remaining items
+        execute_batch(self.cursor, actor_sql, actor_data)
+        execute_batch(self.cursor, act_cat_sql, cat_data)
+        execute_batch(self.cursor, act_jur_sql, jur_data)
+
+        self.conn.commit()
+
+    def low_quality_address_labels(self, th=0.25, currency="") -> dict:
+        """
+        This function returns a list of addresses having a quality meassure
+        equal or lower than a threshold value, along with the corresponding
+        tags for each address.
+        """
+        currency = currency.upper()
+        if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
+            raise ValidationError(f"Currency not supported: {currency}")
+
+        if not currency:
+            currency = "%"
+
+        msg = "Threshold must be a float number between 0 and 1"
+        try:
+            th = float(th)
+            if th < 0 or th > 1:
+                raise ValidationError(msg)
+        except ValueError:
+            raise ValidationError(msg)
+
+        q = "SELECT j.currency, j.address, array_agg(j.label) labels \
+            FROM ( \
+                SELECT q.currency, q.address, t.label \
+                FROM address_quality q, tag t \
+                WHERE q.currency::text LIKE %s \
+                    AND q.address=t.address \
+                    AND q.quality <= %s \
+            ) as j \
+            GROUP BY j.currency, j.address"
+
+        self.cursor.execute(
+            q,
+            (
+                currency,
+                th,
+            ),
+        )
+
+        return {(row[0], row[1]): row[2] for row in self.cursor.fetchall()}
 
     def remove_duplicates(self):
         self.cursor.execute(
@@ -220,7 +330,7 @@ class TagStore(object):
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_quality_measures(self, currency="") -> float:
+    def get_quality_measures(self, currency="") -> dict:
         """
         This function returns a dict with the quality measures (count, avg, and
         stddev) for a specific currency, or for all if currency is not
@@ -228,7 +338,7 @@ class TagStore(object):
         """
         currency = currency.upper()
         if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
-            raise ValidationError("Currency not supported: {currency}")
+            raise ValidationError(f"Currency not supported: {currency}")
 
         query = "SELECT COUNT(quality), AVG(quality), STDDEV(quality)"
         query += " FROM address_quality"
@@ -241,7 +351,7 @@ class TagStore(object):
         keys = ["count", "avg", "stddev"]
         return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
-    def calculate_quality_measures(self) -> float:
+    def calculate_quality_measures(self) -> dict:
         self.cursor.execute("CALL calculate_quality()")
         self.cursor.execute("CALL insert_address_quality()")
         self.conn.commit()
@@ -296,3 +406,39 @@ def _get_header(tagpack, tid):
         "creator": tc["creator"],
         "description": tc.get("description", "not provided"),
     }
+
+
+def _get_actor_header(actorpack, id):
+    ac = actorpack.contents
+    return {
+        "id": id,
+        "title": ac["title"],
+        "creator": ac["creator"],
+        "description": ac.get("description", "not provided"),
+    }
+
+
+def _get_actor(actor, actorpack_id):
+    return (
+        actor.all_fields.get("id"),
+        actor.all_fields.get("label").strip(),
+        actor.all_fields.get("uri", None).strip(),
+        actor.all_fields.get("lastmod", datetime.now().isoformat()),
+        actorpack_id,
+    )
+
+
+def _get_actor_categories(actor):
+    data = []
+    actor_id = actor.all_fields.get("id")
+    for category in actor.all_fields.get("categories"):
+        data.append((actor_id, category))
+    return data
+
+
+def _get_actor_jurisdictions(actor):
+    data = []
+    actor_id = actor.all_fields.get("id")
+    for country in actor.all_fields.get("jurisdictions"):
+        data.append((actor_id, country))
+    return data
