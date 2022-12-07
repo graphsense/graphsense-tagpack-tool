@@ -1,10 +1,10 @@
 from datetime import date
+
 import pytest
 
-from tagpack.tagpack_schema import ValidationError
 from tagpack.actorpack_schema import ActorPackSchema
+from tagpack.tagpack_schema import ValidationError
 from tagpack.taxonomy import Taxonomy
-
 
 field_types = {
     "title": "text",
@@ -17,7 +17,7 @@ field_types = {
     "label": "text",
     "lastmod": "datetime",
     "categories": "list",
-    "jurisdictions": "list"
+    "jurisdictions": "list",
 }
 
 field_values = {
@@ -31,7 +31,7 @@ field_values = {
     "label": "some text string",
     "lastmod": date.fromisoformat("2022-01-01"),
     "categories": [1, 2, 3],
-    "jurisdictions": [1, 2, 3]
+    "jurisdictions": [1, 2, 3],
 }
 
 
@@ -64,7 +64,7 @@ def test_header_fields(schema):
     fields = {"title", "creator", "description", "is_public", "actors"}
     assert fields - set(schema.header_fields) == set()
     for field in fields:
-        assert  field in schema.header_fields
+        assert field in schema.header_fields
         assert "type" in schema.header_fields[field]
         assert "mandatory" in schema.header_fields[field]
 
@@ -82,7 +82,7 @@ def test_actor_fields(schema):
     fields = {"id", "uri", "label", "lastmod", "categories", "jurisdictions"}
     assert fields - set(schema.actor_fields) == set()
     for field in fields:
-        assert  field in schema.actor_fields
+        assert field in schema.actor_fields
         assert "type" in schema.actor_fields[field]
         assert "mandatory" in schema.actor_fields[field]
 
@@ -138,4 +138,3 @@ def test_check_taxonomies(schema, taxonomies):
     with (pytest.raises(ValidationError)) as e:
         assert schema.check_taxonomies("jurisdictions", "test", taxonomies)
     assert "Undefined concept test for jurisdictions field" in str(e.value)
-

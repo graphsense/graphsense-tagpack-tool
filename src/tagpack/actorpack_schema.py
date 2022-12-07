@@ -1,18 +1,17 @@
 """ActorPack - A wrappers ActorPack Schema"""
-import os
-import json
-import yaml
 import datetime
-#from json import JSONDecodeError
-import pandas as pd
 import importlib.resources as pkg_resources
 
-from . import conf
-from . import db
+import pandas as pd
+import yaml
+
 from tagpack import ValidationError
+
+from . import conf, db
 
 ACTORPACK_SCHEMA_FILE = "actorpack_schema.yaml"
 COUNTRIES_FILE = "countries.csv"
+
 
 class ActorPackSchema(object):
     """Defines the structure of an ActorPack and supports validation"""
@@ -95,4 +94,3 @@ class ActorPackSchema(object):
                 raise ValidationError(msg)
 
         return True
-

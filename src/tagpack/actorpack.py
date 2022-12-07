@@ -1,11 +1,13 @@
 """ActorPack - A wrapper for ActorPack files"""
+import json
 import os
 import sys
+
 import yaml
-import json
 from yamlinclude import YamlIncludeConstructor
+
+from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import print_info
-from tagpack import TagPackFileError, ValidationError, UniqueKeyLoader
 
 
 class ActorPack(object):
@@ -69,8 +71,7 @@ class ActorPack(object):
         """Returns all actors defined in a ActorPack's body"""
         try:
             return [
-                Actor.from_contents(actor, self)
-                for actor in self.contents["actors"]
+                Actor.from_contents(actor, self) for actor in self.contents["actors"]
             ]
         except AttributeError:
             raise TagPackFileError("Cannot extract actors from ActorPack")
@@ -84,9 +85,7 @@ class ActorPack(object):
 
         for actor in self.actors:
             # check if duplicate entry
-            t = tuple(
-                str(actor.all_fields.get(k)).lower() for k in ["id", "label"]
-            )
+            t = tuple(str(actor.all_fields.get(k)).lower() for k in ["id", "label"])
             if t in seen:
                 duplicates.append(t)
             else:
@@ -131,8 +130,10 @@ class ActorPack(object):
                 raise ValidationError(f"Unknown actor type {type(actor)}")
 
             for schema_field in self.schema.mandatory_actor_fields:
-                if schema_field not in actor.explicit_fields \
-                    and schema_field not in self.actor_fields:
+                if (
+                    schema_field not in actor.explicit_fields
+                    and schema_field not in self.actor_fields
+                ):
                     raise ValidationError(e2.format(schema_field, actor))
 
             for field, value in actor.explicit_fields.items():
@@ -152,8 +153,10 @@ class ActorPack(object):
                     raise ValidationError(f"{e} in {actor}")
 
         if self._duplicates:
-            msg = f"{len(self._duplicates)} duplicate(s) found, starting "\
-                  f"with {self._duplicates[0]}\n"
+            msg = (
+                f"{len(self._duplicates)} duplicate(s) found, starting "
+                f"with {self._duplicates[0]}\n"
+            )
             print_info(msg)
         return True
 
@@ -202,4 +205,3 @@ class Actor(object):
     def __str__(self):
         """ "Returns a string serialization of an Actor"""
         return str(self.all_fields)
-

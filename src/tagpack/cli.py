@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import json
 import os
 import sys
@@ -9,14 +7,18 @@ from multiprocessing import Pool, cpu_count
 
 import pandas as pd
 import yaml
+
+# colorama fixes issues with redirecting colored outputs to files
+from colorama import init
 from tabulate import tabulate
 
-
-from tagpack import __version__ as version
+from tagpack import get_version
+from tagpack.actorpack import ActorPack
+from tagpack.actorpack_schema import ActorPackSchema
 from tagpack.cmd_utils import (
-    print_line,
-    print_info,
     print_fail,
+    print_info,
+    print_line,
     print_success,
     print_warn,
 )
@@ -29,15 +31,8 @@ from tagpack.tagpack import (
     get_uri_for_tagpack,
 )
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.actorpack_schema import ActorPackSchema
-from tagpack.actorpack import ActorPack
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
-
-"""
-    colorama fixes issues with redirecting colored outputs to files
-"""
-from colorama import init
 
 init()
 
@@ -49,8 +44,8 @@ DEFAULT_CONFIG = {
     "taxonomies": {
         "entity": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv",
         "abuse": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv",
-        "confidence": "tagpack/db/confidence.csv",
-        "country": "tagpack/db/countries.csv"
+        "confidence": "src/tagpack/db/confidence.csv",
+        "country": "src/tagpack/db/countries.csv",
     }
 }
 
@@ -62,6 +57,7 @@ def _solve_remote(taxonomy):
     # Actually we work local files for confidence and country taxonomies, but
     # this may change in the future
     return not (taxonomy == "confidence" or taxonomy == "country")
+
 
 def _load_taxonomies(config):
     if "taxonomies" not in config:
@@ -173,7 +169,7 @@ def low_quality_addresses(args):
     try:
         la = tagstore.low_quality_address_labels(args.threshold, args.currency)
         if la:
-            c = args.currency if args.currency else 'all'
+            c = args.currency if args.currency else "all"
             print(f"List of {c} addresses and labels ({len(la)}):")
             intersections = []
             for (currency, address), labels in la.items():
@@ -205,7 +201,7 @@ def low_quality_addresses(args):
 
     except Exception as e:
         print_fail(e)
-        print_line("Operation failed", 'fail')
+        print_line("Operation failed", "fail")
 
 
 def show_quality_measures(args):
@@ -478,7 +474,7 @@ def remove_duplicates(args):
 
 
 def show_version():
-    return "GraphSense TagPack management tool v" + version
+    return f"GraphSense TagPack management tool {get_version()}"
 
 
 def read_url_from_env():
@@ -503,8 +499,14 @@ def read_url_from_env():
 
 def show_tagstore_composition(args):
     tagstore = TagStore(args.url, args.schema)
-    headers = ["creator", "category", "is_public", "labels_count", "tags_count"]
-    df = pd.DataFrame(tagstore.get_tagstore_composition(), columns=headers)
+    headers = (
+        ["creator", "category", "is_public", "currency", "labels_count", "tags_count"]
+        if args.by_currency
+        else ["creator", "category", "is_public", "labels_count", "tags_count"]
+    )
+    df = pd.DataFrame(
+        tagstore.get_tagstore_composition(by_currency=args.by_currency), columns=headers
+    )
 
     if args.csv:
         print(df.to_csv(header=True, sep=",", index=True))
@@ -538,7 +540,7 @@ def validate_actorpack(args):
         for headerfile_dir, files in actorpack_files.items():
             for actorpack_file in files:
                 actorpack = ActorPack.load_from_file(
-                    '', actorpack_file, schema, taxonomies, headerfile_dir
+                    "", actorpack_file, schema, taxonomies, headerfile_dir
                 )
 
                 print(f"{actorpack_file}: ", end="")
@@ -608,7 +610,7 @@ def insert_actorpacks(args):
     no_passed = 0
     no_actors = 0
     public, force = args.public, args.force
-    supported = tagstore.supported_currencies
+
     for i, pack in enumerate(sorted(prepared_packs), start=1):
         actorpack_file, headerfile_dir, uri, relpath = pack
 
@@ -630,16 +632,22 @@ def insert_actorpacks(args):
     duration = round(time.time() - t0, 2)
     msg = "Processed {}/{} ActorPacks with {} Tags in {}s."
     print_line(msg.format(no_passed, n_ppacks, no_actors, duration), status)
+
+
 #    msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
 #    msg += " consistent!"
 #    print_info(msg)
 
 
-
 def main():
+    if sys.version_info < (3, 7):
+        sys.exit("This program requires python version 3.7 or later")
+
     parser = ArgumentParser(
         description="GraphSense TagPack validation and insert tool",
-        epilog="GraphSense TagPack Tool v{} - https://graphsense.info".format(version),
+        epilog="GraphSense TagPack Tool v{} - https://graphsense.info".format(
+            get_version()
+        ),
     )
     parser.add_argument("-v", "--version", action="version", version=show_version())
     parser.add_argument(
@@ -738,15 +746,13 @@ def main():
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 
-
-
     # parsers for actorpack command
     parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
 
     app = parser_ap.add_subparsers(title="ActorPack commands")
 
     # TODO parser for list command
-#    app_l = app.add_parser("list", help="list ActorPacks")
+    #    app_l = app.add_parser("list", help="list ActorPacks")
 
     # parser for validate command
     app_v = app.add_parser("validate", help="validate ActorPacks")
@@ -814,7 +820,6 @@ def main():
         "--no_git", action="store_true", help="Disables check for local git repository"
     )
     app_i.set_defaults(func=insert_actorpacks, url=def_url)
-
 
     # parser for taxonomy command
     parser_t = subparsers.add_parser("taxonomy", help="taxonomy commands")
@@ -946,6 +951,9 @@ def main():
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
     )
     psc.add_argument("--csv", action="store_true", help="Show csv output.")
+    psc.add_argument(
+        "--by-currency", action="store_true", help="Include currency in statistic."
+    )
     psc.set_defaults(func=show_tagstore_composition, url=def_url)
 
     # parser for quality measures
@@ -972,23 +980,33 @@ def main():
     pqp_i.set_defaults(func=calc_quality_measures, url=def_url)
 
     # parser for quality measures list
-    pqp_l = pqp.add_parser('list', help='list low quality addresses')
+    pqp_l = pqp.add_parser("list", help="list low quality addresses")
     pqp_l.add_argument(
-            '--currency', default='',
-            choices=['BCH', 'BTC', 'ETH', 'LTC', 'ZEC'],
-            help="Show low quality addresses of a specific crypto-currency")
+        "--currency",
+        default="",
+        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
+        help="Show low quality addresses of a specific crypto-currency",
+    )
     pqp_l.add_argument(
-            '--threshold', default=0.25,
-            help="List addresses having a quality lower than this threshold")
+        "--threshold",
+        default=0.25,
+        help="List addresses having a quality lower than this threshold",
+    )
     pqp_l.add_argument(
-            '-c', '--cluster', action='store_true',
-            help="Cluster addresses having intersections of similar tags")
+        "-c",
+        "--cluster",
+        action="store_true",
+        help="Cluster addresses having intersections of similar tags",
+    )
     pqp_l.add_argument(
-            '--schema', default=_DEFAULT_SCHEMA, metavar='DB_SCHEMA',
-            help="PostgreSQL schema for quality measures tables")
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for quality measures tables",
+    )
     pqp_l.add_argument(
-            '-u', '--url',
-            help="postgresql://user:password@db_host:port/database")
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
     pqp_l.set_defaults(func=low_quality_addresses, url=def_url)
 
     # parser for quality measures show
@@ -1027,6 +1045,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if sys.version_info < (3, 6):
-        sys.exit("This program requires python version 3.6 or later")
     main()

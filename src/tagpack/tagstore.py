@@ -2,8 +2,9 @@
 from datetime import datetime
 
 import numpy as np
+from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
-from psycopg2.extensions import register_adapter, AsIs
+from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch
 
 from tagpack import ValidationError
@@ -123,8 +124,9 @@ class TagStore(object):
         self.cursor.execute("SELECT id from actorpack")
         return [i[0] for i in self.cursor.fetchall()]
 
-    def insert_actorpack(self, actorpack, is_public, force_insert, prefix,
-            rel_path, batch=1000):
+    def insert_actorpack(
+        self, actorpack, is_public, force_insert, prefix, rel_path, batch=1000
+    ):
         actorpack_id = self.create_actorpack_id(prefix, rel_path)
         h = _get_actor_header(actorpack, actorpack_id)
 
@@ -177,18 +179,18 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def low_quality_address_labels(self, th=0.25, currency='') -> dict:
-        '''
+    def low_quality_address_labels(self, th=0.25, currency="") -> dict:
+        """
         This function returns a list of addresses having a quality meassure
         equal or lower than a threshold value, along with the corresponding
         tags for each address.
-        '''
+        """
         currency = currency.upper()
-        if currency not in ['', 'BCH', 'BTC', 'ETH', 'LTC', 'ZEC']:
+        if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
             raise ValidationError(f"Currency not supported: {currency}")
 
         if not currency:
-            currency = '%'
+            currency = "%"
 
         msg = "Threshold must be a float number between 0 and 1"
         try:
@@ -208,11 +210,15 @@ class TagStore(object):
             ) as j \
             GROUP BY j.currency, j.address"
 
-        self.cursor.execute(q, (currency, th, ))
+        self.cursor.execute(
+            q,
+            (
+                currency,
+                th,
+            ),
+        )
 
-        return {
-            (row[0], row[1]): row[2] for row in self.cursor.fetchall()
-        }
+        return {(row[0], row[1]): row[2] for row in self.cursor.fetchall()}
 
     def remove_duplicates(self):
         self.cursor.execute(
@@ -264,16 +270,29 @@ class TagStore(object):
         for record in self.cursor:
             yield record
 
-    def get_tagstore_composition(self):
-        self.cursor.execute(
-            "SELECT creator, "
-            "category, "
-            "tp.is_public as is_public, "
-            "count(distinct t.label) as labels_count, "
-            "count(*) as tags_count "
-            "FROM tag t, tagpack tp where t.tagpack = tp.id "
-            "group by creator, category, is_public;"
-        )
+    def get_tagstore_composition(self, by_currency=False):
+        if by_currency:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "t.currency as currency, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by currency, creator, category, is_public;"
+            )
+        else:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by creator, category, is_public;"
+            )
+
         for record in self.cursor:
             yield record
 
@@ -360,10 +379,22 @@ def _get_tag(tag, tagpack_id):
     )
 
 
+def _perform_address_modifications(address, curr):
+    if "BCH" == curr.upper() and address.startswith("bitcoincash"):
+        address = to_legacy_address(address)
+
+    elif "ETH" == curr.upper():
+        address = address.lower()
+
+    return address
+
+
 def _get_currency_and_address(tag):
     curr = tag.all_fields.get("currency")
     addr = tag.all_fields.get("address")
-    addr = addr.lower() if "ETH" == curr.upper() else addr
+
+    addr = _perform_address_modifications(addr, curr)
+
     return curr, addr
 
 
@@ -376,6 +407,7 @@ def _get_header(tagpack, tid):
         "description": tc.get("description", "not provided"),
     }
 
+
 def _get_actor_header(actorpack, id):
     ac = actorpack.contents
     return {
@@ -384,6 +416,7 @@ def _get_actor_header(actorpack, id):
         "creator": ac["creator"],
         "description": ac.get("description", "not provided"),
     }
+
 
 def _get_actor(actor, actorpack_id):
     return (
@@ -394,6 +427,7 @@ def _get_actor(actor, actorpack_id):
         actorpack_id,
     )
 
+
 def _get_actor_categories(actor):
     data = []
     actor_id = actor.all_fields.get("id")
@@ -401,10 +435,10 @@ def _get_actor_categories(actor):
         data.append((actor_id, category))
     return data
 
+
 def _get_actor_jurisdictions(actor):
     data = []
     actor_id = actor.all_fields.get("id")
     for country in actor.all_fields.get("jurisdictions"):
         data.append((actor_id, country))
     return data
-

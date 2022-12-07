@@ -1,8 +1,9 @@
 """Taxonomy - A proxy for a remote taxonomy definition"""
 
 import csv
-from io import StringIO
 import json
+from io import StringIO
+
 import requests
 
 
@@ -80,12 +81,12 @@ class Taxonomy(object):
             csv_reader = csv.DictReader(f, delimiter=",")
             uri = self.uri
             for row in csv_reader:
-                id = row["id"]
+                ident = row["id"]
                 label = row["label"] if "label" in row else None
                 level = row["level"] if "level" in row else None
-                desc = row["description"] if "description" in row else ''
+                desc = row["description"] if "description" in row else ""
 
-                concept = Concept(self, id, uri, label, level, desc)
+                concept = Concept(self, ident, uri, label, level, desc)
                 self.concepts.append(concept)
 
     @property
