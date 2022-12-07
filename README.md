@@ -1,8 +1,8 @@
-![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/workflows/Test%20TagPack%20Tool/badge.svg)
+![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/actions/workflows/test_and_build.yaml/badge.svg)
 
 # GraphSense TagPack Management Tool
 
-This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for 
+This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for
 
 1. [validating TagPacks against the TagPack schema](#validation)
 2. [handling taxonomies and concepts](#taxonomies)
@@ -61,7 +61,7 @@ in `tagpack/db/tagstore_schema.sql`.
 
 #### Option 2: Use an existing PostgreSQL database
 
-Create the schema and tables in a PostgreSQL instance of your choice    
+Create the schema and tables in a PostgreSQL instance of your choice
 
     psql -h $POSTGRES_HOST -d $POSTGRES_DB -U $POSTGRES_USER --password -f tagpack/db/tagstore_schema.sql
 
@@ -85,7 +85,7 @@ Then call tagpack-tool.
 
 To create a default configuration `config.yaml` file from scratch - i.e. when config.yaml does not exist - use:
 
-    tagpack-tool config 
+    tagpack-tool config
 
 If a config.yaml already exists, it will not be replaced.
 
@@ -161,8 +161,8 @@ Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to
 suit your Graphsense setup.
 
 Then fetch the cluster mappings from your Graphsense instance and insert them
-into the tagstore database:  
-    
+into the tagstore database:
+
     tagpack-tool tagstore insert_cluster_mappings -d $CASSANDRA_HOST -f ks_map.json
 
 To update ALL cluster-mappings in your tagstore, add the `--update` flag:
@@ -171,7 +171,7 @@ To update ALL cluster-mappings in your tagstore, add the `--update` flag:
 
 ### Remove duplicate tags
 
-Different tagpacks may contain identical tags - the same label and source for a particular address. 
+Different tagpacks may contain identical tags - the same label and source for a particular address.
 To remove such redundant information, run
 
     tagpack-tool tagstore remove_duplicates
@@ -182,7 +182,7 @@ After all required tagpacks have been ingested, run
 
     tagpack-tool tagstore refresh_views
 
-to update all materialized views. 
+to update all materialized views.
 Depending on the amount of tags contained in the tagstore, this may take a while.
 
 ### Connection Pooling for PostgreSQL
@@ -206,11 +206,11 @@ To show the quality measures of all the tags in the database, or those of a spec
 
     tagpack-tool quality show [--currency [BCH|BTC|ETH|LTC|ZEC]]
 
-## Show tagstore contents/contributions 
+## Show tagstore contents/contributions
 
 To list all tagpack creators and their contributions to a tagstore's content use:
 
-    tagpack-tool tagstore show_composition 
+    tagpack-tool tagstore show_composition
 
 ## Working in development / testing mode
 
@@ -219,39 +219,54 @@ To list all tagpack creators and their contributions to a tagstore's content use
 
 ### Using Pip locally
 
-Create and activate a python environment for required dependencies
+Create and activate a python environment for required dependencies and activate it
+
+#### Venv
 
     python3 -m venv venv
     source venv/bin/activate
-    python -m pip install -U pip wheel setuptools
+
+#### Conda
+
+    conda env create -n tagpack-tool
+    conda activate tagpack-tool
+
 
 Install package and dependencies in local environment
 
-    pip install .
+    make install-dev
 
-### Using Conda
+### Linting and Formatting
 
-Create and activate the conda environment
+The code in this repos will be autoformated via black and linted via a pre-commit hook. To manually format and lint the code run:
 
-    conda env create -f environment.yml
-    conda activate tagpack-tool
+    make format && make commit
 
-Once the *conda environment is active*, install giturlparse and this tagpack-tool package using pip:
+Or linting via tox
 
-    pip install giturlparse coinaddrvalidator
-    pip install .
+    tox -l lint
+
+### Build for Publishing
+
+    make build
+
+### Create Html Docs
+
+    make docs
 
 ### Testing
 
 Run tests
 
-    pytest
+    make test
+
+Or via tox
+
+    tox
 
 Check test coverage (optional)
-    
-    pip install coverage
 
-    coverage run -m pytest
+    make test
     coverage report
 
 Use [act][act] to check if test via [Github action](https://github.com/features/actions) pass.

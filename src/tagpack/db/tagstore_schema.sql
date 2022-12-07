@@ -1,4 +1,4 @@
--- Monitoring 
+-- Monitoring
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 DROP SCHEMA IF EXISTS tagstore CASCADE;
@@ -106,55 +106,55 @@ CREATE MATERIALIZED VIEW label AS SELECT DISTINCT label FROM tag;
 
 -- TODO: add triggers updating lastmod on update
 
-CREATE MATERIALIZED VIEW statistics AS 
-    SELECT 
+CREATE MATERIALIZED VIEW statistics AS
+    SELECT
         explicit.currency,
         no_labels,
         explicit.no_tagged_addresses as no_explicit_tagged_addresses,
         COALESCE(implicit.no_tagged_addresses, explicit.no_tagged_addresses) as no_implicit_tagged_addresses
     FROM
-        (SELECT 
+        (SELECT
             currency,
             NULL,
             COUNT(DISTINCT label) AS no_labels,
             COUNT(DISTINCT address) AS no_tagged_addresses
-         FROM 
+         FROM
             tag
-         GROUP BY 
+         GROUP BY
             currency
         ) explicit
     LEFT JOIN
-        (SELECT 
+        (SELECT
             SUM(gs_cluster_no_addr) AS no_tagged_addresses,
             currency
          FROM
-            (SELECT DISTINCT ON (gs_cluster_id, currency) 
+            (SELECT DISTINCT ON (gs_cluster_id, currency)
                 currency,
                 gs_cluster_no_addr
              FROM address_cluster_mapping
-            ) t 
+            ) t
          GROUP
             BY currency
-        ) implicit 
+        ) implicit
     ON implicit.currency = explicit.currency;
 
-CREATE MATERIALIZED VIEW tag_count_by_cluster AS 
-    SELECT 
-        t.currency, 
-        acm.gs_cluster_id, 
-        tp.is_public, 
-        count(t.address) as count 
-    FROM 
-        tag t, 
-        tagpack tp, 
-        address_cluster_mapping acm 
-    WHERE 
-        acm.address=t.address 
-        AND acm.currency=t.currency 
-        AND t.tagpack=tp.id 
-    GROUP BY 
-        t.currency, 
-        acm.gs_cluster_id, 
+CREATE MATERIALIZED VIEW tag_count_by_cluster AS
+    SELECT
+        t.currency,
+        acm.gs_cluster_id,
+        tp.is_public,
+        count(t.address) as count
+    FROM
+        tag t,
+        tagpack tp,
+        address_cluster_mapping acm
+    WHERE
+        acm.address=t.address
+        AND acm.currency=t.currency
+        AND t.tagpack=tp.id
+    GROUP BY
+        t.currency,
+        acm.gs_cluster_id,
         tp.is_public;
 
 CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (currency, gs_cluster_id);
@@ -168,63 +168,63 @@ CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (currency, gs_
  *  If cluster size = 1 and there is an address tag on that single address -> assign to cluster level
  *  If cluster size = 1 and there are several address tags on that single address -> assign the one with highest confidence
  */
-CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS 
-    SELECT 
-        acm.gs_cluster_id, 
-        t.currency, 
-        t.label, 
-        t.category, 
-        tp.is_public, 
+CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
+    SELECT
+        acm.gs_cluster_id,
+        t.currency,
+        t.label,
+        t.category,
+        tp.is_public,
         MIN(t.address) as address,
-        COUNT(t.address) AS no_addresses, 
+        COUNT(t.address) AS no_addresses,
         c.level AS max_level,
         true AS is_cluster_definer
-    FROM 
-        tag t, 
-        address_cluster_mapping acm, 
+    FROM
+        tag t,
+        address_cluster_mapping acm,
         confidence c,
         tagpack tp
-    WHERE 
-        acm.address=t.address 
-        AND acm.currency=t.currency 
-        AND t.is_cluster_definer=true 
-        AND t.confidence=c.id 
-        AND tp.id=t.tagpack 
-    GROUP BY 
+    WHERE
+        acm.address=t.address
+        AND acm.currency=t.currency
+        AND t.is_cluster_definer=true
+        AND t.confidence=c.id
+        AND tp.id=t.tagpack
+    GROUP BY
         c.level,
-        t.label, 
-        t.category, 
-        t.currency, 
-        acm.gs_cluster_id, 
+        t.label,
+        t.category,
+        t.currency,
+        acm.gs_cluster_id,
         tp.is_public
     UNION
-        SELECT 
-            gs_cluster_id, 
-            t.currency, 
+        SELECT
+            gs_cluster_id,
+            t.currency,
             t.label,
-            t.category, 
-            every(tp.is_public) AS is_public, 
+            t.category,
+            every(tp.is_public) AS is_public,
             MIN(t.address) as address,
             1 AS no_addresses,
             MAX(c.level) AS max_level,
             false AS is_cluster_definer
-        FROM 
-            address_cluster_mapping acm, 
-            tag t, 
-            confidence c, 
-            tagpack tp 
-        WHERE 
-            c.id=t.confidence 
-            and tp.id=t.tagpack 
-            and t.address=acm.address 
-            and t.currency=acm.currency 
+        FROM
+            address_cluster_mapping acm,
+            tag t,
+            confidence c,
+            tagpack tp
+        WHERE
+            c.id=t.confidence
+            and tp.id=t.tagpack
+            and t.address=acm.address
+            and t.currency=acm.currency
             and acm.gs_cluster_no_addr = 1
-        GROUP BY 
-            t.label, 
-            t.category, 
-            t.currency, 
+        GROUP BY
+            t.label,
+            t.category,
+            t.currency,
             acm.gs_cluster_id
-        HAVING 
+        HAVING
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
 CREATE INDEX cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (currency, gs_cluster_id);
@@ -378,4 +378,3 @@ CROSS JOIN LATERAL (
 		(sim.q1+sim.q2+sim.q3+sim.q4)
 ) as pairs(total);
 END $$;
-

@@ -1,16 +1,15 @@
 """TagPack - A wrappers TagPack Schema"""
 import datetime
+import importlib.resources as pkg_resources
 import json
 from json import JSONDecodeError
-import pandas as pd
 
+import pandas as pd
 import yaml
 
-import importlib.resources as pkg_resources
-
-from . import conf
-from . import db
 from tagpack import ValidationError
+
+from . import conf, db
 
 TAGPACK_SCHEMA_FILE = "tagpack_schema.yaml"
 CONFIDENCE_FILE = "confidence.csv"

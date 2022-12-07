@@ -1,8 +1,9 @@
 """Taxonomy - A proxy for a remote taxonomy definition"""
 
 import csv
-from io import StringIO
 import json
+from io import StringIO
+
 import requests
 
 

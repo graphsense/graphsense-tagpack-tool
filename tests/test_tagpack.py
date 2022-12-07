@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 
 from tagpack import ValidationError
-from tagpack.tagpack import TagPack, Tag, collect_tagpack_files
+from tagpack.tagpack import Tag, TagPack, collect_tagpack_files
 from tagpack.tagpack_schema import TagPackSchema
 from tagpack.taxonomy import Taxonomy
 

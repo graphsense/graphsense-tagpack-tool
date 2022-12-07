@@ -21,4 +21,3 @@ def test_eth_conversion():
 
     assert expected == result
 
-

@@ -2,16 +2,17 @@
 import glob
 import json
 import os
+import pathlib
 import sys
+from collections import defaultdict
+
+import coinaddrvalidator
+import giturlparse as gup
 import yaml
 from git import Repo
-import giturlparse as gup
-import pathlib
-import coinaddrvalidator
-from collections import defaultdict
-from tagpack import TagPackFileError, ValidationError
 from yamlinclude import YamlIncludeConstructor
 
+from tagpack import TagPackFileError, ValidationError
 from tagpack.cmd_utils import print_info, print_warn
 
 

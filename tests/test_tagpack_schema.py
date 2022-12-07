@@ -1,4 +1,5 @@
 from datetime import date
+
 import pytest
 
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
