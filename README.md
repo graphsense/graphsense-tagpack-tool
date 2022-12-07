@@ -42,7 +42,7 @@ Recursively validate all TagPacks in (a) given folder(s).
 
 Actorpacks are validated against the [actorpack schema](tagpack/conf/actorpack_schema.yaml).
 
-Values in the field jurisdictions are validated against a set of [country codes](tagpack/db/countries.csv).
+Values in the field jurisdictions are validated against a set of [country codes](src/tagpack/db/countries.csv).
 
 ## View available taxonomies and concepts <a name="taxonomies"></a>
 
