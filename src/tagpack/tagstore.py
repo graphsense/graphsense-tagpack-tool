@@ -7,6 +7,7 @@ from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch
 
 from tagpack import ValidationError
+from cashaddress.convert import to_legacy_address
 
 register_adapter(np.int64, AsIs)
 
@@ -159,16 +160,29 @@ class TagStore(object):
         for record in self.cursor:
             yield record
 
-    def get_tagstore_composition(self):
-        self.cursor.execute(
-            "SELECT creator, "
-            "category, "
-            "tp.is_public as is_public, "
-            "count(distinct t.label) as labels_count, "
-            "count(*) as tags_count "
-            "FROM tag t, tagpack tp where t.tagpack = tp.id "
-            "group by creator, category, is_public;"
-        )
+    def get_tagstore_composition(self, by_currency=False):
+        if by_currency:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "t.currency as currency, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by currency, creator, category, is_public;"
+            )
+        else:
+            self.cursor.execute(
+                "SELECT creator, "
+                "category, "
+                "tp.is_public as is_public, "
+                "count(distinct t.label) as labels_count, "
+                "count(*) as tags_count "
+                "FROM tag t, tagpack tp where t.tagpack = tp.id "
+                "group by creator, category, is_public;"
+            )
+
         for record in self.cursor:
             yield record
 
@@ -255,10 +269,22 @@ def _get_tag(tag, tagpack_id):
     )
 
 
+def _perform_address_modifications(address, curr):
+    if "BCH" == curr.upper() and address.startswith('bitcoincash'):
+        address = to_legacy_address(address)
+
+    elif "ETH" == curr.upper():
+        address = address.lower()
+
+    return address
+
+
 def _get_currency_and_address(tag):
     curr = tag.all_fields.get("currency")
     addr = tag.all_fields.get("address")
-    addr = addr.lower() if "ETH" == curr.upper() else addr
+
+    addr = _perform_address_modifications(addr, curr)
+
     return curr, addr
 
 
