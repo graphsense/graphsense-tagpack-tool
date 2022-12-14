@@ -11,6 +11,7 @@ import yaml
 # colorama fixes issues with redirecting colored outputs to files
 from colorama import init
 from tabulate import tabulate
+from yaml.parser import ParserError, ScannerError
 
 from tagpack import get_version
 from tagpack.actorpack import ActorPack
@@ -163,17 +164,27 @@ def insert_taxonomy(args, remote=False):
 
 
 def low_quality_addresses(args):
-    print_line("Addresses with low quality")
+    if not args.csv:
+        print_line("Addresses with low quality")
     tagstore = TagStore(args.url, args.schema)
 
     try:
-        la = tagstore.low_quality_address_labels(args.threshold, args.currency)
+        th, curr, cat = args.threshold, args.currency, args.category
+        la = tagstore.low_quality_address_labels(th, curr, cat)
         if la:
-            c = args.currency if args.currency else "all"
-            print(f"List of {c} addresses and labels ({len(la)}):")
+            if not args.csv:
+                c = args.currency if args.currency else "all"
+                print(f"List of {c} addresses and labels ({len(la)}):")
+            else:
+                print("currency,address,labels")
+
             intersections = []
             for (currency, address), labels in la.items():
-                print(f"\t{currency}\t{address}\t{labels}")
+                if args.csv:
+                    labels_str = "|".join(labels)
+                    print(f"{currency},{address},{labels_str}")
+                else:
+                    print(f"\t{currency}\t{address}\t{labels}")
 
                 if not args.cluster:
                     continue
@@ -197,7 +208,8 @@ def low_quality_addresses(args):
                     if v > 1:
                         print(f"\t{v}: {', '.join(k)}")
         else:
-            print("\tNone")
+            if not args.csv:
+                print("\tNone")
 
     except Exception as e:
         print_fail(e)
@@ -549,7 +561,7 @@ def validate_actorpack(args):
                 print_success("PASSED")
 
                 no_passed += 1
-    except (ValidationError, TagPackFileError) as e:
+    except (ValidationError, TagPackFileError, ParserError, ScannerError) as e:
         print_fail("FAILED", e)
 
     status = "fail" if no_passed < n_actorpacks else "success"
@@ -634,9 +646,79 @@ def insert_actorpacks(args):
     print_line(msg.format(no_passed, n_ppacks, no_actors, duration), status)
 
 
-#    msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
-#    msg += " consistent!"
-#    print_info(msg)
+def list_actors(args):
+    t0 = time.time()
+    if not args.csv:
+        print_line("List actors starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.list_actors(category=args.category)
+        if not args.csv:
+            print(f"{len(qm)} Actors found")
+        else:
+            print("actorpack,actor_id,actor_label,concept_label")
+
+        for row in qm:
+            print(("," if args.csv else ", ").join(map(str, row)))
+
+        duration = round(time.time() - t0, 2)
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", "fail")
+
+
+def list_tags(args):
+    t0 = time.time()
+    if not args.csv:
+        print_line("List tags starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        uniq, cat, curr = args.unique, args.category, args.currency
+        qm = tagstore.list_tags(unique=uniq, category=cat, currency=curr)
+        if not args.csv:
+            print(f"{len(qm)} Tags found")
+        else:
+            print("currency,tp_title,tag_label")
+        for row in qm:
+            print(("," if args.csv else ", ").join(map(str, row)))
+
+        duration = round(time.time() - t0, 2)
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", "fail")
+
+
+def list_address_actors(args):
+    t0 = time.time()
+    if not args.csv:
+        print_line("List addresses with actor tags starts")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.list_address_actors(currency=args.currency)
+        if not args.csv:
+            print(f"{len(qm)} addresses found")
+        else:
+            print("tag_id,tag_label,tag_address,tag_category,actor_label")
+
+        for row in qm:
+            print((", " if not args.csv else ",").join(map(str, row)))
+
+        duration = round(time.time() - t0, 2)
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", "fail")
 
 
 def main():
@@ -672,6 +754,35 @@ def main():
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
+
+    # parser for list tags command
+    ptp_l = ptp.add_parser("list", help="list Tags")
+
+    ptp_l.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    ptp_l.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    ptp_l.add_argument(
+        "--unique",
+        action="store_true",
+        help="List Tags removing duplicates",
+    )
+    ptp_l.add_argument(
+        "--category", default="", help="List Tags of a specific category"
+    )
+    ptp_l.add_argument(
+        "--currency",
+        default="",
+        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
+        help="List Tags of a specific crypto-currency",
+    )
+    ptp_l.add_argument("--csv", action="store_true", help="Show csv output.")
+    ptp_l.set_defaults(func=list_tags, url=def_url)
 
     # parser for validate command
     ptp_v = ptp.add_parser("validate", help="validate TagPacks")
@@ -751,8 +862,44 @@ def main():
 
     app = parser_ap.add_subparsers(title="ActorPack commands")
 
-    # TODO parser for list command
-    #    app_l = app.add_parser("list", help="list ActorPacks")
+    # parser for list actors command
+    app_l = app.add_parser("list", help="list Actors")
+
+    app_l.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    app_l.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    app_l.add_argument(
+        "--category", default="", help="List Actors of a specific category"
+    )
+    app_l.add_argument("--csv", action="store_true", help="Show csv output.")
+    app_l.set_defaults(func=list_actors, url=def_url)
+
+    # parser for list addresses with actor-tags command
+    app_a = app.add_parser("list_address_actor", help="list addresses-actors")
+
+    app_a.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    app_a.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    app_a.add_argument(
+        "--currency",
+        default="",
+        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
+        help="List addresses of a specific crypto-currency",
+    )
+    app_a.add_argument("--csv", action="store_true", help="Show csv output.")
+    app_a.set_defaults(func=list_address_actors, url=def_url)
 
     # parser for validate command
     app_v = app.add_parser("validate", help="validate ActorPacks")
@@ -982,6 +1129,9 @@ def main():
     # parser for quality measures list
     pqp_l = pqp.add_parser("list", help="list low quality addresses")
     pqp_l.add_argument(
+        "--category", default="", help="List addresses of a specific category"
+    )
+    pqp_l.add_argument(
         "--currency",
         default="",
         choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
@@ -1007,6 +1157,7 @@ def main():
     pqp_l.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
     )
+    pqp_l.add_argument("--csv", action="store_true", help="Show csv output.")
     pqp_l.set_defaults(func=low_quality_addresses, url=def_url)
 
     # parser for quality measures show

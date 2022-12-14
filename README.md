@@ -26,9 +26,9 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool tagpack validate tests/testfiles/
 
-Tagpacks are validated against the [tagpack schema](tagpack/conf/tagpack_schema.yaml).
+Tagpacks are validated against the [tagpack schema](src/tagpack/conf/tagpack_schema.yaml).
 
-Confidence settings are validated against a set of acceptable [confidence](tagpack/db/confidence.csv) values.
+Confidence settings are validated against a set of acceptable [confidence](src/tagpack/db/confidence.csv) values.
 
 ## Validate an ActorPack <a name="actorpack_validation"></a>
 
@@ -40,7 +40,7 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool actorpack validate tests/testfiles/actors/
 
-Actorpacks are validated against the [actorpack schema](tagpack/conf/actorpack_schema.yaml).
+Actorpacks are validated against the [actorpack schema](src/tagpack/conf/actorpack_schema.yaml).
 
 Values in the field jurisdictions are validated against a set of [country codes](src/tagpack/db/countries.csv).
 
@@ -71,13 +71,13 @@ Start a PostgreSQL instance using Docker Compose:
     docker-compose up -d
 
 This will automatically create the database schema as defined
-in `tagpack/db/tagstore_schema.sql`.
+in `src/tagpack/db/tagstore_schema.sql`.
 
 #### Option 2: Use an existing PostgreSQL database
 
 Create the schema and tables in a PostgreSQL instance of your choice
 
-    psql -h $POSTGRES_HOST -d $POSTGRES_DB -U $POSTGRES_USER --password -f tagpack/db/tagstore_schema.sql
+    psql -h $POSTGRES_HOST -d $POSTGRES_DB -U $POSTGRES_USER --password -f src/tagpack/db/tagstore_schema.sql
 
 ### Export .env variables
 
@@ -177,7 +177,7 @@ You can use the parameters `--force`, `--add_new`, `--no_strict_check` and `--no
 The final step after inserting a tagpack is to fetch the corresponding
 Graphsense cluster mapping ids for the crypto addresses in the tagpack.
 
-Copy `tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to
+Copy `src/tagpack/conf/ks_map.json.template` to `ks_map.json` and edit the file to
 suit your Graphsense setup.
 
 Then fetch the cluster mappings from your Graphsense instance and insert them

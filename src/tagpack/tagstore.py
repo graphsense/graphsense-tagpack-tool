@@ -179,18 +179,15 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def low_quality_address_labels(self, th=0.25, currency="") -> dict:
+    def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """
         This function returns a list of addresses having a quality meassure
         equal or lower than a threshold value, along with the corresponding
         tags for each address.
         """
-        currency = currency.upper()
-        if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
-            raise ValidationError(f"Currency not supported: {currency}")
-
-        if not currency:
-            currency = "%"
+        validate_currency(currency)
+        currency = currency if currency else "%"
+        category = category if category else "%"
 
         msg = "Threshold must be a float number between 0 and 1"
         try:
@@ -204,8 +201,9 @@ class TagStore(object):
             FROM ( \
                 SELECT q.currency, q.address, t.label \
                 FROM address_quality q, tag t \
-                WHERE q.currency::text LIKE %s \
-                    AND q.address=t.address \
+                WHERE t.category ILIKE %s \
+                    AND t.address=q.address \
+                    AND q.currency::text LIKE %s \
                     AND q.quality <= %s \
             ) as j \
             GROUP BY j.currency, j.address"
@@ -213,6 +211,7 @@ class TagStore(object):
         self.cursor.execute(
             q,
             (
+                category,
                 currency,
                 th,
             ),
@@ -336,9 +335,7 @@ class TagStore(object):
         stddev) for a specific currency, or for all if currency is not
         specified.
         """
-        currency = currency.upper()
-        if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
-            raise ValidationError(f"Currency not supported: {currency}")
+        validate_currency(currency)
 
         query = "SELECT COUNT(quality), AVG(quality), STDDEV(quality)"
         query += " FROM address_quality"
@@ -356,6 +353,55 @@ class TagStore(object):
         self.cursor.execute("CALL insert_address_quality()")
         self.conn.commit()
         return self.get_quality_measures()
+
+    def list_tags(self, unique=False, category="", currency=""):
+        validate_currency(currency)
+        currency = currency if currency else "%"
+        category = category if category else "%"
+
+        q = (
+            f"SELECT {'DISTINCT' if unique else ''} "
+            "t.currency, tp.title, t.label "
+            "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
+            "AND t.category ILIKE %s AND t.currency::text LIKE %s "
+            "ORDER BY t.currency, tp.title, t.label ASC"
+        )
+        v = (category, currency)
+        self.cursor.execute(q, v)
+        return self.cursor.fetchall()
+
+    def list_actors(self, category=""):
+        category = category if category else "%"
+
+        q = (
+            "SELECT a.actorpack, a.id, a.label, c.label "
+            "FROM actor a, actor_categories ac, concept c "
+            "WHERE ac.actor_id = a.id AND ac.category_id = c.id "
+            "AND c.label ILIKE %s "
+            "ORDER BY a.id ASC"
+        )
+        v = (category,)
+        self.cursor.execute(q, v)
+        return self.cursor.fetchall()
+
+    def list_address_actors(self, currency=""):
+        validate_currency(currency)
+        currency = currency if currency else "%"
+        q = (
+            "SELECT t.id, t.label, t.address, t.category, a.label "
+            "FROM tag t, actor a "
+            "WHERE t.label = a.id "
+            "AND t.currency::text LIKE %s"
+        )
+        v = (currency,)
+        self.cursor.execute(q, v)
+        return self.cursor.fetchall()
+
+
+def validate_currency(currency):
+    currency = currency.upper()
+    if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
+        raise ValidationError(f"Currency not supported: {currency}")
 
 
 def _get_tag(tag, tagpack_id):
