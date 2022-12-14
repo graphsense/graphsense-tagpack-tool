@@ -164,18 +164,27 @@ def insert_taxonomy(args, remote=False):
 
 
 def low_quality_addresses(args):
-    print_line("Addresses with low quality")
+    if not args.csv:
+        print_line("Addresses with low quality")
     tagstore = TagStore(args.url, args.schema)
 
     try:
         th, curr, cat = args.threshold, args.currency, args.category
         la = tagstore.low_quality_address_labels(th, curr, cat)
         if la:
-            c = args.currency if args.currency else "all"
-            print(f"List of {c} addresses and labels ({len(la)}):")
+            if not args.csv:
+                c = args.currency if args.currency else "all"
+                print(f"List of {c} addresses and labels ({len(la)}):")
+            else:
+                print("currency,address,labels")
+
             intersections = []
             for (currency, address), labels in la.items():
-                print(f"\t{currency}\t{address}\t{labels}")
+                if args.csv:
+                    labels_str = "|".join(labels)
+                    print(f"{currency},{address},{labels_str}")
+                else:
+                    print(f"\t{currency}\t{address}\t{labels}")
 
                 if not args.cluster:
                     continue
@@ -199,7 +208,8 @@ def low_quality_addresses(args):
                     if v > 1:
                         print(f"\t{v}: {', '.join(k)}")
         else:
-            print("\tNone")
+            if not args.csv:
+                print("\tNone")
 
     except Exception as e:
         print_fail(e)
@@ -638,18 +648,24 @@ def insert_actorpacks(args):
 
 def list_actors(args):
     t0 = time.time()
-    print_line("List actors starts")
+    if not args.csv:
+        print_line("List actors starts")
 
     tagstore = TagStore(args.url, args.schema)
 
     try:
         qm = tagstore.list_actors(category=args.category)
-        print(f"{len(qm)} Actors found")
+        if not args.csv:
+            print(f"{len(qm)} Actors found")
+        else:
+            print("actorpack,actor_id,actor_label,concept_label")
+
         for row in qm:
-            print(f"{row}")
+            print(("," if args.csv else ", ").join(map(str, row)))
 
         duration = round(time.time() - t0, 2)
-        print_line(f"Done in {duration}s", "success")
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
     except Exception as e:
         print_fail(e)
         print_line("Operation failed", "fail")
@@ -657,19 +673,24 @@ def list_actors(args):
 
 def list_tags(args):
     t0 = time.time()
-    print_line("List tags starts")
+    if not args.csv:
+        print_line("List tags starts")
 
     tagstore = TagStore(args.url, args.schema)
 
     try:
         uniq, cat, curr = args.unique, args.category, args.currency
         qm = tagstore.list_tags(unique=uniq, category=cat, currency=curr)
-        print(f"{len(qm)} Tags found")
+        if not args.csv:
+            print(f"{len(qm)} Tags found")
+        else:
+            print("currency,tp_title,tag_label")
         for row in qm:
-            print(f"{row}")
+            print(("," if args.csv else ", ").join(map(str, row)))
 
         duration = round(time.time() - t0, 2)
-        print_line(f"Done in {duration}s", "success")
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
     except Exception as e:
         print_fail(e)
         print_line("Operation failed", "fail")
@@ -677,18 +698,24 @@ def list_tags(args):
 
 def list_address_actors(args):
     t0 = time.time()
-    print_line("List addresses with actor tags starts")
+    if not args.csv:
+        print_line("List addresses with actor tags starts")
 
     tagstore = TagStore(args.url, args.schema)
 
     try:
         qm = tagstore.list_address_actors(currency=args.currency)
-        print(f"{len(qm)} addresses found")
+        if not args.csv:
+            print(f"{len(qm)} addresses found")
+        else:
+            print("tag_id,tag_label,tag_address,tag_category,actor_label")
+
         for row in qm:
-            print(f"{row}")
+            print((", " if not args.csv else ",").join(map(str, row)))
 
         duration = round(time.time() - t0, 2)
-        print_line(f"Done in {duration}s", "success")
+        if not args.csv:
+            print_line(f"Done in {duration}s", "success")
     except Exception as e:
         print_fail(e)
         print_line("Operation failed", "fail")
@@ -754,6 +781,7 @@ def main():
         choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
         help="List Tags of a specific crypto-currency",
     )
+    ptp_l.add_argument("--csv", action="store_true", help="Show csv output.")
     ptp_l.set_defaults(func=list_tags, url=def_url)
 
     # parser for validate command
@@ -849,6 +877,7 @@ def main():
     app_l.add_argument(
         "--category", default="", help="List Actors of a specific category"
     )
+    app_l.add_argument("--csv", action="store_true", help="Show csv output.")
     app_l.set_defaults(func=list_actors, url=def_url)
 
     # parser for list addresses with actor-tags command
@@ -869,6 +898,7 @@ def main():
         choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
         help="List addresses of a specific crypto-currency",
     )
+    app_a.add_argument("--csv", action="store_true", help="Show csv output.")
     app_a.set_defaults(func=list_address_actors, url=def_url)
 
     # parser for validate command
@@ -1127,6 +1157,7 @@ def main():
     pqp_l.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
     )
+    pqp_l.add_argument("--csv", action="store_true", help="Show csv output.")
     pqp_l.set_defaults(func=low_quality_addresses, url=def_url)
 
     # parser for quality measures show

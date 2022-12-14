@@ -361,14 +361,14 @@ class TagStore(object):
 
         q = (
             f"SELECT {'DISTINCT' if unique else ''} "
-            "(t.currency, tp.title, t.label) fulltag "
+            "t.currency, tp.title, t.label "
             "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
             "AND t.category ILIKE %s AND t.currency::text LIKE %s "
-            "ORDER BY fulltag ASC"
+            "ORDER BY t.currency, tp.title, t.label ASC"
         )
         v = (category, currency)
         self.cursor.execute(q, v)
-        return [i[0] for i in self.cursor.fetchall()]
+        return self.cursor.fetchall()
 
     def list_actors(self, category=""):
         category = category if category else "%"
