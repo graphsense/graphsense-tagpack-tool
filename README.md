@@ -158,7 +158,7 @@ To force insertion despite local modifications, add the ``--no_strict_check`` co
 
     tagpack-tool tagpack insert --no_strict_check tests/testfiles/
 
-By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository ([see here](README_tagpacks.md#versioning-with-git)).
+By default, tagpacks in the TagStore provide a backlink to the original tagpack file in their remote git repository.
 To write local file paths instead, add the ``--no_git`` command-line parameter
 
     tagpack-tool tagpack insert --no_git --add_new tests/testfiles/
