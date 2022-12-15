@@ -36,6 +36,39 @@ CREATE TABLE confidence (
 
 CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
 
+-- Actor and ActorPack tables
+
+CREATE TABLE actorpack (
+    id                  VARCHAR     PRIMARY KEY,
+    title               VARCHAR     NOT NULL,
+    creator             VARCHAR     NOT NULL,
+    description         VARCHAR     NOT NULL,
+    is_public           BOOLEAN     DEFAULT FALSE,
+    uri                 VARCHAR     ,
+    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE actor (
+    id                  VARCHAR     PRIMARY KEY,
+    uri                 VARCHAR     ,
+    label               VARCHAR     NOT NULL,
+    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actorpack           VARCHAR     REFERENCES actorpack(id) ON DELETE CASCADE,
+    CONSTRAINT unique_actor UNIQUE (id)
+);
+
+CREATE TABLE actor_categories (
+    id                  SERIAL      PRIMARY KEY,
+    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
+    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+);
+
+CREATE TABLE actor_jurisdictions (
+    id                  SERIAL      PRIMARY KEY,
+    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
+    country_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+);
+
 
 -- Tag & TagPack tables
 
@@ -72,6 +105,7 @@ CREATE TABLE tag (
     abuse               VARCHAR     REFERENCES concept(id),
     category            VARCHAR     REFERENCES concept(id),
     tagpack             VARCHAR     REFERENCES tagpack(id) ON DELETE CASCADE,
+    actor               VARCHAR     REFERENCES actor(id),
     FOREIGN KEY (currency, address) REFERENCES address (currency, address),
     CONSTRAINT unique_tag UNIQUE (address, currency, tagpack, label, source)
 );
@@ -79,39 +113,6 @@ CREATE TABLE tag (
 CREATE INDEX tag_label_index ON tag (label);
 CREATE INDEX tag_address_index ON tag (address);
 CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
-
--- Actor and ActorPack tables
-
-CREATE TABLE actorpack (
-    id                  VARCHAR     PRIMARY KEY,
-    title               VARCHAR     NOT NULL,
-    creator             VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    is_public           BOOLEAN     DEFAULT FALSE,
-    uri                 VARCHAR     ,
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE actor (
-    id                  VARCHAR     PRIMARY KEY,
-    uri                 VARCHAR     ,
-    label               VARCHAR     NOT NULL,
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    actorpack           VARCHAR     REFERENCES actorpack(id) ON DELETE CASCADE,
-    CONSTRAINT unique_actor UNIQUE (id)
-);
-
-CREATE TABLE actor_categories (
-    id                  SERIAL      PRIMARY KEY,
-    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
-);
-
-CREATE TABLE actor_jurisdictions (
-    id                  SERIAL      PRIMARY KEY,
-    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    country_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
-);
 
 -- GraphSense mapping table
 
@@ -305,7 +306,7 @@ CREATE TABLE IF NOT EXISTS address_quality(
 
 -- Procedure to calculate the quality measures, usage: CALL calculate_quality();
 
-CREATE PROCEDURE calculate_quality()
+CREATE PROCEDURE calculate_quality(actor BOOLEAN DEFAULT FALSE)
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
@@ -313,6 +314,7 @@ DECLARE
 	e RECORD;
 	s RECORD;
 	sim NUMERIC;
+	_tag_column TEXT;
 BEGIN
 	DROP TABLE IF EXISTS quality_pairs;
 	CREATE TEMP TABLE IF NOT EXISTS quality_pairs(
@@ -323,7 +325,6 @@ BEGIN
 		label2 VARCHAR,
 		sim NUMERIC
 	);
-
 	DROP TABLE IF EXISTS quality_labels;
 	CREATE TEMP TABLE IF NOT EXISTS quality_labels(
 		id SERIAL PRIMARY KEY,
@@ -332,7 +333,15 @@ BEGIN
 		label VARCHAR,
 		label_id INTEGER
 	);
-	FOR i in SELECT t.currency, t.address, COUNT(DISTINCT(t.label)) n_labels FROM tag t GROUP BY currency, address HAVING COUNT(DISTINCT(t.label)) > 1 LOOP
+	IF actor THEN _tag_column='actor'; ELSE _tag_column='label'; END IF;
+	FOR i in EXECUTE ( format(
+		'SELECT t.currency, t.address, COUNT(DISTINCT t.%1$I) n_labels
+		FROM tag t
+		GROUP BY currency, address
+		HAVING COUNT(DISTINCT t.%1$I) > 1'
+		, _tag_column
+	))
+	LOOP
 		FOR e in SELECT * FROM tag WHERE currency=i.currency AND address=i.address LOOP
 			-- RAISE NOTICE '%:%', e.address, e.label;
 			FOR s in SELECT u.label label, similarity(u.label, e.label) simi FROM quality_labels u WHERE u.address = e.address LOOP

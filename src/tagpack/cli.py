@@ -721,6 +721,31 @@ def list_address_actors(args):
         print_line("Operation failed", "fail")
 
 
+def update_tags_actors(args):
+    """
+    This function is for testing puposes. It allows to update some entries in
+    the table `tag` using actors, and then update the corresponding entries in
+    the table `address_quality`.
+    """
+    t0 = time.time()
+    print_line("Update tag.actor field from actor table (fixed list)")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.update_tags_actors()
+        print(f"{qm} tags updated with values from table actor")
+
+        qm = tagstore.update_quality_actors()
+        print(f"{qm} entries in address_quality were updated")
+
+        duration = round(time.time() - t0, 2)
+        print_line(f"Done in {duration}s", "success")
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", "fail")
+
+
 def main():
     if sys.version_info < (3, 7):
         sys.exit("This program requires python version 3.7 or later")
@@ -900,6 +925,20 @@ def main():
     )
     app_a.add_argument("--csv", action="store_true", help="Show csv output.")
     app_a.set_defaults(func=list_address_actors, url=def_url)
+
+    # parser for list addresses with actor-tags command
+    app_u = app.add_parser("update_tags_actors", help="Update tag.actor with actors")
+
+    app_u.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    app_u.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    app_u.set_defaults(func=update_tags_actors, url=def_url)
 
     # parser for validate command
     app_v = app.add_parser("validate", help="validate ActorPacks")

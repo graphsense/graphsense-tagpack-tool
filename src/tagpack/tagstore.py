@@ -349,7 +349,7 @@ class TagStore(object):
         return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
     def calculate_quality_measures(self) -> dict:
-        self.cursor.execute("CALL calculate_quality()")
+        self.cursor.execute("CALL calculate_quality(FALSE)")
         self.cursor.execute("CALL insert_address_quality()")
         self.conn.commit()
         return self.get_quality_measures()
@@ -396,6 +396,75 @@ class TagStore(object):
         v = (currency,)
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
+
+    def update_tags_actors(self):
+        """
+        Update the `tag.actor` field by searching an actor.id that matches with
+        the `tag.label`. Tags marked as abuse are excluded from the update.
+        """
+        # TODO this is a test actor list
+        actors = """
+        'bitmex', 'bitfinex', 'huobi', 'binance', 'coinbase', 'zaif',
+        'mtgox', 'okx', 'poloniex', 'kucoin', 'kraken', 'bitstamp', 'bithumb',
+        'shapeshift', 'deribit', 'gemini', 'f2pool', 'bittrex', 'crypto.com',
+        'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io'
+        """
+        q = (
+            "UPDATE tag SET actor=a.id "
+            f"FROM (SELECT id FROM actor WHERE id in ({actors})) a "
+            "WHERE tag.abuse IS NULL "
+            "AND tag.label ILIKE CONCAT(a.id, '%')"
+        )
+        # "AND tag.label NOT LIKE 'upbit hack%' "\
+        self.cursor.execute(q)
+        rowcount = self.cursor.rowcount
+        # This query is to normalize OKEX/OKX/OKB tags
+        q = (
+            "UPDATE tag SET actor='okx' "
+            "WHERE abuse IS NULL "
+            "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
+        )
+        self.cursor.execute(q)
+        self.conn.commit()
+        return rowcount
+
+    def update_quality_actors(self):
+        """
+        Update all entries in `address_quality` having a unique actor in table
+        `tag`. The corresponding quality is 1, due to the conflicts are solved.
+        """
+        # q = "SELECT t.currency, t.address, COUNT(t.actor) n" \
+        #     "FROM tag t, address_quality q" \
+        #     "WHERE t.currency=q.currency" \
+        #     "AND t.address=q.address" \
+        #     "AND NOT t.actor IS NULL" \
+        #     "GROUP BY t.currency, t.address, t.actor"
+
+        q = (
+            "UPDATE address_quality "
+            "SET "
+            "n_tags=1, "
+            "n_dif_tags=1, "
+            "total_pairs=0, "
+            "q1=0, "
+            "q2=0, "
+            "q3=0, "
+            "q4=0, "
+            "quality=1.0 "
+            "FROM ("
+            "SELECT currency, address "
+            "FROM tag "
+            "WHERE NOT actor IS NULL "
+            "GROUP BY currency, address "
+            "HAVING COUNT(DISTINCT actor) = 1 "
+            ") s "
+            "WHERE address_quality.currency=s.currency "
+            "AND address_quality.address=s.address"
+        )
+        self.cursor.execute(q)
+        rowcount = self.cursor.rowcount
+        self.conn.commit()
+        return rowcount
 
 
 def validate_currency(currency):
