@@ -407,7 +407,11 @@ class TagStore(object):
         'bitmex', 'bitfinex', 'huobi', 'binance', 'coinbase', 'zaif',
         'mtgox', 'okx', 'poloniex', 'kucoin', 'kraken', 'bitstamp', 'bithumb',
         'shapeshift', 'deribit', 'gemini', 'f2pool', 'bittrex', 'crypto.com',
-        'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io'
+        'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io',
+        '0x', '1inch', 'aave', 'badger', 'balancer', 'barnbridge', 'compound',
+        'convex', 'curvefinance', 'dydx', 'fei', 'futureswap',
+        'harvestfinance', 'hegic', 'instadapp', 'maker', 'nexus', 'renvm',
+        'sushiswap', 'synthetix', 'uniswap', 'vesper', 'yearn'
         """
         q = (
             "UPDATE tag SET actor=a.id "
