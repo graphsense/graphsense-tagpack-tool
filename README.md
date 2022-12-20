@@ -248,12 +248,13 @@ Create and activate a python environment for required dependencies and activate 
 
 #### Conda
 
-    conda env create -n tagpack-tool
+    conda create -n tagpack-tool
     conda activate tagpack-tool
 
 
 Install package and dependencies in local environment
 
+    conda install pip
     make install-dev
 
 ### Linting and Formatting
