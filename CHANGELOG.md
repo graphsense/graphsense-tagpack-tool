@@ -1,5 +1,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.01] 2023-01-30
+
+### Added
+
+- add --by-currency option for tagstore composition query
+- add --csv option for selected commands
+- First draft for supporting ActorPacks
+
+
 ## [22.11] 2022-11-24
 ### Changed
 - Harmonised command structure [#59](https://github.com/graphsense/graphsense-tagpack-tool/issues/59)
