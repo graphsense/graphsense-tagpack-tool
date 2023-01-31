@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - add --by-currency option for tagstore composition query
 - add --csv option for selected commands
 - First draft for supporting ActorPacks
-
+- add tag-version pseudo target to Makefile
 
 ## [22.11] 2022-11-24
 ### Changed
