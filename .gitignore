@@ -11,6 +11,7 @@ config.yaml
 build
 .DS_Store
 data
+docker-compose.override.yml
 
 # Temporary and binary files
 *~
