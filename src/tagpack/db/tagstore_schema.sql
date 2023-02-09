@@ -52,6 +52,7 @@ CREATE TABLE actor (
     id                  VARCHAR     PRIMARY KEY,
     uri                 VARCHAR     ,
     label               VARCHAR     NOT NULL,
+    context             VARCHAR     DEFAULT NULL,
     lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actorpack           VARCHAR     REFERENCES actorpack(id) ON DELETE CASCADE,
     CONSTRAINT unique_actor UNIQUE (id)

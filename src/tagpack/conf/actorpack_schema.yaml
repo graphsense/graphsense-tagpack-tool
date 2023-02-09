@@ -35,3 +35,6 @@ actor:
     type: list
     mandatory: false
     taxonomy: country
+  context:
+    type: text
+    mandatory: false

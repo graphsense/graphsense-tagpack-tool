@@ -149,8 +149,8 @@ class TagStore(object):
         self.cursor.execute(q, v)
         self.conn.commit()
 
-        actor_sql = "INSERT INTO actor (id, label, uri, lastmod, actorpack) \
-            VALUES (%s, %s, %s, %s, %s)"
+        actor_sql = "INSERT INTO actor (id, label, context, uri, lastmod, actorpack) \
+            VALUES (%s, %s, %s, %s, %s, %s)"
         act_cat_sql = "INSERT INTO actor_categories (actor_id, category_id) \
             VALUES (%s, %s)"
         act_jur_sql = "INSERT INTO actor_jurisdictions (actor_id, country_id) \
@@ -163,6 +163,8 @@ class TagStore(object):
             actor_data.append(_get_actor(actor, actorpack_id))
             cat_data.extend(_get_actor_categories(actor))
             jur_data.extend(_get_actor_jurisdictions(actor))
+
+            # Handle writes in batches.
             if len(actor_data) > batch:
                 execute_batch(self.cursor, actor_sql, actor_data)
                 execute_batch(self.cursor, act_cat_sql, cat_data)
@@ -172,7 +174,8 @@ class TagStore(object):
                 cat_data = []
                 jur_data = []
 
-        # insert remaining items
+        # insert remaining items (needed if written in batch and len(unique actors)
+        # is not divisible by batch size)
         execute_batch(self.cursor, actor_sql, actor_data)
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
@@ -541,6 +544,7 @@ def _get_actor(actor, actorpack_id):
     return (
         actor.all_fields.get("id"),
         actor.all_fields.get("label").strip(),
+        actor.all_fields.get("context").strip(),
         actor.all_fields.get("uri", None).strip(),
         actor.all_fields.get("lastmod", datetime.now().isoformat()),
         actorpack_id,
