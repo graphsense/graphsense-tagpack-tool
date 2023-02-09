@@ -9,3 +9,5 @@ service_data,Service data,Creator retrieved attribution tag from a known service
 forensic,Forensic reports,Creator retrieved data attribution data from somehow trusted reports (e.g. academic papers),50
 untrusted_transaction,Untrusted transaction,A third party transferred funds from known service x to known service y,40
 web_crawl,Web crawls,Attribution tags were retrieved from crawling the web or other data dumps,20
+heuristic,Any Source,Attribution tags are created with methods where the reliablility of the method is hard to quantify. Tags have to be considered best effort,10
+unknown,Unknown,Source and reliability of the tags are unknown. Use these tags with care, 5
