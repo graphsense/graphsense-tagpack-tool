@@ -97,7 +97,7 @@ CREATE TABLE tag (
     label               VARCHAR     NOT NULL,
     source              VARCHAR     DEFAULT NULL,
     context             VARCHAR     DEFAULT NULL,
-    is_cluster_definer  BOOLEAN     DEFAULT NULL,
+    is_cluster_definer  BOOLEAN     DEFAULT FALSE,
     lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     address             VARCHAR     NOT NULL,
     currency            currency    NOT NULL,
