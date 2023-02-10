@@ -542,11 +542,13 @@ def _get_actor_header(actorpack, id):
 
 
 def _get_actor(actor, actorpack_id):
+    uri = actor.all_fields.get("uri", None)
+    context = actor.all_fields.get("context", None)
     return (
         actor.all_fields.get("id"),
-        actor.all_fields.get("label").strip(),
-        actor.all_fields.get("context").strip(),
-        actor.all_fields.get("uri", None).strip(),
+        actor.all_fields.get("label", "").strip(),
+        context.strip() if context is not None else context,
+        uri.strip() if uri is not None else uri,
         actor.all_fields.get("lastmod", datetime.now().isoformat()),
         actorpack_id,
     )

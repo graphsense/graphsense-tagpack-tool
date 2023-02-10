@@ -81,7 +81,7 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     return res, rel_path
 
 
-def collect_tagpack_files(path):
+def collect_tagpack_files(path, search_actorpacks=False):
     """
     Collect Tagpack YAML files from the given path. This function returns a
     dict made of sets. Each key of the dict is the corresponding header path of
@@ -100,6 +100,11 @@ def collect_tagpack_files(path):
         return {}
 
     files = {f for f in files if not f.endswith("config.yaml")}
+
+    if search_actorpacks:
+        files = {f for f in files if f.endswith("actorpack.yaml")}
+    else:
+        files = {f for f in files if not f.endswith("actorpack.yaml")}
 
     # Sort files, deepest first
     sfiles = sorted(files, key=lambda x: len(x.split(os.sep)), reverse=True)
@@ -167,7 +172,9 @@ class TagPack(object):
         return TagPack(uri, contents, schema, taxonomies)
 
     def init_default_values(self):
-        if "confidence" not in self.contents:
+        if "confidence" not in self.contents and not all(
+            ["confidence" in tag.contents for tag in self.tags]
+        ):
             conf_scores_df = self.schema.confidences
             min_confs = conf_scores_df[
                 conf_scores_df.level == conf_scores_df.level.min()
@@ -177,8 +184,9 @@ class TagPack(object):
             )
             self.contents["confidence"] = lowest_confidence_score
             print_warn(
-                f"Set default confidence level {lowest_confidence_score}"
-                " on tagpack level."
+                "Not all tags have a confidence score set. "
+                f"Set default confidence level to {lowest_confidence_score} "
+                "on tagpack level."
             )
 
     @property

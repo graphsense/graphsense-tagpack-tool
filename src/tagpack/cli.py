@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import tempfile
 import time
 from argparse import ArgumentParser
 from multiprocessing import Pool, cpu_count
@@ -10,6 +11,7 @@ import yaml
 
 # colorama fixes issues with redirecting colored outputs to files
 from colorama import init
+from git import Repo
 from tabulate import tabulate
 from yaml.parser import ParserError, ScannerError
 
@@ -75,7 +77,6 @@ def list_taxonomies(args=None):
     config = _load_config(args.config)
 
     print_line("Show configured taxonomies")
-    print_line(f"Configuration: {args.config}", "info")
     count = 0
     if "taxonomies" not in config:
         print_line("No configured taxonomies", "fail")
@@ -246,15 +247,17 @@ def calc_quality_measures(args):
 
 def _load_config(cfile):
     if not os.path.isfile(cfile):
-        print_info(f"No override config file found at {cfile}. Using default values.")
         return DEFAULT_CONFIG
     return yaml.safe_load(open(cfile, "r"))
 
 
 def show_config(args):
-    if not os.path.exists(args.config):
-        _load_config(args.config)
-    print("Config File:", args.config)
+    if os.path.exists(args.config):
+        print("Using Config File:", args.config)
+    else:
+        print_info(
+            f"No override config file found at {args.config}. Using default values."
+        )
     if args.verbose:
         list_taxonomies(args)
 
@@ -526,7 +529,7 @@ def validate_actorpack(args):
     schema = ActorPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    actorpack_files = collect_tagpack_files(args.path)
+    actorpack_files = collect_tagpack_files(args.path, search_actorpacks=True)
     n_actorpacks = len([f for fs in actorpack_files.values() for f in fs])
     print_info(f"Collected {n_actorpacks} ActorPack files\n")
 
@@ -576,7 +579,7 @@ def insert_actorpacks(args):
     taxonomy_keys = taxonomies.keys()
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    actorpack_files = collect_tagpack_files(args.path)
+    actorpack_files = collect_tagpack_files(args.path, search_actorpacks=True)
 
     # resolve backlinks to remote repository and relative paths
     # For the URI we use the same logic for ActorPacks than for TagPacks
@@ -625,7 +628,7 @@ def insert_actorpacks(args):
     status = "fail" if no_passed < n_ppacks else "success"
 
     duration = round(time.time() - t0, 2)
-    msg = "Processed {}/{} ActorPacks with {} Tags in {}s."
+    msg = "Processed {}/{} ActorPacks with {} Actors in {}s."
     print_line(msg.format(no_passed, n_ppacks, no_actors, duration), status)
 
 
@@ -729,6 +732,56 @@ def update_tags_actors(args):
         print_line("Operation failed", "fail")
 
 
+def exec_cli_command(arguments):
+    saved_argv = sys.argv
+    try:
+        sys.argv[1:] = arguments
+        main()
+    finally:
+        sys.argv = saved_argv
+
+
+def sync_repos(args):
+    from shutil import rmtree
+
+    if os.path.isfile(args.repos):
+        with open(args.repos, "r") as f:
+            repos = f.readlines()
+        temp_dir = tempfile.gettempdir()
+        temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
+
+        print_line("Init db taxonomies ...")
+        exec_cli_command(["tagstore", "init"])
+
+        for repo_url in repos:
+            repo_url = repo_url.strip()
+            print_line(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
+
+            try:
+                print_line("Cloning...")
+                Repo.clone_from(repo_url, temp_dir_tt)
+
+                print_line("Inserting actorpacks ...")
+                exec_cli_command(["actorpack", "insert", "--add_new", temp_dir_tt])
+
+                print_line("Inserting tagpacks ...")
+                exec_cli_command(["tagpack", "insert", "--add_new", temp_dir_tt])
+            finally:
+                print_line(f"Removing temp files in: {temp_dir_tt}")
+                rmtree(temp_dir_tt)
+
+        print_line("Removeing duplicates  ...")
+        exec_cli_command(["tagstore", "remove_duplicates"])
+
+        print_line("Refreshing db views ...")
+        exec_cli_command(["tagstore", "refresh_views"])
+
+        print_success("Your tagstore is now up-to-date again.")
+
+    else:
+        print_fail(f"Repos to sync file {args.repos} does not exist.")
+
+
 def main():
     if sys.version_info < (3, 7):
         sys.exit("This program requires python version 3.7 or later")
@@ -757,6 +810,18 @@ def main():
         "-v", "--verbose", action="store_true", help="verbose configuration"
     )
     parser_c.set_defaults(func=show_config)
+
+    # parser for sync command
+    parser_c = subparsers.add_parser(
+        "sync", help="git-repos to automatically keep track off."
+    )
+    parser_c.add_argument(
+        "-r",
+        "--repos",
+        help="List of repos to sync to the database.",
+        default=os.path.join(os.getcwd(), "tagpack-repos.config"),
+    )
+    parser_c.set_defaults(func=sync_repos)
 
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")

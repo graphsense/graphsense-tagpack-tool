@@ -67,7 +67,7 @@ def test_validate(actorpack):
 def test_load_actorpack_from_file(taxonomies):
     ap = ActorPack.load_from_file(
         "test uri",
-        "tests/testfiles/actors/ex_actorpack.yaml",
+        "tests/testfiles/actors/ex.actorpack.yaml",
         ActorPackSchema(),
         taxonomies,
     )
