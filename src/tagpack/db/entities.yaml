@@ -1,0 +1,351 @@
+scheme:
+  baseurl: /taxonomies/entities
+  csvfile: /assets/data/entities.csv
+  type: conceptScheme
+  version: 0.2.1
+  lastmod: 2022-01-27
+  title: Entity Taxonomy
+  creator: INTERPOL Darknet and Cryptocurrencies Working Group
+  description: >
+   This taxonomy defines entities that represent real-world actors
+   and service that are part of a larger Darknet- and Cryptoasset Ecosystems.
+  default_language: en
+
+# Top concept
+
+entity:
+  id: entity
+  type: concept
+  prefLabel: Entity
+  description: >
+    An actor is anything playing an active role in Darknets or Cryptoasset
+    ecosystems. This subsumes individuals and organizations as well as automated
+    services fulfilling a certain function in such environments.
+  narrower: [organization, user, service, item]
+
+# High-level concepts
+
+organization:
+  id: organization
+  type: concept
+  prefLabel: Organization
+  description: >
+    An organization represents some social institution, such as public services
+    or companies.
+  broader: entity
+
+user:
+  id: user
+  type: concept
+  prefLabel: User
+  description: >
+    A user is a person who utilizes Darknet or Cryptoasset infrastructures
+    and / or offered services.
+  broader: entity
+  narrower: [user, perpetrator, donation]
+
+service:
+  id: service
+  type: concept
+  prefLabel: Service
+  description: >
+    A service refers to some software functionality or a set of software functionalities
+    that can be used by different actors for difffent purposes.
+  broader: entity
+  narrower: [exchange, filesharing, index, market, messaging_service, mixing_service, search_engine, shop]
+
+# Specific concepts: user
+
+victim:
+  id: victim
+  type: concept
+  prefLabel: Victim
+  description: >
+    Someone or something that has been hurt, damaged, or killed or has suffered,
+    either because of the actions of someone or something else, or because of illness
+    or chance.
+  seeAlso: https://dictionary.cambridge.org/dictionary/english/victim
+  broader: user
+
+perpetrator:
+  id: perpetrator
+  type: concept
+  prefLabel: Perpetrator
+  description: >
+    Someone who has committed a crime or a violent or harmful act.
+  seeAlso: https://dictionary.cambridge.org/dictionary/english/perpetrator
+  broader: user
+
+donation:
+  id: donation
+  type: concept
+  prefLabel: Donation
+  description: >
+    Someone or something receiving donations in cryptoassets.
+  broader: user
+
+# Specific concepts: services
+
+exchange:
+  id: exchange
+  type: concept
+  prefLabel: Exchange
+  description: >
+    A centralized cryptocurrency exchange (CEX) is a business that allows customers
+    to trade cryptocurrencies or digital currencies for other assets, such as
+    conventional fiat money or other digital currencies.
+  seeAlso: https://en.wikipedia.org/wiki/Cryptocurrency_exchange
+  broader: service
+
+wallet_service:
+  id: wallet_service
+  type: concept
+  prefLabel: Wallet Service
+  description: >
+    A wallet service is a software or web service that custodizes and utilizes cryptoasset
+    keys on behalf of their users.
+  broader: service
+
+escrow_wallet:
+  id: escrow_wallet
+  type: concept
+  prefLabel: Escrow Wallet
+  description: >
+    An escrow service is a mediator service that keeps the money for a transaction in
+    safekeeping until the coins are handed over.
+  broader: wallet_service
+  seeAlso: https://99bitcoins.com/bitcoin/escrow/
+
+ico_wallet:
+  id: ico_wallet
+  type: concept
+  prefLabel: ICO Wallet
+  description: >
+    A wallet that has been used for Initial Coin Offerings (ICOs).
+  broader: wallet_service
+
+cold_wallet:
+  id: cold_wallet
+  type: concept
+  prefLabel: Cold Wallet
+  description: >
+    A wallet that is not connected to the Internet and controlled by some user.
+  broader: service
+
+filesharing:
+  id: filesharing
+  type: concept
+  prefLabel: File Sharing
+  description: >
+    A file sharing service provides access to digital media, such as computer programs,
+    multimedia (audio, images and video), documents or electronic books.
+  seeAlso: https://en.wikipedia.org/wiki/File_sharing
+  broader: service
+
+index:
+  id: index
+  type: concept
+  prefLabel: Index
+  description: >
+    An index refers the contents of other websites in the Dark- or Clearnet.
+  seeAlso: https://en.wikipedia.org/wiki/Web_indexing
+  broader: service
+
+market:
+  id: market
+  type: concept
+  prefLabel: Market
+  description: >
+     A market, or marketplace, is an online location where users purchase and sale
+     legitimate or illegitimate goods and services.
+  seeAlso: https://en.wikipedia.org/wiki/Marketplace
+  broader: service
+
+messaging_service:
+  id: messaging_service
+  type: concept
+  prefLabel: Messaging Service
+  description: >
+    A messaging service is a type of online chat that offers real-time transmission
+    of messages over the Internet.
+  seeAlso: https://en.wikipedia.org/wiki/Instant_messaging
+  broader: service
+
+mixing_service:
+  id: mixing_service
+  type: concept
+  prefLabel: Mixing Service
+  description: >
+    A tumbler or mixing service is a service offered to mix potentially identifiable
+    or 'tainted' cryptoasset funds with others, so as to obscure the trail back to the
+    fund's original source. Tumblers have arisen to improve the anonymity of cryptocurrencies,
+    usually bitcoin (hence Bitcoin mixer), since the currencies provide a public ledger of all transactions.
+  seeAlso: https://en.wikipedia.org/wiki/Cryptocurrency_tumbler
+  broader: service
+  narrower: coinjoin
+
+coinjoin:
+  id: coinjoin
+  type: concept
+  prefLabel: CoinJoin
+  description: >
+    CoinJoin is an anonymization strategy that protects the privacy of Bitcoin users when they
+    conduct transactions with each other, obscuring the sources and destinations of BTC used in
+    transactions.
+  seeAlso: https://www.investopedia.com/terms/c/coinjoin.asp
+  broader: mixing_service
+
+miner:
+  id: miner
+  type: concept
+  prefLabel: Miner
+  description: >
+    A service that processes and verifies transactions for various forms of cryptoassets and
+    creates blocks to be added to the blockchain digital ledger.
+  broader: service
+
+mining_service:
+  id: mining_service
+  type: concept
+  prefLabel: Mining as a Service
+  description: >
+    A software and computing infrastructure that allows mining of cryptoassets in the cloud
+  broader: miner
+
+gambling:
+  id: gambling
+  type: concept
+  prefLabel: Gambling Service
+  description: >
+     A gambling service support the wagering of money or something of value (e.g., tokens) on an event
+     with an uncertain outcome, with the primary intent of winning money or material goods.
+  broader: service
+  seeAlso: https://en.wikipedia.org/wiki/Gambling
+
+search_engine:
+  id: search_engine
+  type: concept
+  prefLabel: Search Engine
+  description: >
+    A web search engine or Internet search engine is a software system that is designed to
+    carry out web search (Internet search), which means to search the World Wide Web in a
+    systematic way for particular information specified in a textual web search query.
+    The search results are generally presented in a line of results, often referred to as
+    search engine results pages (SERPs). The information may be a mix of links to web pages,
+    images, videos, infographics, articles, research papers, and other types of files.
+  seeAlso: https://en.wikipedia.org/wiki/Web_search_engine
+  broader: service
+
+shop:
+  id: shop
+  type: concept
+  prefLabel: Shop
+  description: >
+     A shop allows consumers to directly buy goods or services from a seller over the
+     Internet using a web browser.
+  seeAlso: https://en.wikipedia.org/wiki/Online_shopping
+  broader: service
+
+faucet:
+  id: faucet
+  type: concept
+  prefLabel: Faucet
+  description: >
+    A faucet can be defined as a reward system from which small amounts of coins
+    can be rewarded
+  seeAlso: https://coinmarketcap.com/alexandria/article/what-is-a-crypto-faucet
+  broader: service
+
+payment_processor:
+  id: payment_processor
+  type: concept
+  prefLabel: Payment Processor
+  description: >
+    A platform for online transactions that serves as a gateway and helps companies
+    accept payments in cryptocurrencies
+  broader: service
+
+atm:
+  id: atm
+  type: concept
+  prefLabel: Cryptoasset ATM
+  description: >
+    A physical kiosk that allows users to exchange cryptoassets and fiat currencies.
+  broader: service
+
+hosting:
+  id: hosting
+  type: concept
+  prefLabel: Hosting Service Provider
+  description: >
+    A hosting service provider (HSP) is an IT service company or partner that provides
+    remote IT resources and/or services
+  broader: service
+
+vpn:
+  id: vpn
+  type: concept
+  prefLabel: VPN Service Provider
+  description: >
+    A virtual private network (VPN) service provides a proxy server to help users
+    bypass Internet censorship such as geoblocking and users who want to protect
+    their communications against data profiling or MitM attacks on hostile networks.
+  seeAlso: https://en.wikipedia.org/wiki/VPN_service
+  broader: service
+
+defi:
+  id: defi
+  type: concept
+  prefLabel: DeFi Protocol
+  description: >
+    A program offering financial services in the form of smart contracts.
+  broader: service
+
+defi_lending:
+  id: defi_lending
+  type: concept
+  prefLabel: Lending Protocol
+  description: >
+    A DeFi protocol that lets users lend and borrow cryptoassets without having to go
+    through a centralized intermediary
+  broader: defi
+  example: [compound.finance, aave.com, makerdao.com]
+
+defi_dex:
+  id: defi_dex
+  type: concept
+  prefLabel: Decentralized Exchange (DEX)
+  description: >
+    A type of cryptocurrency exchange which allows for direct peer-to-peer cryptocurrency
+    transactions to take place online securely and without the need for an intermediary.
+  broader: defi
+  example: [curve.fi, uniswap.org]
+
+defi_derivatives:
+  id: defi_derivative
+  type: concept
+  prefLabel: Derivative
+  description: >
+    A contract between two or more parties whose value is based on an agreed-upon
+    underlying financial (crypto)asset.
+  broader: defi
+
+# Specific concepts: items
+
+item:
+  id: item
+  type: concept
+  prefLabel: Digital Item
+  description: >
+    An intangible asset or piece of media that doesn't have physical form
+    or substance and can be sold or shared online.
+  narrower: [collectible]
+
+collectible:
+  id: collectible
+  type: concept
+  prefLabel: Collectible
+  description: >
+    A collectible refers to an item that is worth far more than it was originally sold for
+    because of its rarity and/or popularity.
+  broader: item

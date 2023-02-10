@@ -5,6 +5,7 @@ import json
 from io import StringIO
 
 import requests
+import yaml
 
 
 class Concept(object):
@@ -49,6 +50,9 @@ class Concept(object):
         ]
         return "[" + " | ".join(s) + "]"
 
+    def __repr__(self):
+        return str(self)
+
 
 class Taxonomy(object):
     """TagPack Taxonomy Proxy.
@@ -77,17 +81,33 @@ class Taxonomy(object):
             self.concepts.append(concept)
 
     def load_from_local(self):
-        with open(self.uri, "r") as f:
-            csv_reader = csv.DictReader(f, delimiter=",")
-            uri = self.uri
-            for row in csv_reader:
-                ident = row["id"]
-                label = row["label"] if "label" in row else None
-                level = row["level"] if "level" in row else None
-                desc = row["description"] if "description" in row else ""
+        if self.uri.endswith("csv"):
+            with open(self.uri, "r") as f:
+                csv_reader = csv.DictReader(f, delimiter=",")
+                uri = self.uri
+                for row in csv_reader:
+                    ident = row["id"]
+                    label = row["label"] if "label" in row else None
+                    level = row["level"] if "level" in row else None
+                    desc = row["description"] if "description" in row else ""
 
-                concept = Concept(self, ident, uri, label, level, desc)
-                self.concepts.append(concept)
+                    concept = Concept(self, ident, uri, label, level, desc)
+                    self.concepts.append(concept)
+
+        elif self.uri.endswith("yaml") or self.uri.endswith("yml"):
+            with open(self.uri, "r") as f:
+                schema_data = yaml.safe_load(f)
+
+                uri = self.uri
+                for key, value in schema_data.items():
+                    if value["type"].strip() == "concept":
+                        ident = value["id"]
+                        label = value.get("prefLabel", None)
+                        level = value.get("level", None)
+                        desc = value.get("description", "")
+                        self.concepts.append(
+                            Concept(self, ident, uri, label, level, desc)
+                        )
 
     @property
     def concept_ids(self):
@@ -104,3 +124,6 @@ class Taxonomy(object):
     def __str__(self):
         s = [str(self.key), str(self.uri)]
         return "[" + " | ".join(s) + "]"
+
+    def __repr__(self):
+        return str(self)

@@ -39,12 +39,10 @@ init()
 
 CONFIG_FILE = "config.yaml"
 
-TAXONOMY_URL = "https://graphsense.github.io"
-
 DEFAULT_CONFIG = {
     "taxonomies": {
-        "entity": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv",
-        "abuse": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv",
+        "entity": "src/tagpack/db/entities.yaml",
+        "abuse": "src/tagpack/db/abuses.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
     }
@@ -54,28 +52,18 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
-def _solve_remote(taxonomy):
-    # Actually we work local files for confidence and country taxonomies, but
-    # this may change in the future
-    return not (taxonomy == "confidence" or taxonomy == "country")
-
-
 def _load_taxonomies(config):
     if "taxonomies" not in config:
         return None
-    taxonomies = {}
-    for key in config["taxonomies"]:
-        remote = _solve_remote(key)
-        taxonomy = _load_taxonomy(config, key, remote=remote)
-        taxonomies[key] = taxonomy
-    return taxonomies
+    return {key: _load_taxonomy(config, key) for key in config["taxonomies"]}
 
 
-def _load_taxonomy(config, key, remote=False):
+def _load_taxonomy(config, key):
     if "taxonomies" not in config:
         return None
     uri = config["taxonomies"][key]
     taxonomy = Taxonomy(key, uri)
+    remote = uri.startswith("http")
     if remote:
         taxonomy.load_from_remote()
     else:
@@ -106,10 +94,9 @@ def show_taxonomy_concepts(args, remote=False):
         return
 
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    remote = _solve_remote(args.taxonomy)
     uri = config["taxonomies"][args.taxonomy]
-    print(f"{'Remote' if remote else 'Local'} URI: {uri}\n")
-    taxonomy = _load_taxonomy(config, args.taxonomy, remote=remote)
+    print(f"URI: {uri}\n")
+    taxonomy = _load_taxonomy(config, args.taxonomy)
     if args.verbose:
         headers = ["Id", "Label", "Level", "Uri", "Description"]
         table = [
@@ -146,9 +133,7 @@ def insert_taxonomy(args, remote=False):
     for t in tax_keys:
         print(f"Taxonomy: {t}")
         try:
-            # TODO this should change when having local taxonomies
-            remote = _solve_remote(t)
-            taxonomy = _load_taxonomy(config, t, remote=remote)
+            taxonomy = _load_taxonomy(config, t)
             tagstore.insert_taxonomy(taxonomy)
 
             print(f"{taxonomy.key} | {taxonomy.uri}:", end=" ")
@@ -261,10 +246,8 @@ def calc_quality_measures(args):
 
 def _load_config(cfile):
     if not os.path.isfile(cfile):
-        print_line("Could not find TagPack repository configuration file.", "fail")
-        print_info(f"Creating a new default configuration file: {cfile}")
-        with open("config.yaml", "a") as the_file:
-            yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
+        print_info(f"No override config file found at {cfile}. Using default values.")
+        return DEFAULT_CONFIG
     return yaml.safe_load(open(cfile, "r"))
 
 
