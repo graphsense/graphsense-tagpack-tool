@@ -276,10 +276,17 @@ class TagPack(object):
         e2 = "Mandatory tag field {} missing in {}"
         e3 = "Field {} not allowed in {}"
         e4 = "Value of body field {} must not be empty (None) in {}"
-        for tag in self.get_unique_tags():
+
+        ut = self.get_unique_tags()
+        nr_no_actors = 0
+        for tag in ut:
             # check if mandatory tag fields are defined
             if not isinstance(tag, Tag):
                 raise ValidationError("Unknown tag type {}".format(tag))
+
+            actor = tag.all_fields.get("actor", None)
+            if actor is None:
+                nr_no_actors += 1
 
             for schema_field in self.schema.mandatory_tag_fields:
                 if (
@@ -303,6 +310,12 @@ class TagPack(object):
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {tag}")
+
+        if nr_no_actors > 0:
+            print_warn(
+                f"{nr_no_actors}/{len(ut)} have no actor configured. "
+                "Please consider connecting the tag to an actor."
+            )
 
         if self._duplicates:
             msg = f"{len(self._duplicates)} duplicate(s) found, starting "

@@ -47,3 +47,6 @@ tag:
   address:
     type: text
     mandatory: true
+  actor:
+    type: text
+    mandatory: false

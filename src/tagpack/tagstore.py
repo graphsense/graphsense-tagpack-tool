@@ -89,8 +89,8 @@ class TagStore(object):
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
             currency, is_cluster_definer, confidence, lastmod, \
-            context, tagpack ) VALUES \
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            context, tagpack, actor ) VALUES \
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         tag_data = []
         address_data = []
@@ -498,6 +498,7 @@ def _get_tag(tag, tagpack_id):
         lastmod,
         tag.all_fields.get("context"),
         tagpack_id,
+        tag.all_fields.get("actor", None),
     )
 
 
