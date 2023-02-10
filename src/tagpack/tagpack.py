@@ -145,6 +145,7 @@ class TagPack(object):
         self.taxonomies = taxonomies
         self._unique_tags = []
         self._duplicates = []
+        self.init_default_values()
 
     verifiable_currencies = [
         a.ticker for a in coinaddrvalidator.currency.Currencies.instances.values()
@@ -164,6 +165,21 @@ class TagPack(object):
                 contents[k] = v
             contents.pop("header")
         return TagPack(uri, contents, schema, taxonomies)
+
+    def init_default_values(self):
+        if "confidence" not in self.contents:
+            conf_scores_df = self.schema.confidences
+            min_confs = conf_scores_df[
+                conf_scores_df.level == conf_scores_df.level.min()
+            ]
+            lowest_confidence_score = (
+                min_confs.index[-1] if len(min_confs) > 0 else None
+            )
+            self.contents["confidence"] = lowest_confidence_score
+            print_warn(
+                f"Set default confidence level {lowest_confidence_score}"
+                " on tagpack level."
+            )
 
     @property
     def all_header_fields(self):

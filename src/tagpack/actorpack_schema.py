@@ -1,6 +1,8 @@
 """ActorPack - A wrappers ActorPack Schema"""
 import datetime
 import importlib.resources as pkg_resources
+import json
+from json import JSONDecodeError
 
 import pandas as pd
 import yaml
@@ -61,6 +63,13 @@ class ActorPackSchema(object):
                 raise ValidationError("Field {} must be of type text".format(field))
             if len(value.strip()) == 0:
                 raise ValidationError("Empty value in text field {}".format(field))
+            if field == "context":
+                try:
+                    json.loads(value)
+                except JSONDecodeError as e:
+                    raise ValidationError(
+                        f"Invalid JSON in field context with value {value}: {e}"
+                    )
         elif schema_type == "datetime":
             if not isinstance(value, datetime.date):
                 raise ValidationError(f"Field {field} must be of type datetime")

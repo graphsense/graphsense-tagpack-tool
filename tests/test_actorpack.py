@@ -45,7 +45,7 @@ def actorpack(schema, taxonomies):
                     "label": "0x nodes",
                     "uri": "https://0xnodes.io/",
                     "jurisdictions": ["AT", "BE"],
-                    "context": "{'blub': 1234}",
+                    "context": '{"blub": 1234}',
                 },  # inherits all header fields
             ],
         },
@@ -55,7 +55,7 @@ def actorpack(schema, taxonomies):
 
 
 def test_context_there(actorpack):
-    assert actorpack.actors[0].contents["context"] == "{'blub': 1234}"
+    assert actorpack.actors[0].contents["context"] == '{"blub": 1234}'
 
 
 def test_validate(actorpack):

@@ -56,8 +56,38 @@ def tagpack(schema, taxonomies):
     )
 
 
+@pytest.fixture
+def tagpack_conf(schema, taxonomies):
+    return TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "confidence": "web_crawl",
+            "currency": "BTC",
+            "lastmod": date.fromisoformat("2021-04-21"),
+            "tags": [
+                {
+                    "label": "Some attribution tag",
+                    "address": "123Bitcoin45",
+                    "confidence": "heuristic",
+                },  # inherits all header fields
+                {
+                    "label": "Another attribution tag",
+                    "address": "123Bitcoin66",
+                    "context": '{"counts": 1}',
+                    "currency": "ETH",
+                },  # overrides currency
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
 def test_all_header_fields(tagpack, schema):
-    h = ["title", "creator", "source", "currency", "lastmod", "tags"]
+    h = ["confidence", "title", "creator", "source", "currency", "lastmod", "tags"]
 
     assert all(field in tagpack.all_header_fields for field in h)
     assert len(h) == len(tagpack.all_header_fields)
@@ -465,3 +495,20 @@ def test_duplicate_does_not_raise_only_inform(capsys):
 
     assert "1 duplicate(s) found" in captured.out
     assert len(tagpack.get_unique_tags()) == 1
+
+
+def test_conf_level_mandatory_if_not_set_default(tagpack):
+    # tag without confidence validates
+    tagpack.validate()
+    # because minimal value is set on init if not present.
+    assert tagpack.contents["confidence"] == "unknown"
+
+
+def test_conf_level_mandatory_preserve_user_set_values(tagpack_conf):
+    # tag with multi confidence values validates
+    tagpack_conf.validate()
+    # because minimal value is set on init if not present.
+    assert tagpack_conf.contents["confidence"] == "web_crawl"
+
+    assert tagpack_conf.tags[0].all_fields.get("confidence") == "heuristic"
+    assert tagpack_conf.tags[1].all_fields.get("confidence") == "web_crawl"
