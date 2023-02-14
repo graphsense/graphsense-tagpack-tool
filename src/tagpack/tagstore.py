@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
+from functools import wraps
 
 import numpy as np
 from cashaddress.convert import to_legacy_address
@@ -12,6 +13,29 @@ from tagpack import ValidationError
 register_adapter(np.int64, AsIs)
 
 
+def auto_commit(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        """
+        Automatically calls commit at the end of a function or
+        rollback if an error occurs. If rollback is not execute
+        int leaves the connection in a broken state.
+        https://stackoverflow.com/questions/2979369/databaseerror-current-transaction-is-aborted-commands-ignored-until-end-of-tra
+        """
+        self, *_ = args
+        try:
+            output = function(*args, **kwargs)
+        except Exception as e:
+            # self.cursor.execute("rollback")
+            self.conn.rollback()
+            raise e
+        finally:
+            self.conn.commit()
+        return output
+
+    return wrapper
+
+
 class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
@@ -22,6 +46,7 @@ class TagStore(object):
         self.existing_packs = None
         self.existing_actorpacks = None
 
+    @auto_commit
     def insert_taxonomy(self, taxonomy):
         if taxonomy.key == "confidence":
             self.insert_confidence_scores(taxonomy)
@@ -39,8 +64,9 @@ class TagStore(object):
             v = (c.id, c.label, c.taxonomy.key, c.uri, c.description)
             self.cursor.execute(statement, v)
 
-        self.conn.commit()
+        # self.conn.commit()
 
+    @auto_commit
     def insert_confidence_scores(self, confidence):
         statement = "INSERT INTO confidence (id, label, description, level)"
         statement += " VALUES (%s, %s, %s, %s)"
@@ -49,7 +75,7 @@ class TagStore(object):
             values = (c.id, c.label, c.description, c.level)
             self.cursor.execute(statement, values)
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def tp_exists(self, prefix, rel_path):
         if not self.existing_packs:
@@ -59,6 +85,7 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
+    @auto_commit
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
     ):
@@ -109,7 +136,7 @@ class TagStore(object):
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def actorpack_exists(self, prefix, actorpack_name):
         if not self.existing_actorpacks:
@@ -124,6 +151,7 @@ class TagStore(object):
         self.cursor.execute("SELECT id from actorpack")
         return [i[0] for i in self.cursor.fetchall()]
 
+    @auto_commit
     def insert_actorpack(
         self, actorpack, is_public, force_insert, prefix, rel_path, batch=1000
     ):
@@ -180,7 +208,7 @@ class TagStore(object):
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
 
-        self.conn.commit()
+        # self.conn.commit()
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """
@@ -253,6 +281,7 @@ class TagStore(object):
         self.conn.commit()
         return self.cursor.rowcount
 
+    @auto_commit
     def refresh_db(self):
         self.cursor.execute("REFRESH MATERIALIZED VIEW label")
         self.cursor.execute("REFRESH MATERIALIZED VIEW statistics")
@@ -261,7 +290,7 @@ class TagStore(object):
             "REFRESH MATERIALIZED VIEW "
             "cluster_defining_tags_by_frequency_and_maxconfidence"
         )  # noqa
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_addresses(self, update_existing):
         if update_existing:
@@ -298,6 +327,7 @@ class TagStore(object):
         for record in self.cursor:
             yield record
 
+    @auto_commit
     def insert_cluster_mappings(self, clusters):
         if not clusters.empty:
             q = "INSERT INTO address_cluster_mapping (address, currency, \
@@ -317,16 +347,17 @@ class TagStore(object):
             data = clusters[cols].to_records(index=False)
 
             execute_batch(self.cursor, q, data)
-            self.conn.commit()
+            # self.conn.commit()
 
     def _supports_currency(self, tag):
         return tag.all_fields.get("currency") in self.supported_currencies
 
+    @auto_commit
     def finish_mappings_update(self, keys):
         q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
                 AND currency IN %s"
         self.cursor.execute(q, (tuple(keys),))
-        self.conn.commit()
+        # self.conn.commit()
 
     def get_ingested_tagpacks(self) -> list:
         self.cursor.execute("SELECT id from tagpack")
@@ -400,6 +431,7 @@ class TagStore(object):
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
+    @auto_commit
     def update_tags_actors(self):
         """
         Update the `tag.actor` field by searching an actor.id that matches with
@@ -432,9 +464,10 @@ class TagStore(object):
             "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
         )
         self.cursor.execute(q)
-        self.conn.commit()
+        # self.conn.commit()
         return rowcount
 
+    @auto_commit
     def update_quality_actors(self):
         """
         Update all entries in `address_quality` having a unique actor in table
@@ -470,7 +503,7 @@ class TagStore(object):
         )
         self.cursor.execute(q)
         rowcount = self.cursor.rowcount
-        self.conn.commit()
+        # self.conn.commit()
         return rowcount
 
 

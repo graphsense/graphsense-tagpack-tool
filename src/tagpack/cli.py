@@ -4,6 +4,7 @@ import sys
 import tempfile
 import time
 from argparse import ArgumentParser
+from functools import partial
 from multiprocessing import Pool, cpu_count
 
 import pandas as pd
@@ -755,25 +756,31 @@ def sync_repos(args):
 
         for repo_url in repos:
             repo_url = repo_url.strip()
-            print_line(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
+            print(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
 
             try:
-                print_line("Cloning...")
-                Repo.clone_from(repo_url, temp_dir_tt)
+                print_info("Cloning...")
+                repo_url, *branch = repo_url.split(" ")
+                repo = Repo.clone_from(repo_url, temp_dir_tt)
+                if len(branch) > 0:
+                    branch = branch[0]
+                    print_info(f"Using branch {branch}")
+                    repo.git.checkout(branch)
 
-                print_line("Inserting actorpacks ...")
+                print("Inserting actorpacks ...")
                 exec_cli_command(["actorpack", "insert", "--add_new", temp_dir_tt])
 
-                print_line("Inserting tagpacks ...")
+                print("Inserting tagpacks ...")
                 exec_cli_command(["tagpack", "insert", "--add_new", temp_dir_tt])
             finally:
-                print_line(f"Removing temp files in: {temp_dir_tt}")
-                rmtree(temp_dir_tt)
+                if os.path.isdir(temp_dir_tt):
+                    print_info(f"Removing temp files in: {temp_dir_tt}")
+                    rmtree(temp_dir_tt)
 
-        print_line("Removeing duplicates  ...")
+        print("Removing duplicates ...")
         exec_cli_command(["tagstore", "remove_duplicates"])
 
-        print_line("Refreshing db views ...")
+        print("Refreshing db views ...")
         exec_cli_command(["tagstore", "refresh_views"])
 
         print_success("Your tagstore is now up-to-date again.")
@@ -792,6 +799,16 @@ def main():
             get_version()
         ),
     )
+
+    def set_print_help_on_error(parser):
+        def print_help_subparser(subparser, args):
+            subparser.print_help()
+            print_fail("No action was requested. Please use as specified above.")
+
+        parser.set_defaults(func=partial(print_help_subparser, parser))
+
+    set_print_help_on_error(parser)
+
     parser.add_argument("-v", "--version", action="version", version=show_version())
     parser.add_argument(
         "--config",
@@ -825,6 +842,7 @@ def main():
 
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
+    set_print_help_on_error(parser)
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
 
@@ -932,6 +950,7 @@ def main():
 
     # parsers for actorpack command
     parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
+    set_print_help_on_error(parser_ap)
 
     app = parser_ap.add_subparsers(title="ActorPack commands")
 
@@ -1099,6 +1118,7 @@ def main():
 
     # parsers for database housekeeping
     parser_db = subparsers.add_parser("tagstore", help="database housekeeping commands")
+    set_print_help_on_error(parser_db)
 
     pdp = parser_db.add_subparsers(title="TagStore commands")
 
@@ -1275,9 +1295,6 @@ def main():
     if hasattr(args, "url") and not args.url:
         print_warn(url_msg)
         parser.error("No postgresql URL connection was provided. Exiting.")
-
-    if not hasattr(args, "func"):
-        parser.error("No action was requested. Exiting.")
 
     args.func(args)
 
