@@ -2,13 +2,19 @@
 import json
 import os
 import sys
+from collections import defaultdict
 
 import yaml
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
-from tagpack.cmd_utils import print_info
-from tagpack.utils import apply_to_dict_field, try_parse_date
+from tagpack.cmd_utils import print_info, print_warn
+from tagpack.utils import (
+    apply_to_dict_field,
+    get_secondlevel_domain,
+    strip_empty,
+    try_parse_date,
+)
 
 
 class ActorPack(object):
@@ -129,6 +135,8 @@ class ActorPack(object):
         e2 = "Mandatory tag field {} missing in {}"
         e3 = "Field {} not allowed in {}"
         e4 = "Value of body field {} must not be empty (None) in {}"
+        domain_overlap = defaultdict(set)
+        twitter_handle_overlap = defaultdict(set)
         for actor in self.get_unique_actors():
             # check if mandatory actor fields are defined
             if not isinstance(actor, Actor):
@@ -156,6 +164,26 @@ class ActorPack(object):
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {actor}")
+
+            for uri in set(actor.uris):
+                domain_overlap[get_secondlevel_domain(uri)].add(actor.identifier)
+
+            if actor.twitter_handle:
+                twitter_handle_overlap[actor.twitter_handle].add(actor.identifier)
+
+        for domain, actors in domain_overlap.items():
+            if len(actors) > 1:
+                print_warn(
+                    f"These actors share the same domain {actors} - {domain}."
+                    " Please merge!"
+                )
+
+        for twitter_handle, actors in twitter_handle_overlap.items():
+            if len(actors) > 1:
+                print_warn(
+                    "These actors share the same twitter_handle "
+                    f"{actors} - {twitter_handle}. Please merge!"
+                )
 
         if self._duplicates:
             msg = (
@@ -207,6 +235,26 @@ class Actor(object):
             **self.actorpack.actor_fields,
             **self.explicit_fields,
         }
+
+    @property
+    def context(self):
+        if "context" in self.contents:
+            return json.loads(self.contents["context"])
+        else:
+            return {}
+
+    @property
+    def uris(self):
+        c = self.context
+        return strip_empty([self.contents.get("uri", None)] + c.get("uris", []))
+
+    @property
+    def twitter_handle(self):
+        return self.context.get("twitter_handle", None)
+
+    @property
+    def identifier(self):
+        return self.contents.get("id", None)
 
     def to_json(self):
         """Returns a JSON serialization of all actor fields"""
