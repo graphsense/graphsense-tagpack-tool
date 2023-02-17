@@ -8,6 +8,7 @@ from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import print_info
+from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
 class ActorPack(object):
@@ -20,6 +21,10 @@ class ActorPack(object):
         self.taxonomies = taxonomies
         self._unique_actors = []
         self._duplicates = []
+
+        # the yaml parser does not deal with string quoted dates.
+        # so '2022-10-1' is not interpreted as a date. This line fixes this.
+        apply_to_dict_field(self.contents, "lastmod", try_parse_date, fail=False)
 
     def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(
@@ -179,6 +184,12 @@ class Actor(object):
     def __init__(self, contents, actorpack):
         self.contents = contents
         self.actorpack = actorpack
+
+        # This allows the context in the yaml file to be written in either
+        # normal yaml syntax which is now converted to a json string
+        # of directly as json string.
+        if type(self.contents.get("context", None)) == dict:
+            apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
 
     @staticmethod
     def from_contents(contents, actorpack):

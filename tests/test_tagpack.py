@@ -57,6 +57,40 @@ def tagpack(schema, taxonomies):
 
 
 @pytest.fixture
+def tagpack_str_date(schema, taxonomies):
+    return TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "lastmod": "2021-04-21",
+            "tags": [{"label": "a", "address": "b"}],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
+def tagpack_context_obj(schema, taxonomies):
+    return TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "lastmod": "2021-04-21",
+            "tags": [{"label": "a", "address": "b", "context": {"a": "b"}}],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
 def tagpack_conf(schema, taxonomies):
     return TagPack(
         "http://example.com",
@@ -210,6 +244,14 @@ def test_tagpack_to_str(tagpack):
 
 def test_validate(tagpack):
     assert tagpack.validate()
+
+
+def test_validate_str_date(tagpack_str_date):
+    assert tagpack_str_date.validate()
+
+
+def test_validate_context_obj(tagpack_context_obj):
+    assert tagpack_context_obj.validate()
 
 
 def test_verify_addresses(tagpack):

@@ -14,6 +14,7 @@ from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import print_info, print_warn
+from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
 def get_repository(path: str) -> pathlib.Path:
@@ -151,6 +152,10 @@ class TagPack(object):
         self._unique_tags = []
         self._duplicates = []
         self.init_default_values()
+
+        # the yaml parser does not deal with string quoted dates.
+        # so '2022-10-1' is not interpreted as a date. This line fixes this.
+        apply_to_dict_field(self.contents, "lastmod", try_parse_date, fail=False)
 
     verifiable_currencies = [
         a.ticker for a in coinaddrvalidator.currency.Currencies.instances.values()
@@ -379,6 +384,12 @@ class Tag(object):
     def __init__(self, contents, tagpack):
         self.contents = contents
         self.tagpack = tagpack
+
+        # This allows the context in the yaml file to be written in either
+        # normal yaml syntax which is now converted to a json string
+        # of directly as json string.
+        if type(self.contents.get("context", None)) == dict:
+            apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
 
     @staticmethod
     def from_contents(contents, tagpack):

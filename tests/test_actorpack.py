@@ -56,12 +56,68 @@ def actorpack(schema, taxonomies):
     )
 
 
+@pytest.fixture
+def actorpack2(schema, taxonomies):
+    return ActorPack(
+        "http://example.com",
+        {
+            "title": "ETH Defilama Actors",
+            "creator": "GraphSense Team",
+            "lastmod": "2021-04-21",
+            "categories": ["exchange"],
+            "actors": [
+                {
+                    "id": "0xnodes",
+                    "label": "0x nodes",
+                    "uri": "https://0xnodes.io/",
+                    "jurisdictions": ["AT", "BE"],
+                    "context": '{"blub": 1234}',
+                },  # inherits all header fields
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
+def actorpack_context_obj(schema, taxonomies):
+    return ActorPack(
+        "http://example.com",
+        {
+            "title": "ETH Defilama Actors",
+            "creator": "GraphSense Team",
+            "lastmod": "2021-04-21",
+            "categories": ["exchange"],
+            "actors": [
+                {
+                    "id": "0xnodes",
+                    "label": "0x nodes",
+                    "uri": "https://0xnodes.io/",
+                    "jurisdictions": ["AT", "BE"],
+                    "context": {"blub": 1234},
+                },  # inherits all header fields
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
 def test_context_there(actorpack):
     assert actorpack.actors[0].contents["context"] == '{"blub": 1234}'
 
 
+def test_validate_context_can_be_obj(actorpack_context_obj):
+    assert actorpack_context_obj.validate()
+
+
 def test_validate(actorpack):
     assert actorpack.validate()
+
+
+def test_validate_with_string_date(actorpack2):
+    assert actorpack2.validate()
 
 
 def test_load_actorpack_from_file(taxonomies):
