@@ -330,6 +330,15 @@ defi_derivatives:
     underlying financial (crypto)asset.
   broader: defi
 
+defi_bridge:
+  id: defi_bridge
+  type: concept
+  prefLabel:  Bridge
+  description: >
+    A cryptocurreny service that allows to move assets to another distributed ledger in a (semi-) automated fashion, without losing custody of the asset.
+  broader: defi
+  example: [renproject.org]
+
 # Specific concepts: items
 
 item:

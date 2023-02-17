@@ -64,8 +64,6 @@ class TagStore(object):
             v = (c.id, c.label, c.taxonomy.key, c.uri, c.description)
             self.cursor.execute(statement, v)
 
-        # self.conn.commit()
-
     @auto_commit
     def insert_confidence_scores(self, confidence):
         statement = "INSERT INTO confidence (id, label, description, level)"
@@ -74,8 +72,6 @@ class TagStore(object):
         for c in confidence.concepts:
             values = (c.id, c.label, c.description, c.level)
             self.cursor.execute(statement, values)
-
-        # self.conn.commit()
 
     def tp_exists(self, prefix, rel_path):
         if not self.existing_packs:
@@ -135,8 +131,6 @@ class TagStore(object):
         # insert remaining items
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
-
-        # self.conn.commit()
 
     def actorpack_exists(self, prefix, actorpack_name):
         if not self.existing_actorpacks:
@@ -207,8 +201,6 @@ class TagStore(object):
         execute_batch(self.cursor, actor_sql, actor_data)
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
-
-        # self.conn.commit()
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """
@@ -290,7 +282,6 @@ class TagStore(object):
             "REFRESH MATERIALIZED VIEW "
             "cluster_defining_tags_by_frequency_and_maxconfidence"
         )  # noqa
-        # self.conn.commit()
 
     def get_addresses(self, update_existing):
         if update_existing:
@@ -347,7 +338,6 @@ class TagStore(object):
             data = clusters[cols].to_records(index=False)
 
             execute_batch(self.cursor, q, data)
-            # self.conn.commit()
 
     def _supports_currency(self, tag):
         return tag.all_fields.get("currency") in self.supported_currencies
@@ -357,7 +347,6 @@ class TagStore(object):
         q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
                 AND currency IN %s"
         self.cursor.execute(q, (tuple(keys),))
-        # self.conn.commit()
 
     def get_ingested_tagpacks(self) -> list:
         self.cursor.execute("SELECT id from tagpack")
@@ -464,7 +453,6 @@ class TagStore(object):
             "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
         )
         self.cursor.execute(q)
-        # self.conn.commit()
         return rowcount
 
     @auto_commit
