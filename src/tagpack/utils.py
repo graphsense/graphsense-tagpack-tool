@@ -39,7 +39,7 @@ def apply_to_dict_field(dictlike, field: str, fun, fail=True):
     Args:
         dictlike (dict): something dict like
         field (str): Field to apply the function on
-        fun (TYPE): Function to apply, must take one parameter
+        fun (Function): Function to apply, must take one parameter
         fail (bool, optional): If True the function throws and error
         if field is not present
 
@@ -68,5 +68,9 @@ def get_secondlevel_domain(url: str) -> str:
     if len(frag) < 2:
         return ".".join(frag)
     else:
-        co_domain = frag[-2] == "co"
-        return ".".join(frag[-3:] if co_domain else frag[-2:])
+        co_domain = frag[-2] == "co" or frag[-2] == "com"
+        # eth link redircts to ens lookup
+        # https://eth.link/
+        #  Similar to eth.link https://eth.limo/
+        eth_link = frag[-2:] == ["eth", "link"] or frag[-2:] == ["eth", "limo"]
+        return ".".join(frag[-3:] if co_domain or eth_link else frag[-2:])

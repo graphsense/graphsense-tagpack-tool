@@ -1,6 +1,7 @@
 """ActorPack - A wrapper for ActorPack files"""
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 
@@ -15,6 +16,8 @@ from tagpack.utils import (
     strip_empty,
     try_parse_date,
 )
+
+LBL_BLACKLIST = re.compile(r"[@_!#$%^*<>?\|}{~:;]")
 
 
 class ActorPack(object):
@@ -137,6 +140,7 @@ class ActorPack(object):
         e4 = "Value of body field {} must not be empty (None) in {}"
         domain_overlap = defaultdict(set)
         twitter_handle_overlap = defaultdict(set)
+        github_organisation_overlap = defaultdict(set)
         for actor in self.get_unique_actors():
             # check if mandatory actor fields are defined
             if not isinstance(actor, Actor):
@@ -165,24 +169,37 @@ class ActorPack(object):
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {actor}")
 
+            lbl = actor.all_fields["label"]
+            if LBL_BLACKLIST.search(lbl):
+                print_warn(
+                    f"Actor {actor.identifier}: label {lbl} contains special "
+                    "characters. Please avoid."
+                )
+
             for uri in set(actor.uris):
                 domain_overlap[get_secondlevel_domain(uri)].add(actor.identifier)
 
             if actor.twitter_handle:
-                twitter_handle_overlap[actor.twitter_handle].add(actor.identifier)
+                for handle in actor.twitter_handle.split(","):
+                    twitter_handle_overlap[handle.strip().lower()].add(actor.identifier)
+
+            if actor.github_organisation:
+                for handle in actor.github_organisation.split(","):
+                    github_organisation_overlap[handle.strip().lower()].add(
+                        actor.identifier
+                    )
 
         for domain, actors in domain_overlap.items():
             if len(actors) > 1:
                 print_warn(
-                    f"These actors share the same domain {actors} - {domain}."
-                    " Please merge!"
+                    f"Actors share the same domain {domain}: {actors}." " Please merge!"
                 )
 
         for twitter_handle, actors in twitter_handle_overlap.items():
             if len(actors) > 1:
                 print_warn(
                     "These actors share the same twitter_handle "
-                    f"{actors} - {twitter_handle}. Please merge!"
+                    f" {twitter_handle}: {actors}. Consider Merge?"
                 )
 
         if self._duplicates:
@@ -251,6 +268,10 @@ class Actor(object):
     @property
     def twitter_handle(self):
         return self.context.get("twitter_handle", None)
+
+    @property
+    def github_organisation(self):
+        return self.context.get("github_organisation", None)
 
     @property
     def identifier(self):
