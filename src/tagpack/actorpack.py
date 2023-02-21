@@ -177,6 +177,10 @@ class ActorPack(object):
                 )
 
             for uri in set(actor.uris):
+                if "." not in uri:
+                    print_warn(
+                        f"There is no dot in uri: {uri} in actor {actor.identifier}"
+                    )
                 domain_overlap[get_secondlevel_domain(uri)].add(actor.identifier)
 
             if actor.twitter_handle:
