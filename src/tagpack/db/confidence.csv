@@ -1,6 +1,7 @@
 id,label,description,level
 override,Manual cluster tag,Creator knows that a tag is representative for an entire cluster and overrides all other tags,100
 ownership,Proven address ownership,Creator controls the private key the address associated with a tag,100
+ledger_immanent,Data directly read from the transaction ledger,The data is extracted directly from ledger data with a reliable extraction procedure,100
 manual_transaction,Trusted transaction,Creator transferred funds from known service x to known service y,90
 service_api,Service API,Creator retrieves addresses from a known and trusted service provider API (e.g. VASP API),70
 authority_data,Authority data,Creator retrieves attribution tags from public authorities (e.g. OFAC),60
