@@ -30,8 +30,8 @@ field_values = {
     "uri": "some text string",
     "label": "some text string",
     "lastmod": date.fromisoformat("2022-01-01"),
-    "categories": [1, 2, 3],
-    "jurisdictions": [1, 2, 3],
+    "categories": ["1", "2", "3"],
+    "jurisdictions": ["3", "d", "3"],
 }
 
 

@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 
+from tagpack import ValidationError
 from tagpack.actorpack import ActorPack
 from tagpack.actorpack_schema import ActorPackSchema
 from tagpack.taxonomy import Taxonomy
@@ -81,6 +82,30 @@ def actorpack2(schema, taxonomies):
 
 
 @pytest.fixture
+def actorpack_broken_context(schema, taxonomies):
+    return ActorPack(
+        "http://example.com",
+        {
+            "title": "ETH Defilama Actors",
+            "creator": "GraphSense Team",
+            "lastmod": "2021-04-21",
+            "categories": ["exchange"],
+            "actors": [
+                {
+                    "id": "0xnodes",
+                    "label": "0x nodes",
+                    "uri": "https://0xnodes.io/",
+                    "jurisdictions": ["AT", "BE"],
+                    "context": '"blub": 1234}',
+                },  # inherits all header fields
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
 def actorpack_context_obj(schema, taxonomies):
     return ActorPack(
         "http://example.com",
@@ -104,6 +129,56 @@ def actorpack_context_obj(schema, taxonomies):
     )
 
 
+@pytest.fixture
+def actorpack_wrong_context_field_type(schema, taxonomies):
+    return ActorPack(
+        "http://example.com",
+        {
+            "title": "ETH Defilama Actors",
+            "creator": "GraphSense Team",
+            "lastmod": "2021-04-21",
+            "categories": ["exchange"],
+            "actors": [
+                {
+                    "id": "0xnodes",
+                    "label": "0x nodes",
+                    "uri": "https://0xnodes.io/",
+                    "jurisdictions": ["AT", "BE"],
+                    "context": {"coingecko_ids": [123]},
+                },  # inherits all header fields
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
+def actorpack_wrong_with_mandatory_context_field(schema, taxonomies):
+    schema.schema["context"]["refs"]["mandatory"] = True
+    ap = ActorPack(
+        "http://example.com",
+        {
+            "title": "ETH Defilama Actors",
+            "creator": "GraphSense Team",
+            "lastmod": "2021-04-21",
+            "categories": ["exchange"],
+            "actors": [
+                {
+                    "id": "0xnodes",
+                    "label": "0x nodes",
+                    "uri": "https://0xnodes.io/",
+                    "jurisdictions": ["AT", "BE"],
+                    "context": {"coingecko_ids": ["123"]},
+                },  # inherits all header fields
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+    return ap
+
+
 def test_context_there(actorpack):
     assert actorpack.actors[0].contents["context"] == '{"blub": 1234}'
 
@@ -112,8 +187,28 @@ def test_validate_context_can_be_obj(actorpack_context_obj):
     assert actorpack_context_obj.validate()
 
 
+def test_validate_wrong_context_field_type(actorpack_wrong_context_field_type):
+    with pytest.raises(ValidationError) as e:
+        assert actorpack_wrong_context_field_type.validate()
+    assert "Field coingecko_ids[0] must be of type text" in str(e.value)
+
+
+def test_validate_wrong_with_mandatory_context_field(
+    actorpack_wrong_with_mandatory_context_field,
+):
+    with pytest.raises(ValidationError) as e:
+        assert actorpack_wrong_with_mandatory_context_field.validate()
+    assert "Mandatory field refs not in" in str(e.value)
+
+
 def test_validate(actorpack):
     assert actorpack.validate()
+
+
+def test_validate_with_broken_context(actorpack_broken_context):
+    with pytest.raises(ValidationError) as e:
+        assert actorpack_broken_context.validate()
+    assert "Invalid JSON in field context" in str(e.value)
 
 
 def test_validate_with_string_date(actorpack2):

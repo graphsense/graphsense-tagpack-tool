@@ -35,7 +35,10 @@ class ValidationError(Exception):
     """Class for schema validation errors"""
 
     def __init__(self, message):
-        super().__init__("Schema Validation Error: " + message)
+        prefix = "Schema Validation Error: "
+        if not message.startswith(prefix):
+            message = f"{prefix}{message}"
+        super().__init__(message)
 
 
 class StorageError(Exception):

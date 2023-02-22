@@ -850,7 +850,7 @@ def main():
 
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
-    set_print_help_on_error(parser)
+    set_print_help_on_error(parser_tp)
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
 
