@@ -202,6 +202,17 @@ class TagStore(object):
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
 
+    def find_actors_for(self, label, max_results):
+        similarity = f"similarity(id, '{label}') > 0.2"
+
+        self.cursor.execute(
+            f"SELECT id FROM actor WHERE {similarity} "
+            f"ORDER BY {similarity} DESC "
+            f"LIMIT {max_results}"
+        )
+        matches = [x[0] for x in self.cursor.fetchall()]
+        return matches
+
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """
         This function returns a list of addresses having a quality meassure

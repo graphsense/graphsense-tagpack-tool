@@ -310,6 +310,14 @@ def validate_tagpack(args):
     )
 
 
+def suggest_actors(args):
+    print_line(f"Searching suitable actors for {args.label} in TagStore")
+
+    tagstore = TagStore(args.url, args.schema)
+    candidates = tagstore.find_actors_for(args.label, args.max)
+    print(f"Found {len(candidates)} matches: {candidates}")
+
+
 def insert_tagpack(args):
     t0 = time.time()
     print_line("TagPack insert starts")
@@ -947,6 +955,29 @@ def main():
         "--no_git", action="store_true", help="Disables check for local git repository"
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
+
+    # parser for suggest_actor
+    ptp_actor = ptp.add_parser("suggest_actors", help="suggest actors ")
+    ptp_actor.add_argument(
+        "label",
+        nargs="?",
+        help="label string to find actor suggestions for",
+    )
+    ptp_actor.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    ptp_actor.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    ptp_actor.add_argument(
+        "--max",
+        default=3,
+        help="Limits the number of results",
+    )
+    ptp_actor.set_defaults(func=suggest_actors, url=def_url)
 
     # parsers for actorpack command
     parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")

@@ -5,6 +5,7 @@
 This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for
 
 1. [validating TagPacks against the TagPack schema](#validation)
+2. finding suitable actors for tags
 2. [validating ActorPacks against the ActorPack schema](#actorpack_validation)
 3. [handling taxonomies and concepts](#taxonomies)
 4. [ingesting TagPacks and related data into a TagStore](#tagstore)
@@ -29,6 +30,20 @@ Recursively validate all TagPacks in (a) given folder(s).
 Tagpacks are validated against the [tagpack schema](src/tagpack/conf/tagpack_schema.yaml).
 
 Confidence settings are validated against a set of acceptable [confidence](src/tagpack/db/confidence.csv) values.
+
+## Actors for tags and TagPacks
+
+[Actors](https://github.com/graphsense/graphsense-tagpacks/wiki/Actors) are defined in a curated actor tagpack.
+
+It is encouraged to add actors to Tagpacks whenever possible.
+
+Finding suitable actors is supported by the tagpack-tool. For a specific lable, actor suggestions can be retrieved by calling
+
+    tagpack-tool tagpack suggest_actors <my_label>
+
+and if desired, the number of results can be restricted by adding the ``--max`` parameter
+
+    tagpack-tool tagpack suggest_actors --max 1 <my_label>
 
 ## Validate an ActorPack <a name="actorpack_validation"></a>
 
