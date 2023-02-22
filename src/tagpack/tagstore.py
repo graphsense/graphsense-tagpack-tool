@@ -179,11 +179,11 @@ class TagStore(object):
 
         self.conn.commit()
 
-    def find_actors_for(self, label, max_results):
-        similarity = f"similarity(id, '{label}') > 0.2"
+    def find_actors_for(self, label, max_results, threshold=0.2):
+        similarity = f"similarity(id, '{label}')"
 
         self.cursor.execute(
-            f"SELECT id FROM actor WHERE {similarity} "
+            f"SELECT id FROM actor WHERE {similarity} > {threshold}"
             f"ORDER BY {similarity} DESC "
             f"LIMIT {max_results}"
         )
