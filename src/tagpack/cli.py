@@ -1,8 +1,10 @@
 import json
 import os
 import sys
+import tempfile
 import time
 from argparse import ArgumentParser
+from functools import partial
 from multiprocessing import Pool, cpu_count
 
 import pandas as pd
@@ -10,6 +12,7 @@ import yaml
 
 # colorama fixes issues with redirecting colored outputs to files
 from colorama import init
+from git import Repo
 from tabulate import tabulate
 from yaml.parser import ParserError, ScannerError
 
@@ -39,12 +42,10 @@ init()
 
 CONFIG_FILE = "config.yaml"
 
-TAXONOMY_URL = "https://graphsense.github.io"
-
 DEFAULT_CONFIG = {
     "taxonomies": {
-        "entity": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/entities.csv",
-        "abuse": f"{TAXONOMY_URL}/DW-VA-Taxonomy/assets/data/abuses.csv",
+        "entity": "src/tagpack/db/entities.yaml",
+        "abuse": "src/tagpack/db/abuses.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
     }
@@ -54,28 +55,18 @@ DEFAULT_CONFIG = {
 _DEFAULT_SCHEMA = "tagstore"
 
 
-def _solve_remote(taxonomy):
-    # Actually we work local files for confidence and country taxonomies, but
-    # this may change in the future
-    return not (taxonomy == "confidence" or taxonomy == "country")
-
-
 def _load_taxonomies(config):
     if "taxonomies" not in config:
         return None
-    taxonomies = {}
-    for key in config["taxonomies"]:
-        remote = _solve_remote(key)
-        taxonomy = _load_taxonomy(config, key, remote=remote)
-        taxonomies[key] = taxonomy
-    return taxonomies
+    return {key: _load_taxonomy(config, key) for key in config["taxonomies"]}
 
 
-def _load_taxonomy(config, key, remote=False):
+def _load_taxonomy(config, key):
     if "taxonomies" not in config:
         return None
     uri = config["taxonomies"][key]
     taxonomy = Taxonomy(key, uri)
+    remote = uri.startswith("http")
     if remote:
         taxonomy.load_from_remote()
     else:
@@ -87,7 +78,6 @@ def list_taxonomies(args=None):
     config = _load_config(args.config)
 
     print_line("Show configured taxonomies")
-    print_line(f"Configuration: {args.config}", "info")
     count = 0
     if "taxonomies" not in config:
         print_line("No configured taxonomies", "fail")
@@ -106,10 +96,9 @@ def show_taxonomy_concepts(args, remote=False):
         return
 
     print_line("Showing concepts of taxonomy {}".format(args.taxonomy))
-    remote = _solve_remote(args.taxonomy)
     uri = config["taxonomies"][args.taxonomy]
-    print(f"{'Remote' if remote else 'Local'} URI: {uri}\n")
-    taxonomy = _load_taxonomy(config, args.taxonomy, remote=remote)
+    print(f"URI: {uri}\n")
+    taxonomy = _load_taxonomy(config, args.taxonomy)
     if args.verbose:
         headers = ["Id", "Label", "Level", "Uri", "Description"]
         table = [
@@ -146,9 +135,7 @@ def insert_taxonomy(args, remote=False):
     for t in tax_keys:
         print(f"Taxonomy: {t}")
         try:
-            # TODO this should change when having local taxonomies
-            remote = _solve_remote(t)
-            taxonomy = _load_taxonomy(config, t, remote=remote)
+            taxonomy = _load_taxonomy(config, t)
             tagstore.insert_taxonomy(taxonomy)
 
             print(f"{taxonomy.key} | {taxonomy.uri}:", end=" ")
@@ -261,17 +248,17 @@ def calc_quality_measures(args):
 
 def _load_config(cfile):
     if not os.path.isfile(cfile):
-        print_line("Could not find TagPack repository configuration file.", "fail")
-        print_info(f"Creating a new default configuration file: {cfile}")
-        with open("config.yaml", "a") as the_file:
-            yaml.dump(DEFAULT_CONFIG, the_file, allow_unicode=True)
+        return DEFAULT_CONFIG
     return yaml.safe_load(open(cfile, "r"))
 
 
 def show_config(args):
-    if not os.path.exists(args.config):
-        _load_config(args.config)
-    print("Config File:", args.config)
+    if os.path.exists(args.config):
+        print("Using Config File:", args.config)
+    else:
+        print_info(
+            f"No override config file found at {args.config}. Using default values."
+        )
     if args.verbose:
         list_taxonomies(args)
 
@@ -581,7 +568,7 @@ def validate_actorpack(args):
     schema = ActorPackSchema()
     print(f"Loaded schema: {schema.definition}")
 
-    actorpack_files = collect_tagpack_files(args.path)
+    actorpack_files = collect_tagpack_files(args.path, search_actorpacks=True)
     n_actorpacks = len([f for fs in actorpack_files.values() for f in fs])
     print_info(f"Collected {n_actorpacks} ActorPack files\n")
 
@@ -631,7 +618,7 @@ def insert_actorpacks(args):
     taxonomy_keys = taxonomies.keys()
     print(f"Loaded taxonomies: {taxonomy_keys}")
 
-    actorpack_files = collect_tagpack_files(args.path)
+    actorpack_files = collect_tagpack_files(args.path, search_actorpacks=True)
 
     # resolve backlinks to remote repository and relative paths
     # For the URI we use the same logic for ActorPacks than for TagPacks
@@ -680,7 +667,7 @@ def insert_actorpacks(args):
     status = "fail" if no_passed < n_ppacks else "success"
 
     duration = round(time.time() - t0, 2)
-    msg = "Processed {}/{} ActorPacks with {} Tags in {}s."
+    msg = "Processed {}/{} ActorPacks with {} Actors in {}s."
     print_line(msg.format(no_passed, n_ppacks, no_actors, duration), status)
 
 
@@ -759,6 +746,87 @@ def list_address_actors(args):
         print_line("Operation failed", "fail")
 
 
+def update_tags_actors(args):
+    """
+    This function is for testing puposes. It allows to update some entries in
+    the table `tag` using actors, and then update the corresponding entries in
+    the table `address_quality`.
+    """
+    t0 = time.time()
+    print_line("Update tag.actor field from actor table (fixed list)")
+
+    tagstore = TagStore(args.url, args.schema)
+
+    try:
+        qm = tagstore.update_tags_actors()
+        print(f"{qm} tags updated with values from table actor")
+
+        qm = tagstore.update_quality_actors()
+        print(f"{qm} entries in address_quality were updated")
+
+        duration = round(time.time() - t0, 2)
+        print_line(f"Done in {duration}s", "success")
+    except Exception as e:
+        print_fail(e)
+        print_line("Operation failed", "fail")
+
+
+def exec_cli_command(arguments):
+    saved_argv = sys.argv
+    try:
+        sys.argv[1:] = arguments
+        main()
+    finally:
+        sys.argv = saved_argv
+
+
+def sync_repos(args):
+    from shutil import rmtree
+
+    if os.path.isfile(args.repos):
+        with open(args.repos, "r") as f:
+            repos = f.readlines()
+        temp_dir = tempfile.gettempdir()
+        temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
+
+        print_line("Init db taxonomies ...")
+        exec_cli_command(["tagstore", "init"])
+
+        for repo_url in repos:
+            repo_url = repo_url.strip()
+            print(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
+
+            try:
+                print_info("Cloning...")
+                repo_url, *branch = repo_url.split(" ")
+                repo = Repo.clone_from(repo_url, temp_dir_tt)
+                if len(branch) > 0:
+                    branch = branch[0]
+                    print_info(f"Using branch {branch}")
+                    repo.git.checkout(branch)
+
+                print("Inserting actorpacks ...")
+                exec_cli_command(["actorpack", "insert", "--add_new", temp_dir_tt])
+
+                print("Inserting tagpacks ...")
+                exec_cli_command(["tagpack", "insert", "--add_new", temp_dir_tt])
+            finally:
+                if os.path.isdir(temp_dir_tt):
+                    print_info(f"Removing temp files in: {temp_dir_tt}")
+                    rmtree(temp_dir_tt)
+
+        print("Removing duplicates ...")
+        exec_cli_command(["tagstore", "remove_duplicates"])
+
+        print("Refreshing db views ...")
+        exec_cli_command(["tagstore", "refresh_views"])
+
+        print_success("Your tagstore is now up-to-date again.")
+
+    else:
+        print_fail(f"Repos to sync file {args.repos} does not exist.")
+
+
 def main():
     if sys.version_info < (3, 7):
         sys.exit("This program requires python version 3.7 or later")
@@ -769,6 +837,16 @@ def main():
             get_version()
         ),
     )
+
+    def set_print_help_on_error(parser):
+        def print_help_subparser(subparser, args):
+            subparser.print_help()
+            print_fail("No action was requested. Please use as specified above.")
+
+        parser.set_defaults(func=partial(print_help_subparser, parser))
+
+    set_print_help_on_error(parser)
+
     parser.add_argument("-v", "--version", action="version", version=show_version())
     parser.add_argument(
         "--config",
@@ -788,8 +866,21 @@ def main():
     )
     parser_c.set_defaults(func=show_config)
 
+    # parser for sync command
+    parser_c = subparsers.add_parser(
+        "sync", help="git-repos to automatically keep track off."
+    )
+    parser_c.add_argument(
+        "-r",
+        "--repos",
+        help="List of repos to sync to the database.",
+        default=os.path.join(os.getcwd(), "tagpack-repos.config"),
+    )
+    parser_c.set_defaults(func=sync_repos)
+
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
+    set_print_help_on_error(parser_tp)
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
 
@@ -947,6 +1038,7 @@ def main():
 
     # parsers for actorpack command
     parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
+    set_print_help_on_error(parser_ap)
 
     app = parser_ap.add_subparsers(title="ActorPack commands")
 
@@ -988,6 +1080,20 @@ def main():
     )
     app_a.add_argument("--csv", action="store_true", help="Show csv output.")
     app_a.set_defaults(func=list_address_actors, url=def_url)
+
+    # parser for list addresses with actor-tags command
+    app_u = app.add_parser("update_tags_actors", help="Update tag.actor with actors")
+
+    app_u.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    app_u.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    app_u.set_defaults(func=update_tags_actors, url=def_url)
 
     # parser for validate command
     app_v = app.add_parser("validate", help="validate ActorPacks")
@@ -1100,6 +1206,7 @@ def main():
 
     # parsers for database housekeeping
     parser_db = subparsers.add_parser("tagstore", help="database housekeeping commands")
+    set_print_help_on_error(parser_db)
 
     pdp = parser_db.add_subparsers(title="TagStore commands")
 
@@ -1276,9 +1383,6 @@ def main():
     if hasattr(args, "url") and not args.url:
         print_warn(url_msg)
         parser.error("No postgresql URL connection was provided. Exiting.")
-
-    if not hasattr(args, "func"):
-        parser.error("No action was requested. Exiting.")
 
     args.func(args)
 

@@ -1,11 +1,11 @@
 """ActorPack - A wrappers ActorPack Schema"""
-import datetime
 import importlib.resources as pkg_resources
 
 import pandas as pd
 import yaml
 
 from tagpack import ValidationError
+from tagpack.schema import check_type
 
 from . import conf, db
 
@@ -47,6 +47,9 @@ class ActorPackSchema(object):
     def field_type(self, field):
         return self.all_fields[field]["type"]
 
+    def field_definition(self, field):
+        return self.all_fields.get(field, None)
+
     def field_taxonomy(self, field):
         try:
             return self.all_fields[field].get("taxonomy")
@@ -55,24 +58,11 @@ class ActorPackSchema(object):
 
     def check_type(self, field, value):
         """Checks whether a field's type matches the definition"""
-        schema_type = self.field_type(field)
-        if schema_type == "text":
-            if not isinstance(value, str):
-                raise ValidationError("Field {} must be of type text".format(field))
-            if len(value.strip()) == 0:
-                raise ValidationError("Empty value in text field {}".format(field))
-        elif schema_type == "datetime":
-            if not isinstance(value, datetime.date):
-                raise ValidationError(f"Field {field} must be of type datetime")
-        elif schema_type == "boolean":
-            if not isinstance(value, bool):
-                raise ValidationError(f"Field {field} must be of type boolean")
-        elif schema_type == "list":
-            if not isinstance(value, list):
-                raise ValidationError(f"Field {field} must be of type list")
-        else:
-            raise ValidationError("Unsupported schema type {}".format(schema_type))
-        return True
+        # schema_type = self.field_type(field)
+        field_def = self.field_definition(field)
+        if field_def is None:
+            raise ValidationError(f"Field {field} not defined in schema.")
+        return check_type(self.schema, field, field_def, value)
 
     def check_taxonomies(self, field, value, taxonomies):
         """Checks whether a field uses values from given taxonomies"""

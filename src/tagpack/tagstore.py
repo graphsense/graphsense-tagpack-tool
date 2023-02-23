@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
+from functools import wraps
 
 import numpy as np
 from cashaddress.convert import to_legacy_address
@@ -12,6 +13,29 @@ from tagpack import ValidationError
 register_adapter(np.int64, AsIs)
 
 
+def auto_commit(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        """
+        Automatically calls commit at the end of a function or
+        rollback if an error occurs. If rollback is not execute
+        int leaves the connection in a broken state.
+        https://stackoverflow.com/questions/2979369/databaseerror-current-transaction-is-aborted-commands-ignored-until-end-of-tra
+        """
+        self, *_ = args
+        try:
+            output = function(*args, **kwargs)
+        except Exception as e:
+            # self.cursor.execute("rollback")
+            self.conn.rollback()
+            raise e
+        finally:
+            self.conn.commit()
+        return output
+
+    return wrapper
+
+
 class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
@@ -22,6 +46,7 @@ class TagStore(object):
         self.existing_packs = None
         self.existing_actorpacks = None
 
+    @auto_commit
     def insert_taxonomy(self, taxonomy):
         if taxonomy.key == "confidence":
             self.insert_confidence_scores(taxonomy)
@@ -39,8 +64,7 @@ class TagStore(object):
             v = (c.id, c.label, c.taxonomy.key, c.uri, c.description)
             self.cursor.execute(statement, v)
 
-        self.conn.commit()
-
+    @auto_commit
     def insert_confidence_scores(self, confidence):
         statement = "INSERT INTO confidence (id, label, description, level)"
         statement += " VALUES (%s, %s, %s, %s)"
@@ -48,8 +72,6 @@ class TagStore(object):
         for c in confidence.concepts:
             values = (c.id, c.label, c.description, c.level)
             self.cursor.execute(statement, values)
-
-        self.conn.commit()
 
     def tp_exists(self, prefix, rel_path):
         if not self.existing_packs:
@@ -59,6 +81,7 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
+    @auto_commit
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
     ):
@@ -89,8 +112,8 @@ class TagStore(object):
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
             currency, is_cluster_definer, confidence, lastmod, \
-            context, tagpack ) VALUES \
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            context, tagpack, actor ) VALUES \
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         tag_data = []
         address_data = []
@@ -109,8 +132,6 @@ class TagStore(object):
         execute_batch(self.cursor, addr_sql, address_data)
         execute_batch(self.cursor, tag_sql, tag_data)
 
-        self.conn.commit()
-
     def actorpack_exists(self, prefix, actorpack_name):
         if not self.existing_actorpacks:
             self.existing_actorpacks = self.get_ingested_actorpacks()
@@ -124,6 +145,7 @@ class TagStore(object):
         self.cursor.execute("SELECT id from actorpack")
         return [i[0] for i in self.cursor.fetchall()]
 
+    @auto_commit
     def insert_actorpack(
         self, actorpack, is_public, force_insert, prefix, rel_path, batch=1000
     ):
@@ -149,8 +171,8 @@ class TagStore(object):
         self.cursor.execute(q, v)
         self.conn.commit()
 
-        actor_sql = "INSERT INTO actor (id, label, uri, lastmod, actorpack) \
-            VALUES (%s, %s, %s, %s, %s)"
+        actor_sql = "INSERT INTO actor (id, label, context, uri, lastmod, actorpack) \
+            VALUES (%s, %s, %s, %s, %s, %s)"
         act_cat_sql = "INSERT INTO actor_categories (actor_id, category_id) \
             VALUES (%s, %s)"
         act_jur_sql = "INSERT INTO actor_jurisdictions (actor_id, country_id) \
@@ -163,6 +185,8 @@ class TagStore(object):
             actor_data.append(_get_actor(actor, actorpack_id))
             cat_data.extend(_get_actor_categories(actor))
             jur_data.extend(_get_actor_jurisdictions(actor))
+
+            # Handle writes in batches.
             if len(actor_data) > batch:
                 execute_batch(self.cursor, actor_sql, actor_data)
                 execute_batch(self.cursor, act_cat_sql, cat_data)
@@ -172,12 +196,11 @@ class TagStore(object):
                 cat_data = []
                 jur_data = []
 
-        # insert remaining items
+        # insert remaining items (needed if written in batch and len(unique actors)
+        # is not divisible by batch size)
         execute_batch(self.cursor, actor_sql, actor_data)
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
-
-        self.conn.commit()
 
     def find_actors_for(self, label, max_results, threshold=0.2):
         similarity = f"similarity(id, '{label}')"
@@ -261,6 +284,7 @@ class TagStore(object):
         self.conn.commit()
         return self.cursor.rowcount
 
+    @auto_commit
     def refresh_db(self):
         self.cursor.execute("REFRESH MATERIALIZED VIEW label")
         self.cursor.execute("REFRESH MATERIALIZED VIEW statistics")
@@ -269,7 +293,6 @@ class TagStore(object):
             "REFRESH MATERIALIZED VIEW "
             "cluster_defining_tags_by_frequency_and_maxconfidence"
         )  # noqa
-        self.conn.commit()
 
     def get_addresses(self, update_existing):
         if update_existing:
@@ -306,6 +329,7 @@ class TagStore(object):
         for record in self.cursor:
             yield record
 
+    @auto_commit
     def insert_cluster_mappings(self, clusters):
         if not clusters.empty:
             q = "INSERT INTO address_cluster_mapping (address, currency, \
@@ -325,16 +349,15 @@ class TagStore(object):
             data = clusters[cols].to_records(index=False)
 
             execute_batch(self.cursor, q, data)
-            self.conn.commit()
 
     def _supports_currency(self, tag):
         return tag.all_fields.get("currency") in self.supported_currencies
 
+    @auto_commit
     def finish_mappings_update(self, keys):
         q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
                 AND currency IN %s"
         self.cursor.execute(q, (tuple(keys),))
-        self.conn.commit()
 
     def get_ingested_tagpacks(self) -> list:
         self.cursor.execute("SELECT id from tagpack")
@@ -360,7 +383,7 @@ class TagStore(object):
         return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
     def calculate_quality_measures(self) -> dict:
-        self.cursor.execute("CALL calculate_quality()")
+        self.cursor.execute("CALL calculate_quality(FALSE)")
         self.cursor.execute("CALL insert_address_quality()")
         self.conn.commit()
         return self.get_quality_measures()
@@ -408,6 +431,80 @@ class TagStore(object):
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
+    @auto_commit
+    def update_tags_actors(self):
+        """
+        Update the `tag.actor` field by searching an actor.id that matches with
+        the `tag.label`. Tags marked as abuse are excluded from the update.
+        """
+        # TODO this is a test actor list
+        actors = """
+        'bitmex', 'bitfinex', 'huobi', 'binance', 'coinbase', 'zaif',
+        'mtgox', 'okx', 'poloniex', 'kucoin', 'kraken', 'bitstamp', 'bithumb',
+        'shapeshift', 'deribit', 'gemini', 'f2pool', 'bittrex', 'crypto.com',
+        'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io',
+        '0x', '1inch', 'aave', 'badger', 'balancer', 'barnbridge', 'compound',
+        'convex', 'curvefinance', 'dydx', 'fei', 'futureswap',
+        'harvestfinance', 'hegic', 'instadapp', 'maker', 'nexus', 'renvm',
+        'sushiswap', 'synthetix', 'uniswap', 'vesper', 'yearn'
+        """
+        q = (
+            "UPDATE tag SET actor=a.id "
+            f"FROM (SELECT id FROM actor WHERE id in ({actors})) a "
+            "WHERE tag.abuse IS NULL "
+            "AND tag.label ILIKE CONCAT(a.id, '%')"
+        )
+        # "AND tag.label NOT LIKE 'upbit hack%' "\
+        self.cursor.execute(q)
+        rowcount = self.cursor.rowcount
+        # This query is to normalize OKEX/OKX/OKB tags
+        q = (
+            "UPDATE tag SET actor='okx' "
+            "WHERE abuse IS NULL "
+            "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
+        )
+        self.cursor.execute(q)
+        return rowcount
+
+    @auto_commit
+    def update_quality_actors(self):
+        """
+        Update all entries in `address_quality` having a unique actor in table
+        `tag`. The corresponding quality is 1, due to the conflicts are solved.
+        """
+        # q = "SELECT t.currency, t.address, COUNT(t.actor) n" \
+        #     "FROM tag t, address_quality q" \
+        #     "WHERE t.currency=q.currency" \
+        #     "AND t.address=q.address" \
+        #     "AND NOT t.actor IS NULL" \
+        #     "GROUP BY t.currency, t.address, t.actor"
+
+        q = (
+            "UPDATE address_quality "
+            "SET "
+            "n_tags=1, "
+            "n_dif_tags=1, "
+            "total_pairs=0, "
+            "q1=0, "
+            "q2=0, "
+            "q3=0, "
+            "q4=0, "
+            "quality=1.0 "
+            "FROM ("
+            "SELECT currency, address "
+            "FROM tag "
+            "WHERE NOT actor IS NULL "
+            "GROUP BY currency, address "
+            "HAVING COUNT(DISTINCT actor) = 1 "
+            ") s "
+            "WHERE address_quality.currency=s.currency "
+            "AND address_quality.address=s.address"
+        )
+        self.cursor.execute(q)
+        rowcount = self.cursor.rowcount
+        # self.conn.commit()
+        return rowcount
+
 
 def validate_currency(currency):
     currency = currency.upper()
@@ -433,6 +530,7 @@ def _get_tag(tag, tagpack_id):
         lastmod,
         tag.all_fields.get("context"),
         tagpack_id,
+        tag.all_fields.get("actor", None),
     )
 
 
@@ -476,10 +574,13 @@ def _get_actor_header(actorpack, id):
 
 
 def _get_actor(actor, actorpack_id):
+    uri = actor.all_fields.get("uri", None)
+    context = actor.all_fields.get("context", None)
     return (
         actor.all_fields.get("id"),
-        actor.all_fields.get("label").strip(),
-        actor.all_fields.get("uri", None).strip(),
+        actor.all_fields.get("label", "").strip(),
+        context.strip() if context is not None else context,
+        uri.strip() if uri is not None else uri,
         actor.all_fields.get("lastmod", datetime.now().isoformat()),
         actorpack_id,
     )

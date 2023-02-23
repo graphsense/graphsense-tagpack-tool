@@ -29,7 +29,7 @@ tag:
     mandatory: false
   confidence:
     type: text
-    mandatory: false
+    mandatory: true
   is_cluster_definer:
     type: boolean
     mandatory: false
@@ -47,3 +47,6 @@ tag:
   address:
     type: text
     mandatory: true
+  actor:
+    type: text
+    mandatory: false

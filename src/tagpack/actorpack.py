@@ -1,13 +1,23 @@
 """ActorPack - A wrapper for ActorPack files"""
 import json
 import os
+import re
 import sys
+from collections import defaultdict
 
 import yaml
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
-from tagpack.cmd_utils import print_info
+from tagpack.cmd_utils import print_info, print_warn
+from tagpack.utils import (
+    apply_to_dict_field,
+    get_secondlevel_domain,
+    strip_empty,
+    try_parse_date,
+)
+
+LBL_BLACKLIST = re.compile(r"[@_!#$%^*<>?\|}{~:;]")
 
 
 class ActorPack(object):
@@ -20,6 +30,10 @@ class ActorPack(object):
         self.taxonomies = taxonomies
         self._unique_actors = []
         self._duplicates = []
+
+        # the yaml parser does not deal with string quoted dates.
+        # so '2022-10-1' is not interpreted as a date. This line fixes this.
+        apply_to_dict_field(self.contents, "lastmod", try_parse_date, fail=False)
 
     def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(
@@ -124,6 +138,9 @@ class ActorPack(object):
         e2 = "Mandatory tag field {} missing in {}"
         e3 = "Field {} not allowed in {}"
         e4 = "Value of body field {} must not be empty (None) in {}"
+        domain_overlap = defaultdict(set)
+        twitter_handle_overlap = defaultdict(set)
+        github_organisation_overlap = defaultdict(set)
         for actor in self.get_unique_actors():
             # check if mandatory actor fields are defined
             if not isinstance(actor, Actor):
@@ -151,6 +168,43 @@ class ActorPack(object):
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {actor}")
+
+            lbl = actor.all_fields["label"]
+            if LBL_BLACKLIST.search(lbl):
+                print_warn(
+                    f"Actor {actor.identifier}: label {lbl} contains special "
+                    "characters. Please avoid."
+                )
+
+            for uri in set(actor.uris):
+                if "." not in uri:
+                    print_warn(
+                        f"There is no dot in uri: {uri} in actor {actor.identifier}"
+                    )
+                domain_overlap[get_secondlevel_domain(uri)].add(actor.identifier)
+
+            if actor.twitter_handle:
+                for handle in actor.twitter_handle.split(","):
+                    twitter_handle_overlap[handle.strip().lower()].add(actor.identifier)
+
+            if actor.github_organisation:
+                for handle in actor.github_organisation.split(","):
+                    github_organisation_overlap[handle.strip().lower()].add(
+                        actor.identifier
+                    )
+
+        for domain, actors in domain_overlap.items():
+            if len(actors) > 1:
+                print_warn(
+                    f"Actors share the same domain {domain}: {actors}." " Please merge!"
+                )
+
+        for twitter_handle, actors in twitter_handle_overlap.items():
+            if len(actors) > 1:
+                print_warn(
+                    "These actors share the same twitter_handle "
+                    f" {twitter_handle}: {actors}. Consider Merge?"
+                )
 
         if self._duplicates:
             msg = (
@@ -180,6 +234,12 @@ class Actor(object):
         self.contents = contents
         self.actorpack = actorpack
 
+        # This allows the context in the yaml file to be written in either
+        # normal yaml syntax which is now converted to a json string
+        # of directly as json string.
+        if type(self.contents.get("context", None)) == dict:
+            apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
+
     @staticmethod
     def from_contents(contents, actorpack):
         return Actor(contents, actorpack)
@@ -196,6 +256,30 @@ class Actor(object):
             **self.actorpack.actor_fields,
             **self.explicit_fields,
         }
+
+    @property
+    def context(self):
+        if "context" in self.contents:
+            return json.loads(self.contents["context"])
+        else:
+            return {}
+
+    @property
+    def uris(self):
+        c = self.context
+        return strip_empty([self.contents.get("uri", None)] + c.get("uris", []))
+
+    @property
+    def twitter_handle(self):
+        return self.context.get("twitter_handle", None)
+
+    @property
+    def github_organisation(self):
+        return self.context.get("github_organisation", None)
+
+    @property
+    def identifier(self):
+        return self.contents.get("id", None)
 
     def to_json(self):
         """Returns a JSON serialization of all actor fields"""

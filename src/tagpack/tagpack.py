@@ -14,6 +14,7 @@ from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import get_user_choice, print_info, print_warn
+from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
 def get_repository(path: str) -> pathlib.Path:
@@ -81,7 +82,7 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     return res, rel_path
 
 
-def collect_tagpack_files(path):
+def collect_tagpack_files(path, search_actorpacks=False):
     """
     Collect Tagpack YAML files from the given path. This function returns a
     dict made of sets. Each key of the dict is the corresponding header path of
@@ -100,6 +101,11 @@ def collect_tagpack_files(path):
         return {}
 
     files = {f for f in files if not f.endswith("config.yaml")}
+
+    if search_actorpacks:
+        files = {f for f in files if f.endswith("actorpack.yaml")}
+    else:
+        files = {f for f in files if not f.endswith("actorpack.yaml")}
 
     # Sort files, deepest first
     sfiles = sorted(files, key=lambda x: len(x.split(os.sep)), reverse=True)
@@ -145,6 +151,11 @@ class TagPack(object):
         self.taxonomies = taxonomies
         self._unique_tags = []
         self._duplicates = []
+        self.init_default_values()
+
+        # the yaml parser does not deal with string quoted dates.
+        # so '2022-10-1' is not interpreted as a date. This line fixes this.
+        apply_to_dict_field(self.contents, "lastmod", try_parse_date, fail=False)
 
     verifiable_currencies = [
         a.ticker for a in coinaddrvalidator.currency.Currencies.instances.values()
@@ -164,6 +175,24 @@ class TagPack(object):
                 contents[k] = v
             contents.pop("header")
         return TagPack(uri, contents, schema, taxonomies)
+
+    def init_default_values(self):
+        if "confidence" not in self.contents and not all(
+            ["confidence" in tag.contents for tag in self.tags]
+        ):
+            conf_scores_df = self.schema.confidences
+            min_confs = conf_scores_df[
+                conf_scores_df.level == conf_scores_df.level.min()
+            ]
+            lowest_confidence_score = (
+                min_confs.index[-1] if len(min_confs) > 0 else None
+            )
+            self.contents["confidence"] = lowest_confidence_score
+            print_warn(
+                "Not all tags have a confidence score set. "
+                f"Set default confidence level to {lowest_confidence_score} "
+                "on tagpack level."
+            )
 
     @property
     def all_header_fields(self):
@@ -260,10 +289,17 @@ class TagPack(object):
         e2 = "Mandatory tag field {} missing in {}"
         e3 = "Field {} not allowed in {}"
         e4 = "Value of body field {} must not be empty (None) in {}"
-        for tag in self.get_unique_tags():
+
+        ut = self.get_unique_tags()
+        nr_no_actors = 0
+        for tag in ut:
             # check if mandatory tag fields are defined
             if not isinstance(tag, Tag):
                 raise ValidationError("Unknown tag type {}".format(tag))
+
+            actor = tag.all_fields.get("actor", None)
+            if actor is None:
+                nr_no_actors += 1
 
             for schema_field in self.schema.mandatory_tag_fields:
                 if (
@@ -287,6 +323,12 @@ class TagPack(object):
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {tag}")
+
+        if nr_no_actors > 0:
+            print_warn(
+                f"{nr_no_actors}/{len(ut)} have no actor configured. "
+                "Please consider connecting the tag to an actor."
+            )
 
         if self._duplicates:
             msg = f"{len(self._duplicates)} duplicate(s) found, starting "
@@ -377,6 +419,12 @@ class Tag(object):
     def __init__(self, contents, tagpack):
         self.contents = contents
         self.tagpack = tagpack
+
+        # This allows the context in the yaml file to be written in either
+        # normal yaml syntax which is now converted to a json string
+        # of directly as json string.
+        if type(self.contents.get("context", None)) == dict:
+            apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
 
     @staticmethod
     def from_contents(contents, tagpack):
