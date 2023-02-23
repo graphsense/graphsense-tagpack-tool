@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import textwrap
 from datetime import datetime
 from functools import wraps
 
@@ -234,16 +235,58 @@ class TagStore(object):
         execute_batch(self.cursor, act_cat_sql, cat_data)
         execute_batch(self.cursor, act_jur_sql, jur_data)
 
-    def find_actors_for(self, label, max_results, threshold=0.2):
-        similarity = f"similarity(id, '{label}')"
+    def find_actors_for(
+        self,
+        label,
+        max_results,
+        threshold=0.2,
+        search_columns=["id", "label", "uri"],
+        use_simple_similarity=True,
+    ):
+        fields = ["id", "label", "uri", "context"]
+        fields_output = fields + ["similarity"]
+        fields_str = ",".join(fields)
+        search_target = f"concat_ws(' ',{','.join(search_columns)})"
+
+        if use_simple_similarity:
+            similarity_query = textwrap.dedent(
+                f"""SELECT
+                    {fields_str},
+                    similarity(%(label)s, {search_target}) as similarity
+                    FROM actor
+                    WHERE similarity(%(label)s, {search_target}) > %(threshold)s
+                    ORDER BY similarity DESC
+                    LIMIT %(max_results)s"""
+            )
+        else:
+            similarity_query = textwrap.dedent(
+                f"""SELECT
+                    {fields_str},
+                    (simple_similarity + word_similarity + strict_word_similarity)
+                     / 3 as similarity
+                    FROM (
+                        SELECT {fields_str},
+                        similarity(%(label)s,{search_target}) as simple_similarity,
+                        word_similarity(%(label)s,{search_target})as word_similarity,
+                        strict_word_similarity(%(label)s,{search_target})
+                        as strict_word_similarity
+                        FROM actor
+                    ) blub
+                    WHERE
+                    (simple_similarity + word_similarity + strict_word_similarity) / 3
+                    > %(threshold)s
+                    ORDER BY similarity DESC
+                    LIMIT %(max_results)s"""
+            )
 
         self.cursor.execute(
-            f"SELECT id FROM actor WHERE {similarity} > {threshold}"
-            f"ORDER BY {similarity} DESC "
-            f"LIMIT {max_results}"
+            similarity_query,
+            {"label": label, "threshold": threshold, "max_results": max_results},
         )
-        matches = [x[0] for x in self.cursor.fetchall()]
-        return matches
+
+        return [
+            {k: v for k, v in zip(fields_output, x)} for x in self.cursor.fetchall()
+        ]
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """

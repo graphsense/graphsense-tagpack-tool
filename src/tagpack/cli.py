@@ -313,10 +313,20 @@ def validate_tagpack(args):
 
 def suggest_actors(args):
     print_line(f"Searching suitable actors for {args.label} in TagStore")
-
     tagstore = TagStore(args.url, args.schema)
-    candidates = tagstore.find_actors_for(args.label, args.max)
-    print(f"Found {len(candidates)} matches: {candidates}")
+    candidates = tagstore.find_actors_for(
+        args.label, args.max, use_simple_similarity=True
+    )
+    print(f"Found {len(candidates)} candidates")
+    df = pd.DataFrame(candidates)
+    print(
+        tabulate(
+            df,
+            headers=df.columns,
+            tablefmt="psql",
+            maxcolwidths=[None, None, None, None, 60],
+        )
+    )
 
 
 def add_actors_to_tagpack(args):
@@ -333,10 +343,19 @@ def add_actors_to_tagpack(args):
                 "", tagpack_file, schema, None, headerfile_dir
             )
             print(f"Loading {tagpack_file}: ")
-            updated = tagpack.add_actors(tagstore.find_actors_for, args.max)
+
+            def find_actor_candidates(search_term):
+                res = tagstore.find_actors_for(search_term, args.max)
+                return [(x["id"], f"{x['label']} ({x['uri']})") for x in res]
+
+            updated = tagpack.add_actors(find_actor_candidates)
 
             if updated:
-                updated_file = tagpack_file.replace(".yaml", "_with_actors.yaml")
+                updated_file = (
+                    tagpack_file.replace(".yaml", "_with_actors.yaml")
+                    if not args.inplace
+                    else tagpack_file
+                )
                 print_success(f"Writing updated Tagpack {updated_file}\n")
                 with open(updated_file, "w") as outfile:
                     tagpack.contents["tags"] = tagpack.contents.pop(
@@ -346,7 +365,7 @@ def add_actors_to_tagpack(args):
                         tagpack.contents, outfile, sort_keys=False
                     )  # write in order of insertion
             else:
-                print_success("No actors selected, moving on.")
+                print_success("No actors added, moving on.")
 
 
 def insert_tagpack(args):
@@ -887,11 +906,14 @@ def main():
         action="store_true",
         help=(
             "By default, tagpack/actorpack insertion stops when an already inserted"
-            "tagpack exists in the database. Use this switch to force "
+            "tagpack/actorpack exists in the database. Use this switch to force "
             " re-insertion."
         ),
     )
-    parser_syc.set_defaults(func=sync_repos)
+    parser_syc.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    parser_syc.set_defaults(func=sync_repos, url=def_url)
 
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
@@ -1002,7 +1024,7 @@ def main():
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 
     # parser for suggest_actor
-    ptp_actor = ptp.add_parser("suggest_actors", help="suggest actors ")
+    ptp_actor = ptp.add_parser("suggest_actors", help="suggest an actor based on input")
     ptp_actor.add_argument(
         "label",
         nargs="?",
@@ -1019,7 +1041,7 @@ def main():
     )
     ptp_actor.add_argument(
         "--max",
-        default=3,
+        default=5,
         help="Limits the number of results",
     )
     ptp_actor.set_defaults(func=suggest_actors, url=def_url)
@@ -1046,8 +1068,14 @@ def main():
     )
     ptp_add_actor.add_argument(
         "--max",
-        default=3,
+        default=5,
         help="Limits the number of results",
+    )
+    ptp_add_actor.add_argument(
+        "--inplace",
+        action="store_true",
+        help="If set the source tagpack file is overwritten, "
+        "otherwise a new file is generated called [original_file]_with_actors.yaml.",
     )
     ptp_add_actor.set_defaults(func=add_actors_to_tagpack, url=def_url)
 
