@@ -13,7 +13,7 @@ from git import Repo
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
-from tagpack.cmd_utils import print_info, print_warn
+from tagpack.cmd_utils import get_user_choice, print_info, print_warn
 from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
@@ -363,6 +363,41 @@ class TagPack(object):
             print_warn(f"\tAddress verification is not supported for {c}:")
             for a in sorted(addrs):
                 print_warn(f"\t\t{a}")
+
+    def add_actors(self, get_actors, max_suggestions):
+        """Suggest actors for labels that have no actors assigned"""
+        suggestions_found = False
+
+        if "label" in self.all_header_fields and "actor" not in self.all_header_fields:
+            hl = self.all_header_fields.get("label")
+            candidates = get_actors(hl, max_suggestions)
+            actor = get_user_choice(hl, candidates)
+            if actor:
+                self.contents["actor"] = actor
+                suggestions_found = True
+
+        # update tags and trace if all labels carry the same actor
+        actors = set()
+        all_tags_carry_actor = True
+        for tag in self.get_unique_tags():
+            if "label" in tag.explicit_fields and "actor" not in tag.explicit_fields:
+                tl = tag.explicit_fields.get("label")
+                candidates = get_actors(tl, max_suggestions)
+                actor = get_user_choice(tl, candidates)
+                if actor:
+                    tag.contents["actor"] = actor
+                    actors.add(actor)
+                    suggestions_found = True
+                else:
+                    all_tags_carry_actor = False
+
+        if all_tags_carry_actor and len(actors) == 1:
+            # promote actor to header field
+            self.contents["actor"] = actors.pop()
+            for tag in self.get_unique_tags():
+                tag.contents.pop("actor")
+
+        return suggestions_found
 
     def to_json(self):
         """Returns a JSON representation of a TagPack's header"""
