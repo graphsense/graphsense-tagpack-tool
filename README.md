@@ -27,23 +27,53 @@ Recursively validate all TagPacks in (a) given folder(s).
 
     tagpack-tool tagpack validate tests/testfiles/
 
-Tagpacks are validated against the [tagpack schema](src/tagpack/conf/tagpack_schema.yaml).
+TagPacks are validated against the [tagpack schema](src/tagpack/conf/tagpack_schema.yaml).
 
 Confidence settings are validated against a set of acceptable [confidence](src/tagpack/db/confidence.csv) values.
 
 ## Actors for tags and TagPacks
 
-[Actors](https://github.com/graphsense/graphsense-tagpacks/wiki/Actors) are defined in a curated actor tagpack.
+[Actors](https://github.com/graphsense/graphsense-tagpacks/wiki/Graphsense-Actors) are defined in a curated actor tagpack.
 
-It is encouraged to add actors to Tagpacks whenever possible.
+It is highly encouraged to add suitable actors to TagPacks whenever possible,
+and the tagpack-tool offers support for doing so.
 
-Finding suitable actors is supported by the tagpack-tool. For a specific lable, actor suggestions can be retrieved by calling
+### List suitable actors for a tag
 
-    tagpack-tool tagpack suggest_actors <my_label>
+For a specific tag string, actor suggestions can be listed by calling
+
+    tagpack-tool tagpack suggest_actors <my_tag>
 
 and if desired, the number of results can be restricted by adding the ``--max`` parameter
 
-    tagpack-tool tagpack suggest_actors --max 1 <my_label>
+    tagpack-tool tagpack suggest_actors --max 1 <my_tag>
+
+### Interactive TagPack update
+
+It is also possible to interactively **update** an existing TagPack file with actors:
+
+    tagpack-tool tagpack add_actors path/to/tagpack.yaml
+
+or go through entire directories of TagPack files:
+
+    tagpack-tool tagpack add_actors path/to/tagpacks
+
+File by file, for each label, the tagpack-tool will suggest suitable actors if any are found:
+
+    Choose for instadapp_InstaCompoundMapping
+        0 instadapp
+        1 compound
+        ENTER to skip
+    Your choice: 0
+
+The ``--max`` option is available again to limit the number of candidate suggestions:
+
+    tagpack-tool tagpack add_actors --max 1 path/to/tagpacks
+
+If any actors have been selected, an updated TagPack is written that contains the users' selected actors:
+
+    Writing updated Tagpack defi-protocols_instadapp_with_actors.yaml
+
 
 ## Validate an ActorPack <a name="actorpack_validation"></a>
 

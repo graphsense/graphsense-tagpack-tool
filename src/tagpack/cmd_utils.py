@@ -56,3 +56,24 @@ def print_fail(text, exception=None):
 
 def print_warn(text, **args):
     print(f"{bcolors.WARNING}{text}{bcolors.ENDC}", **args)
+
+
+def get_user_choice(label, options):
+    if not options:
+        return None
+
+    input_message = f"Choose for {bcolors.BOLD}{label}{bcolors.ENDC}\n"
+    for index, item in enumerate(options):
+        input_message += f"\t{bcolors.BOLD}{index}{bcolors.ENDC} {item}\n"
+    input_message += f"\t{bcolors.BOLD}ENTER{bcolors.ENDC} to skip\n"
+    input_message += "Your choice: "
+
+    user_input = "-1"
+    while user_input and (
+        not user_input.isdecimal() or int(user_input) not in range(0, len(options))
+    ):
+        user_input = input(input_message)
+
+    if user_input:
+        return options[int(user_input)]
+    return None

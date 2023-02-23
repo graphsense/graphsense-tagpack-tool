@@ -331,6 +331,36 @@ def suggest_actors(args):
     print(f"Found {len(candidates)} matches: {candidates}")
 
 
+def add_actors_to_tagpack(args):
+    print("Starting interactive tagpack actor enrichment process.")
+
+    tagstore = TagStore(args.url, args.schema)
+    tagpack_files = collect_tagpack_files(args.path)
+
+    schema = TagPackSchema()
+
+    for headerfile_dir, files in tagpack_files.items():
+        for tagpack_file in files:
+            tagpack = TagPack.load_from_file(
+                "", tagpack_file, schema, None, headerfile_dir
+            )
+            print(f"Loading {tagpack_file}: ")
+            updated = tagpack.add_actors(tagstore.find_actors_for, args.max)
+
+            if updated:
+                updated_file = tagpack_file.replace(".yaml", "_with_actors.yaml")
+                print_success(f"Writing updated Tagpack {updated_file}\n")
+                with open(updated_file, "w") as outfile:
+                    tagpack.contents["tags"] = tagpack.contents.pop(
+                        "tags"
+                    )  # re-insert tags
+                    yaml.dump(
+                        tagpack.contents, outfile, sort_keys=False
+                    )  # write in order of insertion
+            else:
+                print_success("No actors selected, moving on.")
+
+
 def insert_tagpack(args):
     t0 = time.time()
     print_line("TagPack insert starts")
@@ -887,6 +917,33 @@ def main():
         help="Limits the number of results",
     )
     ptp_actor.set_defaults(func=suggest_actors, url=def_url)
+
+    # parser for add_actor
+    ptp_add_actor = ptp.add_parser(
+        "add_actors", help="interactively add actors to tagpack"
+    )
+    ptp_add_actor.add_argument(
+        "path",
+        nargs="?",
+        metavar="PATH",
+        default=os.getcwd(),
+        help="TagPacks file or folder root path",
+    )
+    ptp_add_actor.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    ptp_add_actor.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    ptp_add_actor.add_argument(
+        "--max",
+        default=3,
+        help="Limits the number of results",
+    )
+    ptp_add_actor.set_defaults(func=add_actors_to_tagpack, url=def_url)
 
     # parsers for actorpack command
     parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
