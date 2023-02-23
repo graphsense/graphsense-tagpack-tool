@@ -141,10 +141,13 @@ class ActorPack(object):
         domain_overlap = defaultdict(set)
         twitter_handle_overlap = defaultdict(set)
         github_organisation_overlap = defaultdict(set)
+        ids = defaultdict(int)
         for actor in self.get_unique_actors():
             # check if mandatory actor fields are defined
             if not isinstance(actor, Actor):
                 raise ValidationError(f"Unknown actor type {type(actor)}")
+
+            ids[actor.identifier] += 1
 
             for schema_field in self.schema.mandatory_actor_fields:
                 if (
@@ -168,6 +171,12 @@ class ActorPack(object):
                     self.schema.check_taxonomies(field, value, self.taxonomies)
                 except ValidationError as e:
                     raise ValidationError(f"{e} in {actor}")
+
+            duplicated_ids = [i for i, c in ids.items() if c > 1]
+            if any(duplicated_ids):
+                raise ValidationError(
+                    f"Actor ids used more than once: {duplicated_ids}"
+                )
 
             lbl = actor.all_fields["label"]
             if LBL_BLACKLIST.search(lbl):

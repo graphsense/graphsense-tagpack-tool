@@ -52,26 +52,58 @@ class TagStore(object):
             self.insert_confidence_scores(taxonomy)
             return
 
-        statement = "INSERT INTO taxonomy (id, source, description) "
-        statement += "VALUES (%s, %s, %s)"
-        desc = f"Imported at {datetime.now().isoformat()}"
-        v = (taxonomy.key, taxonomy.uri, desc)
-        self.cursor.execute(statement, v)
+        statement = (
+            "INSERT INTO taxonomy (id, source, description) "
+            "VALUES (%(id)s, %(source)s, %(description)s)"
+            "ON CONFLICT (id) DO UPDATE "
+            "SET (source, description) = "
+            "(%(source)s, %(description)s);"
+        )
 
+        desc = f"Imported at {datetime.now().isoformat()}"
+        self.cursor.execute(
+            statement, {"id": taxonomy.key, "source": taxonomy.uri, "description": desc}
+        )
+
+        statement = (
+            "INSERT INTO concept (id, label, taxonomy, source, description) "
+            "VALUES (%(id)s,%(label)s,%(taxonomy)s,%(source)s,%(description)s)"
+            "ON CONFLICT (id) DO UPDATE "
+            "SET (label, taxonomy, source, description) = "
+            "(%(label)s,%(taxonomy)s,%(source)s,%(description)s);"
+        )
         for c in taxonomy.concepts:
-            statement = "INSERT INTO concept (id, label, taxonomy, source, "
-            statement += "description) VALUES (%s, %s, %s, %s, %s)"
-            v = (c.id, c.label, c.taxonomy.key, c.uri, c.description)
+
+            v = {
+                "id": c.id,
+                "label": c.label,
+                "taxonomy": c.taxonomy.key,
+                "source": c.uri,
+                "description": c.description,
+            }
             self.cursor.execute(statement, v)
 
     @auto_commit
     def insert_confidence_scores(self, confidence):
-        statement = "INSERT INTO confidence (id, label, description, level)"
-        statement += " VALUES (%s, %s, %s, %s)"
+
+        statement = (
+            "INSERT INTO confidence (id, label, description, level)"
+            " VALUES (%(id)s,%(label)s,%(description)s,%(level)s)"
+            "ON CONFLICT (id) DO UPDATE "
+            "SET (label, description, level) = "
+            "(%(label)s,%(description)s,%(level)s);"
+        )
 
         for c in confidence.concepts:
-            values = (c.id, c.label, c.description, c.level)
-            self.cursor.execute(statement, values)
+            self.cursor.execute(
+                statement,
+                {
+                    "id": c.id,
+                    "label": c.label,
+                    "description": c.description,
+                    "level": c.level,
+                },
+            )
 
     def tp_exists(self, prefix, rel_path):
         if not self.existing_packs:

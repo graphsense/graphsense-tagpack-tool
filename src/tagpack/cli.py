@@ -37,6 +37,7 @@ from tagpack.tagpack import (
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
 from tagpack.tagstore import TagStore
 from tagpack.taxonomy import Taxonomy
+from tagpack.utils import strip_empty
 
 init()
 
@@ -790,7 +791,10 @@ def sync_repos(args):
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
         print_line("Init db taxonomies ...")
-        exec_cli_command(["tagstore", "init"])
+        exec_cli_command(strip_empty(["tagstore", "init"]))
+
+        extra_option = "--force" if args.force else None
+        extra_option = "--add_new" if extra_option is None else extra_option
 
         for repo_url in repos:
             repo_url = repo_url.strip()
@@ -806,10 +810,12 @@ def sync_repos(args):
                     repo.git.checkout(branch)
 
                 print("Inserting actorpacks ...")
-                exec_cli_command(["actorpack", "insert", "--add_new", temp_dir_tt])
+                exec_cli_command(
+                    strip_empty(["actorpack", "insert", extra_option, temp_dir_tt])
+                )
 
                 print("Inserting tagpacks ...")
-                exec_cli_command(["tagpack", "insert", "--add_new", temp_dir_tt])
+                exec_cli_command(["tagpack", "insert", extra_option, temp_dir_tt])
             finally:
                 if os.path.isdir(temp_dir_tt):
                     print_info(f"Removing temp files in: {temp_dir_tt}")
@@ -867,16 +873,25 @@ def main():
     parser_c.set_defaults(func=show_config)
 
     # parser for sync command
-    parser_c = subparsers.add_parser(
+    parser_syc = subparsers.add_parser(
         "sync", help="git-repos to automatically keep track off."
     )
-    parser_c.add_argument(
+    parser_syc.add_argument(
         "-r",
         "--repos",
         help="List of repos to sync to the database.",
         default=os.path.join(os.getcwd(), "tagpack-repos.config"),
     )
-    parser_c.set_defaults(func=sync_repos)
+    parser_syc.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "By default, tagpack/actorpack insertion stops when an already inserted"
+            "tagpack exists in the database. Use this switch to force "
+            " re-insertion."
+        ),
+    )
+    parser_syc.set_defaults(func=sync_repos)
 
     # parsers for tagpack command
     parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
