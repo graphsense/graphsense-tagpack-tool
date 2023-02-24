@@ -190,26 +190,44 @@ class TagStore(object):
             q = "DELETE FROM actorpack WHERE id = (%s)"
             self.cursor.execute(q, (actorpack_id,))
 
-        q = "INSERT INTO actorpack \
-            (id, title, creator, description, is_public, uri) \
-            VALUES (%s,%s,%s,%s,%s,%s)"
-        v = (
-            h.get("id"),
-            h.get("title"),
-            h.get("creator"),
-            h.get("description"),
-            is_public,
-            actorpack.uri,
+        q = (
+            "INSERT INTO actorpack "
+            "(id, title, creator, description, is_public, uri) "
+            "VALUES "
+            "(%(id)s,%(title)s,%(creator)s,%(description)s,%(is_public)s,%(uri)s) "
+            "ON CONFLICT (id) DO UPDATE "
+            "SET (title, creator, description, is_public, uri) = "
+            "(%(title)s,%(creator)s,%(description)s,%(is_public)s,%(uri)s);"
         )
+        v = {
+            "id": h.get("id"),
+            "title": h.get("title"),
+            "creator": h.get("creator"),
+            "description": h.get("description"),
+            "is_public": is_public,
+            "uri": actorpack.uri,
+        }
         self.cursor.execute(q, v)
         self.conn.commit()
 
-        actor_sql = "INSERT INTO actor (id, label, context, uri, lastmod, actorpack) \
-            VALUES (%s, %s, %s, %s, %s, %s)"
-        act_cat_sql = "INSERT INTO actor_categories (actor_id, category_id) \
-            VALUES (%s, %s)"
-        act_jur_sql = "INSERT INTO actor_jurisdictions (actor_id, country_id) \
-            VALUES (%s, %s)"
+        actor_sql = (
+            "INSERT INTO actor (id, label, context, uri, lastmod, actorpack) "
+            "VALUES (%(id)s,%(label)s,%(context)s,%(uri)s,%(lastmod)s,%(actorpack)s) "
+            "ON CONFLICT (id) DO UPDATE "
+            "SET (label, context, uri, lastmod, actorpack) = "
+            "(%(label)s,%(context)s,%(uri)s,%(lastmod)s,%(actorpack)s);"
+        )
+
+        act_cat_sql = (
+            "INSERT INTO actor_categories (actor_id, category_id) "
+            "VALUES (%(actor_id)s, %(category_id)s) "
+            "ON CONFLICT DO NOTHING;"
+        )
+        act_jur_sql = (
+            "INSERT INTO actor_jurisdictions (actor_id, country_id) "
+            "VALUES (%(actor_id)s, %(country_id)s) "
+            "ON CONFLICT DO NOTHING;"
+        )
 
         actor_data = []
         cat_data = []
@@ -723,21 +741,21 @@ def _get_actor_header(actorpack, id):
 def _get_actor(actor, actorpack_id):
     uri = actor.all_fields.get("uri", None)
     context = actor.all_fields.get("context", None)
-    return (
-        actor.all_fields.get("id"),
-        actor.all_fields.get("label", "").strip(),
-        context.strip() if context is not None else context,
-        uri.strip() if uri is not None else uri,
-        actor.all_fields.get("lastmod", datetime.now().isoformat()),
-        actorpack_id,
-    )
+    return {
+        "id": actor.all_fields.get("id"),
+        "label": actor.all_fields.get("label", "").strip(),
+        "context": context.strip() if context is not None else context,
+        "uri": uri.strip() if uri is not None else uri,
+        "lastmod": actor.all_fields.get("lastmod", datetime.now().isoformat()),
+        "actorpack": actorpack_id,
+    }
 
 
 def _get_actor_categories(actor):
     data = []
     actor_id = actor.all_fields.get("id")
     for category in actor.all_fields.get("categories"):
-        data.append((actor_id, category))
+        data.append({"actor_id": actor_id, "category_id": category})
     return data
 
 
@@ -745,5 +763,5 @@ def _get_actor_jurisdictions(actor):
     data = []
     actor_id = actor.all_fields.get("id")
     for country in actor.all_fields.get("jurisdictions"):
-        data.append((actor_id, country))
+        data.append({"actor_id": actor_id, "country_id": country})
     return data
