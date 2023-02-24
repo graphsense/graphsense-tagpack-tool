@@ -854,9 +854,7 @@ def sync_repos(args):
                     repo.git.checkout(branch)
 
                 print("Inserting actorpacks ...")
-                exec_cli_command(
-                    strip_empty(["actorpack", "insert", extra_option, temp_dir_tt])
-                )
+                exec_cli_command(strip_empty(["actorpack", "insert", temp_dir_tt]))
 
                 print("Inserting tagpacks ...")
                 exec_cli_command(["tagpack", "insert", extra_option, temp_dir_tt])
@@ -872,7 +870,7 @@ def sync_repos(args):
         exec_cli_command(["tagstore", "refresh_views"])
 
         print("Calc Quality metrics ...")
-        exec_cli_command(["tagstore", "quality", "calculate"])
+        exec_cli_command(["quality", "calculate"])
 
         print_success("Your tagstore is now up-to-date again.")
 
