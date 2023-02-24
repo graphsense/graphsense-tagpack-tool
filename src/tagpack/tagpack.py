@@ -13,7 +13,7 @@ from git import Repo
 from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
-from tagpack.cmd_utils import get_user_choice, print_info, print_warn
+from tagpack.cmd_utils import bcolors, get_user_choice, print_info, print_warn
 from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
@@ -382,13 +382,30 @@ class TagPack(object):
         labels_with_no_actors = set()
 
         def get_user_choice_cached(hl, candidates, cache):
+            # normalize label to allow for better matching
+            hl = hl.replace("_", " ").replace("-", " ").replace(".", " ")
             if hl in cache:
                 return user_choice_cache[hl]
             else:
                 if len(candidates) == 0:
                     choice = None
                 else:
-                    choice = get_user_choice(hl, candidates)
+                    magic_choice = 1
+
+                    newhl = hl
+                    while True:
+                        new_candidates = candidates + [
+                            (
+                                magic_choice,
+                                f"{bcolors.BOLD}NOTHING FOUND - Refine Search",
+                            )
+                        ]
+                        choice = get_user_choice(newhl, new_candidates)
+                        if choice == magic_choice:
+                            newhl = input("New search term: ")
+                            candidates = find_actor_candidates(newhl)
+                        else:
+                            break
 
                 cache[hl] = choice
                 return choice
@@ -403,6 +420,10 @@ class TagPack(object):
                 suggestions_found = True
             else:
                 labels_with_no_actors.add(hl)
+
+        if "actor" in self.all_header_fields:
+            print_warn("Actor is defined on Tagpack level, skip scanning all tags.")
+            return False
 
         # update tags and trace if all labels carry the same actor
         actors = set()

@@ -17,7 +17,7 @@ from tabulate import tabulate
 from yaml.parser import ParserError, ScannerError
 
 from tagpack import get_version
-from tagpack.actorpack import ActorPack
+from tagpack.actorpack import Actor, ActorPack
 from tagpack.actorpack_schema import ActorPackSchema
 from tagpack.cmd_utils import (
     print_fail,
@@ -330,7 +330,7 @@ def suggest_actors(args):
     print_line(f"Searching suitable actors for {args.label} in TagStore")
     tagstore = TagStore(args.url, args.schema)
     candidates = tagstore.find_actors_for(
-        args.label, args.max, use_simple_similarity=True
+        args.label, args.max, use_simple_similarity=False, threshold=0.1
     )
     print(f"Found {len(candidates)} candidates")
     df = pd.DataFrame(candidates)
@@ -360,8 +360,18 @@ def add_actors_to_tagpack(args):
             print(f"Loading {tagpack_file}: ")
 
             def find_actor_candidates(search_term):
-                res = tagstore.find_actors_for(search_term, args.max)
-                return [(x["id"], f"{x['label']} ({x['uri']})") for x in res]
+                res = tagstore.find_actors_for(
+                    search_term,
+                    args.max,
+                    use_simple_similarity=False,
+                    threshold=0.1,
+                )
+
+                def get_label(actor_row):
+                    a = Actor.from_contents(actor_row, None)
+                    return f"{actor_row['label']} ({', '.join(a.uris)})"
+
+                return [(x["id"], get_label(x)) for x in res]
 
             updated = tagpack.add_actors(find_actor_candidates)
 
