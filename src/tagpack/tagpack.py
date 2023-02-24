@@ -326,7 +326,7 @@ class TagPack(object):
 
         if nr_no_actors > 0:
             print_warn(
-                f"{nr_no_actors}/{len(ut)} have no actor configured. "
+                f"{nr_no_actors}/{len(ut)} tags have no actor configured. "
                 "Please consider connecting the tag to an actor."
             )
 
@@ -345,13 +345,13 @@ class TagPack(object):
         """
 
         unsupported = defaultdict(set)
-        msg = "\tPossible invalid {} address: {}"
+        msg = "Possible invalid {} address: {}"
         for tag in self.get_unique_tags():
             currency = tag.all_fields.get("currency", "").lower()
             cupper = currency.upper()
             address = tag.all_fields.get("address")
             if len(address) != len(address.strip()):
-                print_warn(f"\tAddress contains whitespace: {repr(address)}")
+                print_warn(f"Address contains whitespace: {repr(address)}")
             elif currency in self.verifiable_currencies:
                 v = coinaddrvalidator.validate(currency, address)
                 if not v.valid:
@@ -360,9 +360,9 @@ class TagPack(object):
                 unsupported[cupper].add(address)
 
         for c, addrs in unsupported.items():
-            print_warn(f"\tAddress verification is not supported for {c}:")
+            print_warn(f"Address verification is not supported for {c}:")
             for a in sorted(addrs):
-                print_warn(f"\t\t{a}")
+                print_warn(f"\t{a}")
 
     def add_actors(self, find_actor_candidates) -> bool:
         """Suggest actors for labels that have no actors assigned
@@ -379,14 +379,18 @@ class TagPack(object):
 
         suggestions_found = False
         user_choice_cache = {}
+        labels_with_no_actors = set()
 
         def get_user_choice_cached(hl, candidates, cache):
             if hl in cache:
                 return user_choice_cache[hl]
             else:
-                choice = get_user_choice(hl, candidates)
-                if choice is not None:
-                    cache[hl] = choice
+                if len(candidates) == 0:
+                    choice = None
+                else:
+                    choice = get_user_choice(hl, candidates)
+
+                cache[hl] = choice
                 return choice
 
         if "label" in self.all_header_fields and "actor" not in self.all_header_fields:
@@ -397,6 +401,8 @@ class TagPack(object):
             if actor:
                 self.contents["actor"] = actor
                 suggestions_found = True
+            else:
+                labels_with_no_actors.add(hl)
 
         # update tags and trace if all labels carry the same actor
         actors = set()
@@ -411,6 +417,7 @@ class TagPack(object):
                     actors.add(actor)
                     suggestions_found = True
                 else:
+                    labels_with_no_actors.add(tl)
                     all_tags_carry_actor = False
 
         if all_tags_carry_actor and len(actors) == 1:
@@ -418,6 +425,12 @@ class TagPack(object):
             self.contents["actor"] = actors.pop()
             for tag in self.get_unique_tags():
                 tag.contents.pop("actor")
+
+        if len(labels_with_no_actors) > 0:
+            print_warn("Did not assign an actor to the tags with labels:")
+            for hl in labels_with_no_actors:
+                print_warn(f" - {hl}")
+            print_warn("Consider creating a suitable actor or manual linking.")
 
         return suggestions_found
 

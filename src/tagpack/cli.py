@@ -204,20 +204,40 @@ def low_quality_addresses(args):
         print_line("Operation failed", "fail")
 
 
+def print_quality_measures(qm):
+    if qm:
+        print("Tag and Actor metrics:")
+        tc = qm["tag_count"]
+        tca = qm["tag_count_with_actors"]
+        au = qm["nr_actors_used"]
+        auj = qm["nr_actors_used_with_jurisdictions"]
+        print(f"\t{'#Tags:':<35} {tc:10}")
+        if tc > 0:
+            print(f"\t{'#Tags with actors:':<35} {tca:10} ({ (100*tca)/tc:7.2f}%)")
+        print(f"\t{'#Actors used:':<35} {au:10}")
+        if au > 0:
+            print(
+                f"\t{'#Actors used with jurisdictions:':<35} "
+                f"{auj:10} ({ (100*auj)/au:7.2f}%)"
+            )
+
+        print("Tag Quality Statistics:")
+        print(f"\t{'Quality COUNT:':<35} {qm['count']:10}")
+        print(f"\t{'Quality AVG:':<35}    {qm['avg']:7.2f}")
+        print(f"\t{'Quality STDDEV:':<35}    {qm['stddev']:7.2f}")
+    else:
+        print("\tNone")
+
+
 def show_quality_measures(args):
     print_line("Show quality measures")
     tagstore = TagStore(args.url, args.schema)
 
     try:
         qm = tagstore.get_quality_measures(args.currency)
-        c = args.currency if args.currency else "Global "
+        c = args.currency if args.currency else "Global"
         print(f"{c} quality measures:")
-        if qm:
-            print(f"\tCOUNT:  {qm['count']}")
-            print(f"\tAVG:    {qm['avg']}")
-            print(f"\tSTDDEV: {qm['stddev']}")
-        else:
-            print("\tNone")
+        print_quality_measures(qm)
 
     except Exception as e:
         print_fail(e)
@@ -233,12 +253,7 @@ def calc_quality_measures(args):
     try:
         qm = tagstore.calculate_quality_measures()
         print("Global quality measures:")
-        if qm is not None:
-            print(f"\tCOUNT:  {qm['count']}")
-            print(f"\tAVG:    {qm['avg']}")
-            print(f"\tSTDDEV: {qm['stddev']}")
-        else:
-            print("\tNone")
+        print_quality_measures(qm)
 
         duration = round(time.time() - t0, 2)
         print_line(f"Done in {duration}s", "success")
@@ -290,14 +305,14 @@ def validate_tagpack(args):
                     "", tagpack_file, schema, taxonomies, headerfile_dir
                 )
 
-                print(f"{tagpack_file}: ", end="")
+                print(f"{tagpack_file}: ", end="\n")
 
                 tagpack.validate()
-                print_success("PASSED")
-
                 # verify valid blockchain addresses using internal checksum
                 if not args.no_address_validation:
                     tagpack.verify_addresses()
+
+                print_success("PASSED")
 
                 no_passed += 1
     except (ValidationError, TagPackFileError) as e:
@@ -600,7 +615,7 @@ def validate_actorpack(args):
                     "", actorpack_file, schema, taxonomies, headerfile_dir
                 )
 
-                print(f"{actorpack_file}: ", end="")
+                print(f"{actorpack_file}:\n", end="")
 
                 actorpack.validate()
                 print_success("PASSED")
@@ -845,6 +860,9 @@ def sync_repos(args):
 
         print("Refreshing db views ...")
         exec_cli_command(["tagstore", "refresh_views"])
+
+        print("Calc Quality metrics ...")
+        exec_cli_command(["tagstore", "quality", "calculate"])
 
         print_success("Your tagstore is now up-to-date again.")
 

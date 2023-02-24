@@ -438,6 +438,67 @@ class TagStore(object):
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
+    def get_tags_count(self, currency="") -> int:
+        validate_currency(currency)
+
+        if currency:
+            self.cursor.execute(
+                "SELECT count(*) FROM tag where currency=%s", (currency,)
+            )
+        else:
+            self.cursor.execute("SELECT count(*) FROM tag")
+
+        return self.cursor.fetchall()[0][0]
+
+    def get_tags_with_actors_count(self, currency="") -> int:
+        validate_currency(currency)
+
+        if currency:
+            self.cursor.execute(
+                "SELECT count(*) FROM tag where actor is not NULL and currency=%s",
+                (currency,),
+            )
+        else:
+            self.cursor.execute("SELECT count(*) FROM tag where actor is not NULL")
+
+        return self.cursor.fetchall()[0][0]
+
+    def get_used_actors_count(self, currency="") -> int:
+        validate_currency(currency)
+
+        if currency:
+            self.cursor.execute(
+                "SELECT count(DISTINCT actor) FROM tag "
+                "WHERE actor is not NULL and currency=%s",
+                (currency,),
+            )
+        else:
+            self.cursor.execute(
+                "SELECT count(DISTINCT actor) FROM tag " "WHERE actor is not NULL"
+            )
+
+        return self.cursor.fetchall()[0][0]
+
+    def get_used_actors_with_jurisdictions(self, currency="") -> int:
+        validate_currency(currency)
+
+        if currency:
+            self.cursor.execute(
+                "SELECT count(DISTINCT actor) FROM tag, actor_jurisdictions "
+                "WHERE tag.actor is not NULL "
+                "AND tag.currency=%s "
+                "AND tag.actor = actor_jurisdictions.actor_id",
+                (currency,),
+            )
+        else:
+            self.cursor.execute(
+                "SELECT count(DISTINCT actor) FROM tag, actor_jurisdictions "
+                "WHERE actor is not NULL "
+                "AND tag.actor = actor_jurisdictions.actor_id"
+            )
+
+        return self.cursor.fetchall()[0][0]
+
     def get_quality_measures(self, currency="") -> dict:
         """
         This function returns a dict with the quality measures (count, avg, and
@@ -455,7 +516,18 @@ class TagStore(object):
             self.cursor.execute(query)
 
         keys = ["count", "avg", "stddev"]
-        return {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
+        ret = {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
+
+        ret["tag_count"] = self.get_tags_count(currency=currency)
+        ret["tag_count_with_actors"] = self.get_tags_with_actors_count(
+            currency=currency
+        )
+        ret["nr_actors_used"] = self.get_used_actors_count(currency=currency)
+        ret[
+            "nr_actors_used_with_jurisdictions"
+        ] = self.get_used_actors_with_jurisdictions(currency=currency)
+
+        return ret
 
     def calculate_quality_measures(self) -> dict:
         self.cursor.execute("CALL calculate_quality(FALSE)")
