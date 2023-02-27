@@ -421,7 +421,7 @@ class TagPack(object):
             else:
                 labels_with_no_actors.add(hl)
 
-        if "actor" in self.all_header_fields:
+        if "actor" in self.all_header_fields and not suggestions_found:
             print_warn("Actor is defined on Tagpack level, skip scanning all tags.")
             return False
 
