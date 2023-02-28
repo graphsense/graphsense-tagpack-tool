@@ -418,8 +418,8 @@ class TagPack(object):
             "label" in self.all_header_fields
             and "actor" not in self.all_header_fields
             and (
-                only_categories is not None
-                and self.all_header_fields.get("category") in only_categories
+                only_categories is None
+                or self.all_header_fields.get("category", "") in only_categories
             )
         ):
             hl = self.all_header_fields.get("label")

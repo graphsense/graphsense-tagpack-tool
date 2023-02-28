@@ -374,9 +374,10 @@ def add_actors_to_tagpack(args):
 
                 return [(x["id"], get_label(x)) for x in res]
 
+            category_filter = strip_empty(args.only_categories.split(","))
             updated = tagpack.add_actors(
                 find_actor_candidates,
-                only_categories=strip_empty(args.only_categories.split(",")),
+                only_categories=category_filter if len(category_filter) > 0 else None,
                 user_choice_cache=user_choice_cache,
             )
 
