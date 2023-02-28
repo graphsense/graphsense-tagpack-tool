@@ -337,6 +337,7 @@ class TagStore(object):
             "actor_jurisdictions.country_id is NULL "
             f"{cat_clause} "
             "GROUP BY actor.id "
+            "ORDER BY nr_tags DESC "
             "LIMIT %(max_results)s"
         )
 

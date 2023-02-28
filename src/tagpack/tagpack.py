@@ -385,16 +385,18 @@ class TagPack(object):
         suggestions_found = False
         labels_with_no_actors = set()
 
-        def get_user_choice_cached(hl, cache):
+        def get_user_choice_cached(hl, hl_context_str, cache):
             # normalize label to allow for better matching
             hl = hl.replace("_", " ").replace("-", " ").replace(".", " ").lower()
             if hl in cache:
                 return cache[hl]
             else:
+
                 candidates = find_actor_candidates(hl)
                 if len(candidates) == 0:
                     choice = None
                 else:
+                    print(hl_context_str)
                     magic_choice = 1
                     newhl = hl
                     while True:
@@ -424,7 +426,7 @@ class TagPack(object):
         ):
             hl = self.all_header_fields.get("label")
             # candidates = find_actor_candidates(hl)
-            actor = get_user_choice_cached(hl, user_choice_cache)
+            actor = get_user_choice_cached(hl, "", user_choice_cache)
 
             if actor:
                 self.contents["actor"] = actor
@@ -449,8 +451,8 @@ class TagPack(object):
 
             if "label" in tag.explicit_fields and "actor" not in tag.explicit_fields:
                 tl = tag.explicit_fields.get("label")
-                print("Working on tag: \n", tag)
-                actor = get_user_choice_cached(tl, user_choice_cache)
+                context_str = f"Working on tag: \n{tag}\n"
+                actor = get_user_choice_cached(tl, context_str, user_choice_cache)
                 if actor:
                     tag.contents["actor"] = actor
                     actors.add(actor)
@@ -494,7 +496,7 @@ class Tag(object):
         self.contents = contents
         self.tagpack = tagpack
 
-        # This allows the context in the yaml file to be written in either
+        # This allows the context in the yaml file to be written in eithe
         # normal yaml syntax which is now converted to a json string
         # of directly as json string.
         if type(self.contents.get("context", None)) == dict:
@@ -525,4 +527,4 @@ class Tag(object):
 
     def __str__(self):
         """ "Returns a string serialization of a Tag"""
-        return str(self.all_fields)
+        return "\n".join([f"{k}={v}" for k, v in self.all_fields.items()])
