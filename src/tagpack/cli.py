@@ -351,6 +351,7 @@ def add_actors_to_tagpack(args):
     tagpack_files = collect_tagpack_files(args.path)
 
     schema = TagPackSchema()
+    user_choice_cache = {}
 
     for headerfile_dir, files in tagpack_files.items():
         for tagpack_file in files:
@@ -373,7 +374,11 @@ def add_actors_to_tagpack(args):
 
                 return [(x["id"], get_label(x)) for x in res]
 
-            updated = tagpack.add_actors(find_actor_candidates)
+            updated = tagpack.add_actors(
+                find_actor_candidates,
+                only_categories=strip_empty(args.only_categories.split(",")),
+                user_choice_cache=user_choice_cache,
+            )
 
             if updated:
                 updated_file = (
@@ -1096,6 +1101,11 @@ def main():
         "--max",
         default=5,
         help="Limits the number of results",
+    )
+    ptp_add_actor.add_argument(
+        "--only_categories",
+        default="",
+        help="Only edit tags of a certain category (multiple possible with semi-colon)",
     )
     ptp_add_actor.add_argument(
         "--inplace",

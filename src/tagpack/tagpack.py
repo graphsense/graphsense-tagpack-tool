@@ -364,7 +364,9 @@ class TagPack(object):
             for a in sorted(addrs):
                 print_warn(f"\t{a}")
 
-    def add_actors(self, find_actor_candidates) -> bool:
+    def add_actors(
+        self, find_actor_candidates, only_categories=None, user_choice_cache={}
+    ) -> bool:
         """Suggest actors for labels that have no actors assigned
 
         Args:
@@ -373,25 +375,27 @@ class TagPack(object):
             or as a list[tuple[str,str]] where the first entry is a id
             and the second a human readable label of the entry.
 
+            only_categories (None, optional): List of tag-categories to edit.
+
+
         Returns:
             bool: true if suggestions where found
         """
 
         suggestions_found = False
-        user_choice_cache = {}
         labels_with_no_actors = set()
 
-        def get_user_choice_cached(hl, candidates, cache):
+        def get_user_choice_cached(hl, cache):
             # normalize label to allow for better matching
-            hl = hl.replace("_", " ").replace("-", " ").replace(".", " ")
+            hl = hl.replace("_", " ").replace("-", " ").replace(".", " ").lower()
             if hl in cache:
-                return user_choice_cache[hl]
+                return cache[hl]
             else:
+                candidates = find_actor_candidates(hl)
                 if len(candidates) == 0:
                     choice = None
                 else:
                     magic_choice = 1
-
                     newhl = hl
                     while True:
                         new_candidates = candidates + [
@@ -410,10 +414,17 @@ class TagPack(object):
                 cache[hl] = choice
                 return choice
 
-        if "label" in self.all_header_fields and "actor" not in self.all_header_fields:
+        if (
+            "label" in self.all_header_fields
+            and "actor" not in self.all_header_fields
+            and (
+                only_categories is not None
+                and self.all_header_fields.get("category") in only_categories
+            )
+        ):
             hl = self.all_header_fields.get("label")
-            candidates = find_actor_candidates(hl)
-            actor = get_user_choice_cached(hl, candidates, user_choice_cache)
+            # candidates = find_actor_candidates(hl)
+            actor = get_user_choice_cached(hl, user_choice_cache)
 
             if actor:
                 self.contents["actor"] = actor
@@ -429,10 +440,17 @@ class TagPack(object):
         actors = set()
         all_tags_carry_actor = True
         for tag in self.get_unique_tags():
+            # Continue if tag is not of a selected category
+            if (
+                only_categories is not None
+                and tag.all_fields.get("category") in only_categories
+            ):
+                continue
+
             if "label" in tag.explicit_fields and "actor" not in tag.explicit_fields:
                 tl = tag.explicit_fields.get("label")
-                candidates = find_actor_candidates(tl)
-                actor = get_user_choice_cached(tl, candidates, user_choice_cache)
+                # candidates = find_actor_candidates(tl)
+                actor = get_user_choice_cached(tl, user_choice_cache)
                 if actor:
                     tag.contents["actor"] = actor
                     actors.add(actor)

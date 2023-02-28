@@ -8,6 +8,10 @@ header:
   description:
     type: text
     mandatory: false
+  owner:
+    type: text
+    mandatory: false
+    description: Field specifies the owner of the tagpack.
   is_public:
     type: boolean
     mandatory: false
