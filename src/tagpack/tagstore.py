@@ -221,12 +221,12 @@ class TagStore(object):
         act_cat_sql = (
             "INSERT INTO actor_categories (actor_id, category_id) "
             "VALUES (%(actor_id)s, %(category_id)s) "
-            "ON CONFLICT DO NOTHING;"
+            "ON CONFLICT (actor_id, category_id) DO NOTHING;"
         )
         act_jur_sql = (
             "INSERT INTO actor_jurisdictions (actor_id, country_id) "
             "VALUES (%(actor_id)s, %(country_id)s) "
-            "ON CONFLICT DO NOTHING;"
+            "ON CONFLICT (actor_id, country_id) DO NOTHING;"
         )
 
         actor_data = []
@@ -304,6 +304,92 @@ class TagStore(object):
 
         return [
             {k: v for k, v in zip(fields_output, x)} for x in self.cursor.fetchall()
+        ]
+
+    def get_actors_with_jurisdictions(
+        self, category="", max_results=5, include_not_used=False
+    ) -> list[dict]:
+        fields = ["actor.id", "actor.label", "actor.uri", "actor.context"]
+        fields_str = ",".join(fields)
+        fields_output = fields + ["categories", "jurisdictions", "#tags"]
+        params = {
+            "max_results": max_results,
+        }
+
+        cat_clause = ""
+        if len(category) > 0:
+            params["category"] = category.strip()
+            cat_clause = "and actor_categories.category_id = %(category)s "
+
+        actor_join = "LEFT OUTER JOIN " if include_not_used else "INNER JOIN"
+
+        query = (
+            f"SELECT {fields_str} "
+            ", string_agg(actor_categories.category_id, ', ') as categories  "
+            ", string_agg(actor_jurisdictions.country_id, ', ') as jurisdictions  "
+            ", count(distinct tag.id) as nr_tags  "
+            "FROM actor "
+            f"{actor_join} tag on actor.id = tag.actor "
+            "INNER JOIN actor_categories on actor.id = actor_categories.actor_id "
+            "LEFT OUTER JOIN "
+            "actor_jurisdictions on actor.id = actor_jurisdictions.actor_id "
+            "WHERE "
+            "actor_jurisdictions.country_id is NULL "
+            f"{cat_clause} "
+            "GROUP BY actor.id "
+            "LIMIT %(max_results)s"
+        )
+
+        self.cursor.execute(query, params)
+
+        def format_value(k, v):
+            if k == "categories" or k == "jurisdictions" and v:
+                return ", ".join(set(v.split(", ")))
+            else:
+                return v
+
+        return [
+            {k: format_value(k, v) for k, v in zip(fields_output, x)}
+            for x in self.cursor.fetchall()
+        ]
+
+    def top_labels_without_actor(self, category="", max_results=5) -> list[dict]:
+        fields = ["tag.label"]
+        fields_str = ",".join(fields)
+        fields_output = fields + ["count", "tagpacks"]
+        params = {
+            "max_results": max_results,
+        }
+
+        cat_clause = ""
+        if len(category) > 0:
+            params["category"] = category.strip()
+            cat_clause = "and tag.category = %(category)s "
+
+        query = (
+            f"SELECT {fields_str}, "
+            "count(tag.id) as count, "
+            "string_agg(tagpack.uri,', ') as tagpacks "
+            "FROM tag "
+            "INNER JOIN tagpack on tagpack.id = tag.tagpack "
+            "WHERE actor is NULL "
+            f"{cat_clause} "
+            "GROUP BY tag.label "
+            "ORDER BY count DESC "
+            "LIMIT %(max_results)s"
+        )
+
+        self.cursor.execute(query, params)
+
+        def format_value(k, v):
+            if k == "tagpacks" and v:
+                return ", ".join(set(v.split(", ")))
+            else:
+                return v
+
+        return [
+            {k: format_value(k, v) for k, v in zip(fields_output, x)}
+            for x in self.cursor.fetchall()
         ]
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:

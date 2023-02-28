@@ -374,7 +374,7 @@ def add_actors_to_tagpack(args):
 
                 return [(x["id"], get_label(x)) for x in res]
 
-            category_filter = strip_empty(args.only_categories.split(","))
+            category_filter = strip_empty(args.categories.split(","))
             updated = tagpack.add_actors(
                 find_actor_candidates,
                 only_categories=category_filter if len(category_filter) > 0 else None,
@@ -884,6 +884,56 @@ def sync_repos(args):
         print_fail(f"Repos to sync file {args.repos} does not exist.")
 
 
+def list_low_quality_actors(args):
+    tagstore = TagStore(args.url, args.schema)
+
+    res = tagstore.get_actors_with_jurisdictions(
+        category=args.category, max_results=args.max, include_not_used=args.not_used
+    )
+    df = pd.DataFrame(res)
+
+    print_line("Actors without Jurisdictions")
+    if args.csv:
+        print(df.to_csv(header=True, sep=",", index=True))
+    else:
+        with pd.option_context(
+            "display.max_rows", None, "display.max_columns", None
+        ):  # more options can be specified also
+            print(
+                tabulate(
+                    df,
+                    headers=df.columns,
+                    tablefmt="psql",
+                    maxcolwidths=[None, None, 10, 10, 60, 10],
+                )
+            )
+
+
+def list_top_labels_without_actor(args):
+    tagstore = TagStore(args.url, args.schema)
+
+    res = tagstore.top_labels_without_actor(
+        category=args.category, max_results=args.max
+    )
+    df = pd.DataFrame(res)
+
+    print_line("Top labels without actor")
+    if args.csv:
+        print(df.to_csv(header=True, sep=",", index=True))
+    else:
+        with pd.option_context(
+            "display.max_rows", None, "display.max_columns", None
+        ):  # more options can be specified also
+            print(
+                tabulate(
+                    df,
+                    headers=df.columns,
+                    tablefmt="psql",
+                    maxcolwidths=[None, None, 10, 50],
+                )
+            )
+
+
 def main():
     if sys.version_info < (3, 7):
         sys.exit("This program requires python version 3.7 or later")
@@ -1104,7 +1154,7 @@ def main():
         help="Limits the number of results",
     )
     ptp_add_actor.add_argument(
-        "--only_categories",
+        "--categories",
         default="",
         help="Only edit tags of a certain category (multiple possible with semi-colon)",
     )
@@ -1434,6 +1484,60 @@ def main():
     )
     pqp_l.add_argument("--csv", action="store_true", help="Show csv output.")
     pqp_l.set_defaults(func=low_quality_addresses, url=def_url)
+
+    # parser for actors missing Jur
+    pqp_j = pqp.add_parser(
+        "list-actors-without-jur", help="actors without jurisdictions."
+    )
+    pqp_j.add_argument(
+        "--category", default="", help="List actors of a specific category"
+    )
+    pqp_j.add_argument(
+        "--max",
+        default=5,
+        help="Limits the number of results",
+    )
+    pqp_j.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for quality measures tables",
+    )
+    pqp_j.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    pqp_j.add_argument("--csv", action="store_true", help="Show csv output.")
+    pqp_j.add_argument(
+        "--not_used",
+        action="store_true",
+        help="Include actors that are not used in tags.",
+    )
+    pqp_j.set_defaults(func=list_low_quality_actors, url=def_url)
+
+    # parser top labels with no actor
+    pqp_j = pqp.add_parser(
+        "list-labels-without-actor",
+        help="List the top labels used in tags without actors.",
+    )
+    pqp_j.add_argument(
+        "--category", default="", help="List actors of a specific category"
+    )
+    pqp_j.add_argument(
+        "--max",
+        default=5,
+        help="Limits the number of results",
+    )
+    pqp_j.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for quality measures tables",
+    )
+    pqp_j.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    pqp_j.add_argument("--csv", action="store_true", help="Show csv output.")
+    pqp_j.set_defaults(func=list_top_labels_without_actor, url=def_url)
 
     # parser for quality measures show
     pqp_s = pqp.add_parser("show", help="show average quality measures")

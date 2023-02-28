@@ -443,13 +443,13 @@ class TagPack(object):
             # Continue if tag is not of a selected category
             if (
                 only_categories is not None
-                and tag.all_fields.get("category") in only_categories
+                and tag.all_fields.get("category") not in only_categories
             ):
                 continue
 
             if "label" in tag.explicit_fields and "actor" not in tag.explicit_fields:
                 tl = tag.explicit_fields.get("label")
-                # candidates = find_actor_candidates(tl)
+                print("Working on tag: \n", tag)
                 actor = get_user_choice_cached(tl, user_choice_cache)
                 if actor:
                     tag.contents["actor"] = actor

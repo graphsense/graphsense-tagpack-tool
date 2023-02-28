@@ -61,13 +61,15 @@ CREATE TABLE actor (
 CREATE TABLE actor_categories (
     id                  SERIAL      PRIMARY KEY,
     actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE,
+    CONSTRAINT unique_category UNIQUE (actor_id, category_id)
 );
 
 CREATE TABLE actor_jurisdictions (
     id                  SERIAL      PRIMARY KEY,
     actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    country_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE
+    country_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE,
+    CONSTRAINT unique_jurisdiction UNIQUE (actor_id, country_id)
 );
 
 
