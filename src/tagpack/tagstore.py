@@ -10,6 +10,7 @@ from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch
 
 from tagpack import ValidationError
+from tagpack.utils import get_github_repo_url
 
 register_adapter(np.int64, AsIs)
 
@@ -392,6 +393,20 @@ class TagStore(object):
             {k: format_value(k, v) for k, v in zip(fields_output, x)}
             for x in self.cursor.fetchall()
         ]
+
+    def tagstore_source_repos(self) -> list[dict]:
+        fields = ["uri"]
+        query = f"SELECT {','.join(fields)} FROM tagpack"
+
+        self.cursor.execute(query)
+
+        def get_repo_part(url):
+            rp = get_github_repo_url(url)
+            return rp or url
+
+        repos = {get_repo_part(x[0]) for x in self.cursor.fetchall()}
+
+        return [{k: v for k, v in zip(fields, [x])} for x in repos]
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """

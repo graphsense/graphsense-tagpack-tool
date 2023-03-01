@@ -900,22 +900,18 @@ def list_low_quality_actors(args):
         category=args.category, max_results=args.max, include_not_used=args.not_used
     )
     df = pd.DataFrame(res)
-
-    print_line("Actors without Jurisdictions")
     if args.csv:
         print(df.to_csv(header=True, sep=",", index=True))
     else:
-        with pd.option_context(
-            "display.max_rows", None, "display.max_columns", None
-        ):  # more options can be specified also
-            print(
-                tabulate(
-                    df,
-                    headers=df.columns,
-                    tablefmt="psql",
-                    maxcolwidths=[None, None, 10, 10, 60, 10],
-                )
+        print_line("Actors without Jurisdictions")
+        print(
+            tabulate(
+                df,
+                headers=df.columns,
+                tablefmt="psql",
+                maxcolwidths=[None, None, 10, 10, 60, 10],
             )
+        )
 
 
 def list_top_labels_without_actor(args):
@@ -925,22 +921,36 @@ def list_top_labels_without_actor(args):
         category=args.category, max_results=args.max
     )
     df = pd.DataFrame(res)
-
-    print_line("Top labels without actor")
     if args.csv:
         print(df.to_csv(header=True, sep=",", index=True))
     else:
-        with pd.option_context(
-            "display.max_rows", None, "display.max_columns", None
-        ):  # more options can be specified also
-            print(
-                tabulate(
-                    df,
-                    headers=df.columns,
-                    tablefmt="psql",
-                    maxcolwidths=[None, None, 10, 50],
-                )
+        print_line("Top labels without actor")
+        print(
+            tabulate(
+                df,
+                headers=df.columns,
+                tablefmt="psql",
+                maxcolwidths=[None, None, 10, 50],
             )
+        )
+
+
+def show_tagstore_source_repos(args):
+    tagstore = TagStore(args.url, args.schema)
+
+    res = tagstore.tagstore_source_repos()
+    df = pd.DataFrame(res)
+    if args.csv:
+        print(df.to_csv(header=True, sep=",", index=True))
+    else:
+        print(
+            tabulate(
+                df,
+                headers=df.columns,
+                tablefmt="psql",
+                maxcolwidths=[None, None, 10, 50],
+            )
+        )
 
 
 def main():
@@ -1436,6 +1446,23 @@ def main():
         "--by-currency", action="store_true", help="Include currency in statistic."
     )
     psc.set_defaults(func=show_tagstore_composition, url=def_url)
+
+    # show composition repos ingested in the db.
+    psir = pdp.add_parser(
+        "show-source-repos",
+        help="Shows which repos sources are stored in the database.",
+    )
+    psir.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for tagpack tables",
+    )
+    psir.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    psir.add_argument("--csv", action="store_true", help="Show csv output.")
+    psir.set_defaults(func=show_tagstore_source_repos, url=def_url)
 
     # parser for quality measures
     parser_q = subparsers.add_parser("quality", help="calculate tags quality measures")

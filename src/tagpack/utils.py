@@ -74,3 +74,15 @@ def get_secondlevel_domain(url: str) -> str:
         #  Similar to eth.link https://eth.limo/
         eth_link = frag[-2:] == ["eth", "link"] or frag[-2:] == ["eth", "limo"]
         return ".".join(frag[-3:] if co_domain or eth_link else frag[-2:])
+
+
+def get_github_repo_url(github_url):
+    if not github_url.startswith("http"):
+        github_url = f"http://{github_url}"
+    purl = urlparse(github_url)
+    if purl.netloc == "github.com":
+        psplit = purl.path.split("/")
+        if len(psplit) >= 2:
+            return purl._replace(path="/".join(psplit[:3])).geturl()
+    else:
+        return None
