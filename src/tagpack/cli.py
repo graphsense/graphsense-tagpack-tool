@@ -209,16 +209,25 @@ def print_quality_measures(qm):
         print("Tag and Actor metrics:")
         tc = qm["tag_count"]
         tca = qm["tag_count_with_actors"]
-        au = qm["nr_actors_used"]
-        auj = qm["nr_actors_used_with_jurisdictions"]
         print(f"\t{'#Tags:':<35} {tc:10}")
         if tc > 0:
-            print(f"\t{'#Tags with actors:':<35} {tca:10} ({ (100*tca)/tc:7.2f}%)")
-        print(f"\t{'#Actors used:':<35} {au:10}")
+            print(f"\t{' with actors:':<35} {tca:10} ({ (100*tca)/tc:6.2f}%)")
+
+        au = qm["nr_actors_used"]
+        auj = qm["nr_actors_used_with_jurisdictions"]
+        print(f"\n\t{'#Actors used:':<35} {au:10}")
         if au > 0:
             print(
-                f"\t{'#Actors used with jurisdictions:':<35} "
-                f"{auj:10} ({ (100*auj)/au:7.2f}%)"
+                f"\t{' with jurisdictions:':<35} " f"{auj:10} ({ (100*auj)/au:6.2f}%)"
+            )
+
+        au_ex = qm["nr_actors_used_exchange"]
+        auj_ex = qm["nr_actors_used_with_jurisdictions_exchange"]
+        print(f"\n\t{'#Exchange-Actors used:':<35} {au_ex:10}")
+        if au_ex > 0:
+            print(
+                f"\t{' with jurisdictions:':<35} "
+                f"{auj_ex:10} ({ (100*auj_ex)/au_ex:6.2f}%)"
             )
 
         print("Tag Quality Statistics:")

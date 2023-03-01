@@ -568,39 +568,61 @@ class TagStore(object):
 
         return self.cursor.fetchall()[0][0]
 
-    def get_used_actors_count(self, currency="") -> int:
+    def get_used_actors_count(self, currency="", category="") -> int:
         validate_currency(currency)
 
+        params = {"currency": currency}
+        cat_join, cat_filter, currency_filter = ("", "", "")
+
         if currency:
-            self.cursor.execute(
-                "SELECT count(DISTINCT actor) FROM tag "
-                "WHERE actor is not NULL and currency=%s",
-                (currency,),
+            currency_filter = "AND currency=%(currency)s"
+
+        if len(category) > 0:
+            cat_join = (
+                "INNER JOIN actor_categories "
+                "on tag.actor = actor_categories.actor_id"
             )
-        else:
-            self.cursor.execute(
-                "SELECT count(DISTINCT actor) FROM tag " "WHERE actor is not NULL"
-            )
+            cat_filter = "AND actor_categories.category_id = %(category)s"
+            params["category"] = category.strip()
+
+        query = (
+            "SELECT count(DISTINCT actor) FROM tag "
+            f"{cat_join} "
+            "WHERE actor is not NULL "
+            f"{currency_filter} "
+            f"{cat_filter} "
+        )
+        self.cursor.execute(query, params)
 
         return self.cursor.fetchall()[0][0]
 
-    def get_used_actors_with_jurisdictions(self, currency="") -> int:
+    def get_used_actors_with_jurisdictions(self, currency="", category="") -> int:
         validate_currency(currency)
+        params = {"currency": currency}
+        cat_join, cat_filter, currency_filter = ("", "", "")
 
         if currency:
-            self.cursor.execute(
-                "SELECT count(DISTINCT actor) FROM tag, actor_jurisdictions "
-                "WHERE tag.actor is not NULL "
-                "AND tag.currency=%s "
-                "AND tag.actor = actor_jurisdictions.actor_id",
-                (currency,),
+            currency_filter = "AND currency=%(currency)s"
+
+        if len(category) > 0:
+            cat_join = (
+                "INNER JOIN actor_categories "
+                "on tag.actor = actor_categories.actor_id"
             )
-        else:
-            self.cursor.execute(
-                "SELECT count(DISTINCT actor) FROM tag, actor_jurisdictions "
-                "WHERE actor is not NULL "
-                "AND tag.actor = actor_jurisdictions.actor_id"
-            )
+            cat_filter = "AND actor_categories.category_id = %(category)s"
+            params["category"] = category.strip()
+
+        query = (
+            "SELECT count(DISTINCT actor) FROM tag "
+            "INNER JOIN actor_jurisdictions "
+            "on tag.actor = actor_jurisdictions.actor_id "
+            f"{cat_join} "
+            "WHERE actor is not NULL "
+            f"{currency_filter} "
+            f"{cat_filter} "
+        )
+
+        self.cursor.execute(query, params)
 
         return self.cursor.fetchall()[0][0]
 
@@ -631,6 +653,15 @@ class TagStore(object):
         ret[
             "nr_actors_used_with_jurisdictions"
         ] = self.get_used_actors_with_jurisdictions(currency=currency)
+
+        ret["nr_actors_used_exchange"] = self.get_used_actors_count(
+            currency=currency, category="exchange"
+        )
+        ret[
+            "nr_actors_used_with_jurisdictions_exchange"
+        ] = self.get_used_actors_with_jurisdictions(
+            currency=currency, category="exchange"
+        )
 
         return ret
 
