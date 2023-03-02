@@ -68,3 +68,6 @@ context:
   github_organisation:
     type: text
     mandatory: false
+  legal_name:
+    type: text
+    mandatory: false

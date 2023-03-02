@@ -1449,7 +1449,7 @@ def main():
 
     # show composition repos ingested in the db.
     psir = pdp.add_parser(
-        "show-source-repos",
+        "show_source_repos",
         help="Shows which repos sources are stored in the database.",
     )
     psir.add_argument(
@@ -1523,7 +1523,7 @@ def main():
 
     # parser for actors missing Jur
     pqp_j = pqp.add_parser(
-        "list-actors-without-jur", help="actors without jurisdictions."
+        "list_actors_without_jur", help="actors without jurisdictions."
     )
     pqp_j.add_argument(
         "--category", default="", help="List actors of a specific category"
@@ -1552,7 +1552,7 @@ def main():
 
     # parser top labels with no actor
     pqp_j = pqp.add_parser(
-        "list-labels-without-actor",
+        "list_labels_without_actor",
         help="List the top labels used in tags without actors.",
     )
     pqp_j.add_argument(
