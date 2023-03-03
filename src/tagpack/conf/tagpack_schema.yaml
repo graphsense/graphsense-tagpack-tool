@@ -11,7 +11,7 @@ header:
   owner:
     type: text
     mandatory: false
-    description: Field specifies the owner of the tagpack.
+    description: Field specifies the owner of the tagpack (not stored in db).
   is_public:
     type: boolean
     mandatory: false
