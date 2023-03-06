@@ -895,6 +895,7 @@ def _get_actor_categories(actor):
 def _get_actor_jurisdictions(actor):
     data = []
     actor_id = actor.all_fields.get("id")
-    for country in actor.all_fields.get("jurisdictions"):
-        data.append({"actor_id": actor_id, "country_id": country})
+    if "jurisdictions" in actor.all_fields:
+        for country in actor.all_fields.get("jurisdictions"):
+            data.append({"actor_id": actor_id, "country_id": country})
     return data
