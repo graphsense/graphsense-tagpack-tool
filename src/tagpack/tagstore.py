@@ -307,6 +307,29 @@ class TagStore(object):
             {k: v for k, v in zip(fields_output, x)} for x in self.cursor.fetchall()
         ]
 
+    def addresses_with_actor_collisions(self) -> list[dict]:
+        fields_output = ["address", "actors"]
+        query = (
+            "SELECT agg.address, agg.actors from "
+            "(SELECT "
+            "   address, "
+            "   count(distinct tag.actor) as ac, "
+            "   string_agg(tag.actor, ', ') as actors "
+            " from tag group by tag.address) as agg "
+            "where agg.ac > 1"
+        )
+
+        self.cursor.execute(query)
+
+        def uniq_actor(d):
+            d["actors"] = ", ".join(set(d["actors"].split(", ")))
+            return d
+
+        return [
+            uniq_actor({k: v for k, v in zip(fields_output, x)})
+            for x in self.cursor.fetchall()
+        ]
+
     def get_actors_with_jurisdictions(
         self, category="", max_results=5, include_not_used=False
     ) -> list[dict]:

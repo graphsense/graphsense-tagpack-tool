@@ -935,6 +935,25 @@ def list_top_labels_without_actor(args):
         )
 
 
+def list_addresses_with_actor_collisions(args):
+    tagstore = TagStore(args.url, args.schema)
+
+    res = tagstore.addresses_with_actor_collisions()
+    df = pd.DataFrame(res)
+    if args.csv:
+        print(df.to_csv(header=True, sep=",", index=True))
+    else:
+        print_line("Addresses with actor collisions")
+        print(
+            tabulate(
+                df,
+                headers=df.columns,
+                tablefmt="psql",
+                maxcolwidths=[None, None, 10, 50],
+            )
+        )
+
+
 def show_tagstore_source_repos(args):
     tagstore = TagStore(args.url, args.schema)
 
@@ -1574,6 +1593,23 @@ def main():
     )
     pqp_j.add_argument("--csv", action="store_true", help="Show csv output.")
     pqp_j.set_defaults(func=list_top_labels_without_actor, url=def_url)
+
+    # parser top labels with no actor
+    pqp_j = pqp.add_parser(
+        "list_addresses_with_actor_collisions",
+        help="List actors with address collisions.",
+    )
+    pqp_j.add_argument(
+        "--schema",
+        default=_DEFAULT_SCHEMA,
+        metavar="DB_SCHEMA",
+        help="PostgreSQL schema for quality measures tables",
+    )
+    pqp_j.add_argument(
+        "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    pqp_j.add_argument("--csv", action="store_true", help="Show csv output.")
+    pqp_j.set_defaults(func=list_addresses_with_actor_collisions, url=def_url)
 
     # parser for quality measures show
     pqp_s = pqp.add_parser("show", help="show average quality measures")
