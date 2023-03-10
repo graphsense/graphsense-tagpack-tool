@@ -850,7 +850,7 @@ def sync_repos(args):
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
         print_line("Init db taxonomies ...")
-        exec_cli_command(strip_empty(["tagstore", "init"]))
+        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url]))
 
         extra_option = "--force" if args.force else None
         extra_option = "--add_new" if extra_option is None else extra_option
@@ -869,23 +869,27 @@ def sync_repos(args):
                     repo.git.checkout(branch)
 
                 print("Inserting actorpacks ...")
-                exec_cli_command(strip_empty(["actorpack", "insert", temp_dir_tt]))
+                exec_cli_command(
+                    strip_empty(["actorpack", "insert", temp_dir_tt, "-u", args.url])
+                )
 
                 print("Inserting tagpacks ...")
-                exec_cli_command(["tagpack", "insert", extra_option, temp_dir_tt])
+                exec_cli_command(
+                    ["tagpack", "insert", extra_option, temp_dir_tt, "-u", args.url]
+                )
             finally:
                 if os.path.isdir(temp_dir_tt):
                     print_info(f"Removing temp files in: {temp_dir_tt}")
                     rmtree(temp_dir_tt)
 
         print("Removing duplicates ...")
-        exec_cli_command(["tagstore", "remove_duplicates"])
+        exec_cli_command(["tagstore", "remove_duplicates", "-u", args.url])
 
         print("Refreshing db views ...")
-        exec_cli_command(["tagstore", "refresh_views"])
+        exec_cli_command(["tagstore", "refresh_views", "-u", args.url])
 
         print("Calc Quality metrics ...")
-        exec_cli_command(["quality", "calculate"])
+        exec_cli_command(["quality", "calculate", "-u", args.url])
 
         print_success("Your tagstore is now up-to-date again.")
 
