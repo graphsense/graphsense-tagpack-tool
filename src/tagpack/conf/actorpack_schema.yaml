@@ -31,7 +31,9 @@ actor:
     type: list
     item_type: text
     mandatory: true
-    taxonomy: entity
+    taxonomy:
+      - entity
+      - abuse
   jurisdictions:
     type: list
     item_type: text

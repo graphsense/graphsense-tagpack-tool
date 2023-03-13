@@ -47,10 +47,13 @@ def taxonomies():
     tax_entity = Taxonomy("entity", "http://example.com/entity")
     tax_entity.add_concept("exchange", "Exchange", None, "Some description")
 
+    abuse_entity = Taxonomy("abuse", "http://example.com/abuse")
+    abuse_entity.add_concept("scam", "Scam", None, "Some description")
+
     tax_country = Taxonomy("country", "http://example.com/country")
     tax_country.add_concept("MX", "Mexico", None, None)
 
-    taxonomies = {"entity": tax_entity, "country": tax_country}
+    taxonomies = {"entity": tax_entity, "country": tax_country, "abuse": abuse_entity}
     return taxonomies
 
 
@@ -101,7 +104,7 @@ def test_field_type(schema):
 
 
 def test_field_taxonomy(schema):
-    assert schema.field_taxonomy("categories") == "entity"
+    assert sorted(schema.field_taxonomy("categories")) == ["abuse", "entity"]
     assert schema.field_taxonomy("jurisdictions") == "country"
 
 
@@ -127,7 +130,7 @@ def test_check_taxonomies(schema, taxonomies):
     schema.schema["actor"]["invalidtax"] = {"taxonomy": "nonexistent"}
     with (pytest.raises(ValidationError)) as e:
         assert schema.check_taxonomies("invalidtax", "value", taxonomies)
-    assert "Unknown taxonomy nonexistent" in str(e.value)
+    assert "Unknown taxonomy in" in str(e.value)
 
     assert schema.check_taxonomies("categories", "exchange", taxonomies)
     with (pytest.raises(ValidationError)) as e:
