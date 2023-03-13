@@ -268,7 +268,7 @@ class Actor(object):
 
     @property
     def context(self):
-        if "context" in self.contents:
+        if "context" in self.contents and self.contents["context"]:
             return json.loads(self.contents["context"])
         else:
             return {}
