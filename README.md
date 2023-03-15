@@ -261,7 +261,10 @@ for example in the your local .env file. Currently, the pg-bounce setup only all
 
 ## Calculate the quality of the tags in the TagStore <a name="quality"></a>
 
-To assess on the quality of address tags we define a quality measure. For an address, it is calculated as the weighted similarity distance between all pairs of distinct tags assigned to the same address. For instance, an address with a unique tag has a quality equal to 1, while an address with several similar tags has a quality close to 0.
+To assess on the quality of address tags we define a quality measure.
+For an address tag, it is calculated as the **weighted similarity distance** between all pairs of distinct tags assigned to the same address.
+
+An address with a unique tag has a quality equal to 1, while an address with several similar tags has a quality close to 0.
 
 To calculate the quality measure for all the tags in the database, run:
 

@@ -1511,7 +1511,9 @@ def main():
     pqp_i.set_defaults(func=calc_quality_measures, url=def_url)
 
     # parser for quality measures list
-    pqp_l = pqp.add_parser("list", help="list low quality addresses")
+    pqp_l = pqp.add_parser(
+        "list_addresses_with_low_quality", help="list low quality addresses"
+    )
     pqp_l.add_argument(
         "--category", default="", help="List addresses of a specific category"
     )
