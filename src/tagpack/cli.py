@@ -1017,12 +1017,12 @@ def main():
 
     # parser for sync command
     parser_syc = subparsers.add_parser(
-        "sync", help="git-repos to automatically keep track off."
+        "sync", help="git-repos to automatically keep track of."
     )
     parser_syc.add_argument(
         "-r",
         "--repos",
-        help="List of repos to sync to the database.",
+        help="File with list of repos to sync to the database.",
         default=os.path.join(os.getcwd(), "tagpack-repos.config"),
     )
     parser_syc.add_argument(
