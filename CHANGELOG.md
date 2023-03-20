@@ -1,12 +1,24 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.03] 2023-03-30
+
+### Added
+- Full support for supporting ActorPacks [#41](https://github.com/graphsense/graphsense-tagpack-tool/issues/41)
+  - actor pack validation and insertion for the extensive actor pack in [public repository](https://github.com/graphsense/graphsense-tagpacks/)
+  - interactive process of adding suitable actors to existing tagpacks
+  - calculation of data quality measures
+- Auto update data feature to streamline insertion of updates
+  - clone tagpack repositories and insert all tags and actors in the TagStore [#73](https://github.com/graphsense/graphsense-tagpack-tool/issues/73)
+- new confidence scores unknown (5) heuristic (10),  ledger_immanent (100)
+
+
+
 ## [23.01] 2023-01-30
 
 ### Added
 
 - add --by-currency option for tagstore composition query
 - add --csv option for selected commands
-- First draft for supporting ActorPacks
 - add tag-version pseudo target to Makefile
 
 ## [22.11] 2022-11-24
