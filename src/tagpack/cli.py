@@ -845,7 +845,8 @@ def sync_repos(args):
 
     if os.path.isfile(args.repos):
         with open(args.repos, "r") as f:
-            repos = f.readlines()
+            repos = [x.strip() for x in f.readlines() if not x.startswith("#")]
+
         temp_dir = tempfile.gettempdir()
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
@@ -856,7 +857,6 @@ def sync_repos(args):
         extra_option = "--add_new" if extra_option is None else extra_option
 
         for repo_url in repos:
-            repo_url = repo_url.strip()
             print(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
 
             try:
