@@ -13,9 +13,34 @@ This repository provides a command line tool for managing [GraphSense TagPacks](
 
 Please note that the last feature requires (installation of) a [Postgresql](https://www.postgresql.org/) database.
 
+# Quickstart
+
 ## Installation
 
     pip install git+https://github.com/graphsense/graphsense-tagpack-tool.git
+
+## Prepare a TagStore database
+
+Check out the options as described [below](#prerequisites-tagstore---postgresql-database).
+
+## Sync TagPack repositories
+
+Create a file containing the repositories you want to manage, one repository per line:
+
+    git@github.com:graphsense/graphsense-tagpacks.git feature/actor_support
+    # git@github.com:mycompany/graphsense-tagpacks-special.git master
+
+Then run
+
+    tagpack-tool sync -r ./tagpack-repos.config
+
+to populate the TagStore with Actors and TagPacks.
+
+Re-run the command to add newly added tagpack files from the repositories.
+
+Add the `--force` option to re-insert TagPacks.
+
+# Step-by-step overview
 
 ## Validate a TagPack <a name="validation"></a>
 
