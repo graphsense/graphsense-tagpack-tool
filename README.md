@@ -5,7 +5,7 @@
 This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for
 
 1. [validating TagPacks against the TagPack schema](#validation)
-2. finding suitable actors for tags
+2. [finding suitable actors for tags](#actors-for-tags-and-tagpacks)
 2. [validating ActorPacks against the ActorPack schema](#actorpack_validation)
 3. [handling taxonomies and concepts](#taxonomies)
 4. [ingesting TagPacks and related data into a TagStore](#tagstore)
@@ -25,7 +25,7 @@ Check out the options as described [below](#prerequisites-tagstore---postgresql-
 
 ## Sync TagPack repositories
 
-Create a file containing the repositories you want to manage, one repository per line:
+Create a file containing the repositories you want to manage, one repository per line (commenting out lines is possible):
 
     git@github.com:graphsense/graphsense-tagpacks.git feature/actor_support
     # git@github.com:mycompany/graphsense-tagpacks-special.git master
