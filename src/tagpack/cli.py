@@ -435,7 +435,7 @@ def insert_tagpack(args):
     # resolve backlinks to remote repository and relative paths
     scheck, nogit = not args.no_strict_check, args.no_git
     prepared_packs = [
-        (m, h, n[0], n[1])
+        (m, h, n[0], n[1], n[2])
         for m, h, n in [
             (a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))
             for h, fs in tagpack_files.items()
@@ -443,13 +443,13 @@ def insert_tagpack(args):
         ]
     ]
 
-    prefix = config.get("prefix", "")
+    prefix = config.get("prefix", None)
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which files are new to the tagstore:")
         prepared_packs = [
-            (t, h, u, r)
-            for (t, h, u, r) in prepared_packs
-            if not tagstore.tp_exists(prefix, r)
+            (t, h, u, r, default_prefix)
+            for (t, h, u, r, default_prefix) in prepared_packs
+            if not tagstore.tp_exists(prefix if prefix else default_prefix, r)
         ]
 
     n_ppacks = len(prepared_packs)
@@ -460,7 +460,7 @@ def insert_tagpack(args):
     public, force = args.public, args.force
     supported = tagstore.supported_currencies
     for i, tp in enumerate(sorted(prepared_packs), start=1):
-        tagpack_file, headerfile_dir, uri, relpath = tp
+        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
         tagpack = TagPack.load_from_file(
             uri, tagpack_file, schema, taxonomies, headerfile_dir
@@ -468,7 +468,9 @@ def insert_tagpack(args):
 
         print(f"{i} {tagpack_file}: ", end="")
         try:
-            tagstore.insert_tagpack(tagpack, public, force, prefix, relpath)
+            tagstore.insert_tagpack(
+                tagpack, public, force, prefix if prefix else default_prefix, relpath
+            )
             print_success(f"PROCESSED {len(tagpack.tags)} Tags")
             no_passed += 1
             no_tags = no_tags + len(tagpack.tags)
@@ -684,7 +686,7 @@ def insert_actorpacks(args):
     # For the URI we use the same logic for ActorPacks than for TagPacks
     scheck, nogit = not args.no_strict_check, args.no_git
     prepared_packs = [
-        (m, h, n[0], n[1])
+        (m, h, n[0], n[1], n[2])
         for m, h, n in [
             (a, h, get_uri_for_tagpack(base_url, a, scheck, nogit))
             for h, fs in actorpack_files.items()
@@ -692,13 +694,13 @@ def insert_actorpacks(args):
         ]
     ]
 
-    prefix = config.get("prefix", "")
+    prefix = config.get("prefix", None)
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which ActorPacks are new to the tagstore:")
         prepared_packs = [
-            (t, h, u, r)
-            for (t, h, u, r) in prepared_packs
-            if not tagstore.actorpack_exists(prefix, r)
+            (t, h, u, r, default_prefix)
+            for (t, h, u, r, default_prefix) in prepared_packs
+            if not tagstore.actorpack_exists(prefix if prefix else default_prefix, r)
         ]
 
     n_ppacks = len(prepared_packs)
@@ -709,7 +711,7 @@ def insert_actorpacks(args):
     public, force = args.public, args.force
 
     for i, pack in enumerate(sorted(prepared_packs), start=1):
-        actorpack_file, headerfile_dir, uri, relpath = pack
+        actorpack_file, headerfile_dir, uri, relpath, default_prefix = pack
 
         actorpack = ActorPack.load_from_file(
             uri, actorpack_file, schema, taxonomies, headerfile_dir
@@ -717,7 +719,9 @@ def insert_actorpacks(args):
 
         print(f"{i} {actorpack_file}: ", end="")
         try:
-            tagstore.insert_actorpack(actorpack, public, force, prefix, relpath)
+            tagstore.insert_actorpack(
+                actorpack, public, force, prefix if prefix else default_prefix, relpath
+            )
             print_success(f"PROCESSED {len(actorpack.actors)} Actors")
             no_passed += 1
             no_actors += len(actorpack.actors)
@@ -861,10 +865,10 @@ def sync_repos(args):
 
             try:
                 print_info("Cloning...")
-                repo_url, *branch = repo_url.split(" ")
+                repo_url, *branch_etc = repo_url.split(" ")
                 repo = Repo.clone_from(repo_url, temp_dir_tt)
-                if len(branch) > 0:
-                    branch = branch[0]
+                if len(branch_etc) > 0:
+                    branch = branch_etc[0]
                     print_info(f"Using branch {branch}")
                     repo.git.checkout(branch)
 
@@ -874,8 +878,23 @@ def sync_repos(args):
                 )
 
                 print("Inserting tagpacks ...")
+                public = len(branch_etc) > 1 and branch_etc[1].strip() == "public"
+
+                if public:
+                    print("Caution: This repo is imported as public.")
+
                 exec_cli_command(
-                    ["tagpack", "insert", extra_option, temp_dir_tt, "-u", args.url]
+                    strip_empty(
+                        [
+                            "tagpack",
+                            "insert",
+                            extra_option,
+                            "--public" if public else None,
+                            temp_dir_tt,
+                            "-u",
+                            args.url,
+                        ]
+                    )
                 )
             finally:
                 if os.path.isdir(temp_dir_tt):
@@ -1009,7 +1028,7 @@ def main():
     subparsers = parser.add_subparsers(title="Commands")
 
     # parser for config command
-    parser_c = subparsers.add_parser("config", help="show TagPack Repository config")
+    parser_c = subparsers.add_parser("config", help="show repository config")
     parser_c.add_argument(
         "-v", "--verbose", action="store_true", help="verbose configuration"
     )
@@ -1017,7 +1036,7 @@ def main():
 
     # parser for sync command
     parser_syc = subparsers.add_parser(
-        "sync", help="git-repos to automatically keep track of."
+        "sync", help="syncs the tagstore with a list of git repos."
     )
     parser_syc.add_argument(
         "-r",
@@ -1040,7 +1059,9 @@ def main():
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
     # parsers for tagpack command
-    parser_tp = subparsers.add_parser("tagpack", help="tagpack commands")
+    parser_tp = subparsers.add_parser(
+        "tagpack", help="commands regarding tags and tagpacks"
+    )
     set_print_help_on_error(parser_tp)
 
     ptp = parser_tp.add_subparsers(title="TagPack commands")
@@ -1209,7 +1230,9 @@ def main():
     ptp_add_actor.set_defaults(func=add_actors_to_tagpack, url=def_url)
 
     # parsers for actorpack command
-    parser_ap = subparsers.add_parser("actorpack", help="actorpack commands")
+    parser_ap = subparsers.add_parser(
+        "actorpack", help="commands regarding actor information"
+    )
     set_print_help_on_error(parser_ap)
 
     app = parser_ap.add_subparsers(title="ActorPack commands")
