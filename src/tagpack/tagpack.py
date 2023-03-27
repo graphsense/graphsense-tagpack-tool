@@ -1,5 +1,6 @@
 """TagPack - A wrapper for TagPacks files"""
 import glob
+import hashlib
 import json
 import os
 import pathlib
@@ -55,12 +56,14 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     If path does not contain any git information, the original path
     is returned.
     """
+    default_prefix = hashlib.sha256("".encode("utf-8")).hexdigest()[:16]
     if no_git:
         if "/packs/" in tagpack_file:
             rel_path = tagpack_file.split("/packs/")[1]
+
         else:
             rel_path = tagpack_file
-        return tagpack_file, rel_path
+        return tagpack_file, rel_path, default_prefix
 
     repo = Repo(repo_path)
 
@@ -79,7 +82,10 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     u = next(repo.remotes[0].urls)
     g = gup.parse(u).url2https.replace(".git", "")
     res = f"{g}/tree/{repo.active_branch.name}/{rel_path}"
-    return res, rel_path
+
+    default_prefix = hashlib.sha256(g.encode("utf-8")).hexdigest()[:16]
+
+    return res, rel_path, default_prefix
 
 
 def collect_tagpack_files(path, search_actorpacks=False):
