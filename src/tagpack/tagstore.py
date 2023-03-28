@@ -2,6 +2,7 @@
 import textwrap
 from datetime import datetime
 from functools import wraps
+from typing import List
 
 import numpy as np
 from cashaddress.convert import to_legacy_address
@@ -175,7 +176,7 @@ class TagStore(object):
     def create_actorpack_id(self, prefix, actorpack_name):
         return ":".join([prefix, actorpack_name]) if prefix else actorpack_name
 
-    def get_ingested_actorpacks(self) -> list:
+    def get_ingested_actorpacks(self) -> List:
         self.cursor.execute("SELECT id from actorpack")
         return [i[0] for i in self.cursor.fetchall()]
 
@@ -307,7 +308,7 @@ class TagStore(object):
             {k: v for k, v in zip(fields_output, x)} for x in self.cursor.fetchall()
         ]
 
-    def addresses_with_actor_collisions(self) -> list[dict]:
+    def addresses_with_actor_collisions(self) -> List[dict]:
         fields_output = ["address", "actors"]
         query = (
             "SELECT agg.address, agg.actors from "
@@ -332,7 +333,7 @@ class TagStore(object):
 
     def get_actors_with_jurisdictions(
         self, category="", max_results=5, include_not_used=False
-    ) -> list[dict]:
+    ) -> List[dict]:
         fields = ["actor.id", "actor.label", "actor.uri", "actor.context"]
         fields_str = ",".join(fields)
         fields_output = fields + ["categories", "jurisdictions", "#tags"]
@@ -378,7 +379,7 @@ class TagStore(object):
             for x in self.cursor.fetchall()
         ]
 
-    def top_labels_without_actor(self, category="", max_results=5) -> list[dict]:
+    def top_labels_without_actor(self, category="", max_results=5) -> List[dict]:
         fields = ["tag.label"]
         fields_str = ",".join(fields)
         fields_output = fields + ["count", "tagpacks"]
@@ -417,7 +418,7 @@ class TagStore(object):
             for x in self.cursor.fetchall()
         ]
 
-    def tagstore_source_repos(self) -> list[dict]:
+    def tagstore_source_repos(self) -> List[dict]:
         fields = ["uri"]
         query = f"SELECT {','.join(fields)} FROM tagpack"
 
@@ -577,7 +578,7 @@ class TagStore(object):
                 AND currency IN %s"
         self.cursor.execute(q, (tuple(keys),))
 
-    def get_ingested_tagpacks(self) -> list:
+    def get_ingested_tagpacks(self) -> List:
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
