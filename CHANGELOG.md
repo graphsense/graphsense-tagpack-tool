@@ -1,5 +1,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
 ## [23.03] 2023-03-30
 
 ### Added
@@ -9,9 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - calculation of data quality measures
 - Auto update data feature to streamline insertion of updates
   - clone tagpack repositories and insert all tags and actors in the TagStore [#73](https://github.com/graphsense/graphsense-tagpack-tool/issues/73)
-- new confidence scores unknown (5) heuristic (10),  ledger_immanent (100)
-
-
+- new confidence scores unknown (5) heuristic (10), ledger_immanent (100)
 
 ## [23.01] 2023-01-30
 
