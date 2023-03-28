@@ -27,7 +27,7 @@ Check out the options as described [below](#prerequisites-tagstore---postgresql-
 
 Create a file containing the repositories you want to manage, one repository per line (commenting out lines is possible):
 
-    git@github.com:graphsense/graphsense-tagpacks.git feature/actor_support public
+    git@github.com:graphsense/graphsense-tagpacks.git develop public
     # git@github.com:mycompany/graphsense-tagpacks-special.git master
 
 If you want to import a certain branch add the branch name separated by a white-space as shown above. To indicate that the repository should be imported to seen by everybody then add the keyword after the branch specification. If no branch or public keyword is specified the default branch is used and the tags are treated as private.
