@@ -6,10 +6,10 @@ This repository provides a command line tool for managing [GraphSense TagPacks](
 
 1. [validating TagPacks against the TagPack schema](#validation)
 2. [finding suitable actors for tags](#actors-for-tags-and-tagpacks)
-2. [validating ActorPacks against the ActorPack schema](#actorpack_validation)
-3. [handling taxonomies and concepts](#taxonomies)
-4. [ingesting TagPacks and related data into a TagStore](#tagstore)
-5. [calculating the quality of the tags in the TagStore](#quality)
+3. [validating ActorPacks against the ActorPack schema](#actorpack_validation)
+4. [handling taxonomies and concepts](#taxonomies)
+5. [ingesting TagPacks and related data into a TagStore](#tagstore)
+6. [calculating the quality of the tags in the TagStore](#quality)
 
 Please note that the last feature requires (installation of) a [Postgresql](https://www.postgresql.org/) database.
 
