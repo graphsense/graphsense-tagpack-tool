@@ -54,7 +54,7 @@ class ActorPack(object):
     def all_header_fields(self):
         """Returns all ActorPack header fields, including generic actor fields"""
         try:
-            return {k: v for k, v in self.contents.items()}
+            return {k: v for k, v in self.contents.items()}  # noqa: C416
         except AttributeError:
             raise TagPackFileError("Cannot extract ActorPack fields")
 
@@ -256,7 +256,7 @@ class Actor(object):
     @property
     def explicit_fields(self):
         """Return only explicitly defined actor fields"""
-        return {k: v for k, v in self.contents.items()}
+        return {k: v for k, v in self.contents.items()}  # noqa: C416
 
     @property
     def all_fields(self):

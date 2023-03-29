@@ -204,7 +204,7 @@ class TagPack(object):
     def all_header_fields(self):
         """Returns all TagPack header fields, including generic tag fields"""
         try:
-            return {k: v for k, v in self.contents.items()}
+            return {k: v for k, v in self.contents.items()}  # noqa: C416
         except AttributeError:
             raise TagPackFileError("Cannot extract TagPack fields")
 
@@ -515,7 +515,7 @@ class Tag(object):
     @property
     def explicit_fields(self):
         """Return only explicitly defined tag fields"""
-        return {k: v for k, v in self.contents.items()}
+        return {k: v for k, v in self.contents.items()}  # noqa: C416
 
     @property
     def all_fields(self):

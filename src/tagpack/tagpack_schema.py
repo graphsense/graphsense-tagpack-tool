@@ -27,7 +27,7 @@ class TagPackSchema(object):
 
     @property
     def header_fields(self):
-        return {k: v for k, v in self.schema["header"].items()}
+        return {k: v for k, v in self.schema["header"].items()}  # noqa: C416
 
     @property
     def mandatory_header_fields(self):
@@ -35,7 +35,7 @@ class TagPackSchema(object):
 
     @property
     def tag_fields(self):
-        return {k: v for k, v in self.schema["tag"].items()}
+        return {k: v for k, v in self.schema["tag"].items()}  # noqa: C416
 
     @property
     def mandatory_tag_fields(self):

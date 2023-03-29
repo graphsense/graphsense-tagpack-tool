@@ -305,7 +305,8 @@ class TagStore(object):
         )
 
         return [
-            {k: v for k, v in zip(fields_output, x)} for x in self.cursor.fetchall()
+            {k: v for k, v in zip(fields_output, x)}  # noqa: C416
+            for x in self.cursor.fetchall()
         ]
 
     def addresses_with_actor_collisions(self) -> List[dict]:
@@ -327,7 +328,7 @@ class TagStore(object):
             return d
 
         return [
-            uniq_actor({k: v for k, v in zip(fields_output, x)})
+            uniq_actor({k: v for k, v in zip(fields_output, x)})  # noqa: C416
             for x in self.cursor.fetchall()
         ]
 
@@ -430,7 +431,7 @@ class TagStore(object):
 
         repos = {get_repo_part(x[0]) for x in self.cursor.fetchall()}
 
-        return [{k: v for k, v in zip(fields, [x])} for x in repos]
+        return [{k: v for k, v in zip(fields, [x])} for x in repos]  # noqa: C416
 
     def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
         """
