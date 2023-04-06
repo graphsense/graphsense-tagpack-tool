@@ -3,6 +3,8 @@
 import csv
 import json
 
+from .utils import open_localfile_with_pkgresource_fallback
+
 
 class Score(object):
     """Score Definition.
@@ -39,7 +41,7 @@ class Confidence(object):
         self.scores = []
 
     def load_from_local(self):
-        with open(self.path, "r") as f:
+        with open_localfile_with_pkgresource_fallback(self.path) as f:
             csv_reader = csv.DictReader(f, delimiter=",")
             for row in csv_reader:
                 score = Score(row["id"], row["label"], row["description"], row["level"])

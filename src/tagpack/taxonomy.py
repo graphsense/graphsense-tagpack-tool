@@ -7,6 +7,8 @@ from io import StringIO
 import requests
 import yaml
 
+from .utils import open_localfile_with_pkgresource_fallback
+
 
 class Concept(object):
     """Concept Definition.
@@ -82,7 +84,7 @@ class Taxonomy(object):
 
     def load_from_local(self):
         if self.uri.endswith("csv"):
-            with open(self.uri, "r") as f:
+            with open_localfile_with_pkgresource_fallback(self.uri) as f:
                 csv_reader = csv.DictReader(f, delimiter=",")
                 uri = self.uri
                 for row in csv_reader:
@@ -95,7 +97,7 @@ class Taxonomy(object):
                     self.concepts.append(concept)
 
         elif self.uri.endswith("yaml") or self.uri.endswith("yml"):
-            with open(self.uri, "r") as f:
+            with open_localfile_with_pkgresource_fallback(self.uri) as f:
                 schema_data = yaml.safe_load(f)
 
                 uri = self.uri

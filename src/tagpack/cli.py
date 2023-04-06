@@ -443,7 +443,7 @@ def insert_tagpack(args):
         ]
     ]
 
-    prefix = config.get("prefix", None)
+    prefix = None  # config.get("prefix", None)
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which files are new to the tagstore:")
         prepared_packs = [
@@ -694,7 +694,7 @@ def insert_actorpacks(args):
         ]
     ]
 
-    prefix = config.get("prefix", None)
+    prefix = None  # config.get("prefix", None)
     if args.add_new:  # don't re-insert existing tagpacks
         print_info("Checking which ActorPacks are new to the tagstore:")
         prepared_packs = [

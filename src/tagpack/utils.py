@@ -1,5 +1,9 @@
+import importlib.resources as pkg_resources
+import os
 from datetime import datetime
 from urllib.parse import urlparse
+
+from . import conf, db
 
 
 def strip_values(listlike, values):
@@ -86,3 +90,16 @@ def get_github_repo_url(github_url):
             return purl._replace(path="/".join(psplit[:3])).geturl()
     else:
         return None
+
+
+def open_localfile_with_pkgresource_fallback(path):
+
+    if os.path.isfile(path):
+        return open(path, "r")
+    else:
+        filename = os.path.basename(path)
+        for res_dir in [conf, db]:
+            if pkg_resources.is_resource(res_dir, filename):
+                return pkg_resources.files(res_dir).joinpath(filename).open("r")
+
+    raise Exception(f"File {path} was not found on disk or in package resources.")
