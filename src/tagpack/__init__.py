@@ -2,7 +2,10 @@
 
 import sys
 
-import yaml
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader as SafeLoader
 
 if sys.version_info[:2] >= (3, 8):
     # TODO: Import directly (no need for conditional) when `python_requires = >= 3.8`
@@ -56,7 +59,7 @@ class StorageError(Exception):
 
 
 # https://gist.github.com/pypt/94d747fe5180851196eb
-class UniqueKeyLoader(yaml.FullLoader):
+class UniqueKeyLoader(SafeLoader):
     def construct_mapping(self, node, deep=False):
         mapping = set()
         for key_node, value_node in node.value:

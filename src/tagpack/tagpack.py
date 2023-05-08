@@ -169,7 +169,7 @@ class TagPack(object):
 
     def load_from_file(uri, pathname, schema, taxonomies, header_dir=None):
         YamlIncludeConstructor.add_to_loader_class(
-            loader_class=yaml.FullLoader, base_dir=header_dir
+            loader_class=UniqueKeyLoader, base_dir=header_dir
         )
 
         if not os.path.isfile(pathname):
