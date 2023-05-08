@@ -184,7 +184,7 @@ class TagPack(object):
 
     def init_default_values(self):
         if "confidence" not in self.contents and not all(
-            ["confidence" in tag.contents for tag in self.tags]
+            "confidence" in tag.contents for tag in self.tags
         ):
             conf_scores_df = self.schema.confidences
             min_confs = conf_scores_df[
