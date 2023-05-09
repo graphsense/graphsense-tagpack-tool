@@ -88,7 +88,7 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     return res, rel_path, default_prefix
 
 
-def collect_tagpack_files(path, search_actorpacks=False):
+def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
     """
     Collect Tagpack YAML files from the given path. This function returns a
     dict made of sets. Each key of the dict is the corresponding header path of
@@ -143,6 +143,17 @@ def collect_tagpack_files(path, search_actorpacks=False):
             print_warn(msj)
 
     tagpack_files = {k: v for k, v in tagpack_files.items() if v}
+
+    # exclude files that are too large
+    max_bytes = max_mb * 1024 * 1024
+    for _, files in tagpack_files.items():
+        for f in files.copy():
+            if os.stat(f).st_size > max_bytes:
+                print_warn(
+                    f"{f} is too large and will be not be processed: "
+                    f"{os.stat(f).st_size} bytes"
+                )
+                files.remove(f)
 
     return tagpack_files
 
