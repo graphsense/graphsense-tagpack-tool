@@ -93,7 +93,6 @@ def get_github_repo_url(github_url):
 
 
 def open_localfile_with_pkgresource_fallback(path):
-
     if os.path.isfile(path):
         return open(path, "r")
     else:

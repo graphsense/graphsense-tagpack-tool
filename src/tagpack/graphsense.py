@@ -46,7 +46,7 @@ class GraphSense(object):
 
         i = 0
         all_results = []
-        for (success, result) in results:
+        for success, result in results:
             if not success:
                 print("failed" + result)
             else:
@@ -59,7 +59,6 @@ class GraphSense(object):
         return currency in self.ks_map
 
     def _check_passed_params(self, df: DataFrame, currency: str, req_column: str):
-
         if df.empty:
             raise Exception(f"Received empty dataframe for currency {currency}")
         if req_column not in df.columns:

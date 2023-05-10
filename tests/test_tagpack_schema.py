@@ -110,33 +110,33 @@ def test_field_no_taxonomy(schema):
 
 def test_check_type(schema):
     assert schema.check_type("title", "some test string")
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_type("title", 5)
     assert "Field title must be of type text" in str(e.value)
 
     assert schema.check_type("lastmod", date.fromisoformat("2021-04-21"))
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_type("lastmod", 5)
     assert "Field lastmod must be of type datetime" in str(e.value)
 
     assert schema.check_type("address", "string")
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_type("address", 0x2342)
     assert "Field address must be of type text" in str(e.value)
 
     assert schema.check_type("tags", [{"a": 1}, {"b": 2}])
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_type("tags", "56abc")
     assert "Field tags must be of type list" in str(e.value)
 
 
 def test_check_taxonomies(schema, taxonomies):
     assert schema.check_taxonomies("category", "exchange", taxonomies)
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("category", "test", taxonomies)
     assert "Undefined concept test in field category" in str(e.value)
 
     schema.schema["tag"]["dummy"] = {"taxonomy": "test"}
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("dummy", "test", taxonomies)
     assert "Unknown taxonomy test" in str(e.value)

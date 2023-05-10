@@ -192,7 +192,7 @@ def low_quality_addresses(args):
             if args.cluster:
                 print("\nSets of tags appearing in several addresses:")
                 s_int = sorted(intersections, key=lambda x: x[1], reverse=True)
-                for (k, v) in s_int:
+                for k, v in s_int:
                     if v > 1:
                         print(f"\t{v}: {', '.join(k)}")
         else:
