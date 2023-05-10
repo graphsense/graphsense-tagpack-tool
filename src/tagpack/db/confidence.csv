@@ -4,6 +4,7 @@ ownership,Proven address ownership,Creator controls the private key the address 
 ledger_immanent,Data directly read from the transaction ledger,The data is extracted directly from ledger data with a reliable extraction procedure,100
 manual_transaction,Trusted transaction,Creator transferred funds from known service x to known service y,90
 service_api,Service API,Creator retrieves addresses from a known and trusted service provider API (e.g. VASP API),70
+forensic_investigation,Forensic Investigation,Creator retrieved address as part of a forensic investigation (e.g. known victim or perpetrator address; address retrieved from service provider),70
 authority_data,Authority data,Creator retrieves attribution tags from public authorities (e.g. OFAC),60
 trusted_provider,Trusted data providers,Creator retrieved attribution tags from trusted third parties (e.g. spam trap),50
 service_data,Service data,Creator retrieved attribution tag from a known service (e.g. CSV file received from exchange),50

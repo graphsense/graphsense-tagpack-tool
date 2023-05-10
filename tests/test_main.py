@@ -34,7 +34,7 @@ def test_load_online_taxonomies_csv(online_tax_config):
 
     assert len(data["entity"].concept_ids) == 34
     assert len(data["abuse"].concept_ids) == 13
-    assert len(data["confidence"].concept_ids) == 13
+    assert len(data["confidence"].concept_ids) == 14
     assert len(data["country"].concept_ids) == 249
 
 
@@ -43,5 +43,5 @@ def test_load_offline_taxonomies_yaml(all_offline_tax_config):
 
     assert len(data["entity"].concept_ids) == 35
     assert len(data["abuse"].concept_ids) == 13
-    assert len(data["confidence"].concept_ids) == 13
+    assert len(data["confidence"].concept_ids) == 14
     assert len(data["country"].concept_ids) == 249
