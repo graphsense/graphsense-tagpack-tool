@@ -76,7 +76,6 @@ class TagStore(object):
             "(%(label)s,%(taxonomy)s,%(source)s,%(description)s);"
         )
         for c in taxonomy.concepts:
-
             v = {
                 "id": c.id,
                 "label": c.label,
@@ -88,7 +87,6 @@ class TagStore(object):
 
     @auto_commit
     def insert_confidence_scores(self, confidence):
-
         statement = (
             "INSERT INTO confidence (id, label, description, level)"
             " VALUES (%(id)s,%(label)s,%(description)s,%(level)s)"
@@ -120,7 +118,6 @@ class TagStore(object):
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
     ):
-
         tagpack_id = self.create_id(prefix, rel_path)
         h = _get_header(tagpack, tagpack_id)
 

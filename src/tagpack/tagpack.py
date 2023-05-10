@@ -145,13 +145,15 @@ def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
     tagpack_files = {k: v for k, v in tagpack_files.items() if v}
 
     # exclude files that are too large
-    max_bytes = max_mb * 1024 * 1024
+    max_bytes = max_mb * 1048576
     for _, files in tagpack_files.items():
         for f in files.copy():
             if os.stat(f).st_size > max_bytes:
                 print_warn(
                     f"{f} is too large and will be not be processed: "
-                    f"{os.stat(f).st_size} bytes"
+                    f"{(os.stat(f).st_size / 1048576):.2f} mb, current "
+                    f"max file size is {max_mb} mb. "
+                    "Please split the file to be processed."
                 )
                 files.remove(f)
 
@@ -408,7 +410,6 @@ class TagPack(object):
             if hl in cache:
                 return cache[hl]
             else:
-
                 candidates = find_actor_candidates(hl)
                 if len(candidates) == 0:
                     choice = None

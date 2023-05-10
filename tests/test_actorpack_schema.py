@@ -115,7 +115,7 @@ def test_field_no_taxonomy(schema):
 def test_check_type(schema):
     for field, value in field_values.items():
         assert schema.check_type(field, value)
-        with (pytest.raises(ValidationError)) as e:
+        with pytest.raises(ValidationError) as e:
             assert schema.check_type(field, 5)
         msg = f"Field {field} must be of type {field_types[field]}"
         assert msg in str(e.value)
@@ -123,21 +123,21 @@ def test_check_type(schema):
 
 def test_check_taxonomies(schema, taxonomies):
     schema.schema["actor"]["test"] = {"taxonomy": "nonexistent"}
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("test", "invalid", None)
     assert "No taxonomies loaded" in str(e.value)
 
     schema.schema["actor"]["invalidtax"] = {"taxonomy": "nonexistent"}
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("invalidtax", "value", taxonomies)
     assert "Unknown taxonomy in" in str(e.value)
 
     assert schema.check_taxonomies("categories", "exchange", taxonomies)
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("categories", "test", taxonomies)
     assert "Undefined concept test for categories field" in str(e.value)
 
     assert schema.check_taxonomies("jurisdictions", "MX", taxonomies)
-    with (pytest.raises(ValidationError)) as e:
+    with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("jurisdictions", "test", taxonomies)
     assert "Undefined concept test for jurisdictions field" in str(e.value)
