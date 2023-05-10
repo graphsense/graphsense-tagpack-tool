@@ -501,13 +501,49 @@ def insert_cluster_mapping_wp(currency, ks_mapping, args, batch):
     return (currency, len(clusters))
 
 
+def load_ks_mapping(args):
+    if args.use_gs_lib_config_env:
+        gs_config_file = os.path.expanduser("~/.graphsense.yaml")
+        if os.path.exists(gs_config_file):
+            with open(gs_config_file) as f:
+                yml = yaml.safe_load(f)
+                if args.use_gs_lib_config_env in yml["environments"]:
+                    env = yml["environments"][args.use_gs_lib_config_env]
+                    args.db_nodes = env["cassandra_nodes"]
+                    ret = {
+                        k.upper(): {
+                            "raw": v["raw_keyspace_name"],
+                            "transformed": v["transformed_keyspace_name"],
+                        }
+                        for k, v in env["keyspaces"].items()
+                    }
+                    return ret
+                else:
+                    print_fail(
+                        f"Environment {args.use_gs_lib_config_env} "
+                        "not found in gs-config"
+                    )
+                    sys.exit(1)
+
+        else:
+            print_fail("Graphsense config not found at ~/.graphsense.yaml")
+            sys.exit(1)
+    else:
+        if os.path.exists(args.ks_file):
+            return json.load(open(args.ks_file))
+        else:
+            print_fail(f"Keyspace config file not found at {args.ks_file}")
+            sys.exit(1)
+
+
 def insert_cluster_mapping(args, batch_size=5_000):
     t0 = time.time()
     tagstore = TagStore(args.url, args.schema)
     df = pd.DataFrame(
         tagstore.get_addresses(args.update), columns=["address", "currency"]
     )
-    ks_mapping = json.load(open(args.ks_file))
+    ks_mapping = load_ks_mapping(args)
+    print("Importing with mapping config: ", ks_mapping)
     currencies = ks_mapping.keys()
     gs = GraphSense(args.db_nodes, ks_mapping)
 
@@ -1434,6 +1470,12 @@ def main():
         metavar="KEYSPACE_FILE",
         help="JSON file with Cassandra keyspaces that contain GraphSense \
                     cluster mappings",
+    )
+    pc.add_argument(
+        "--use-gs-lib-config-env",
+        metavar="GS_LIB_ENV",
+        help="Load ks-mapping from global graphsense-lib config."
+        " Overrides --ks_file and --db_nodes",
     )
     pc.add_argument(
         "--schema",
