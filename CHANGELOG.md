@@ -1,5 +1,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.05] not yet released
+### Added
+- new confidence score forensic_investigation (70), [#87](https://github.com/graphsense/graphsense-tagpack-tool/issues/87)
+- cluster mapping can now use gs-lib config for import (--use-gs-lib-env option) [#84](https://github.com/graphsense/graphsense-tagpack-tool/issues/84)
+- Sync command has option to directly run cluster mapping via gs-lib (--run-cluster-mapping-with-env) [#84](https://github.com/graphsense/graphsense-tagpack-tool/issues/84)
+- better handling for large yaml tagpack files [#85](https://github.com/graphsense/graphsense-tagpack-tool/issues/85)
+### Changed
+- Using cSafeLoader for yaml files when possible for better performance
 
 ## [23.03] 2023-03-30
 
