@@ -946,6 +946,22 @@ def sync_repos(args):
         print("Calc Quality metrics ...")
         exec_cli_command(["quality", "calculate", "-u", args.url])
 
+        if args.run_cluster_mapping_with_env:
+            print("Import cluster mappings ...")
+            exec_cli_command(
+                [
+                    "tagstore",
+                    "insert_cluster_mappings",
+                    "-u",
+                    args.url,
+                    "--use-gs-lib-config-env",
+                    args.run_cluster_mapping_with_env,
+                ]
+            )
+
+            print("Refreshing db views ...")
+            exec_cli_command(["tagstore", "refresh_views", "-u", args.url])
+
         print_success("Your tagstore is now up-to-date again.")
 
     else:
@@ -1091,6 +1107,10 @@ def main():
     )
     parser_syc.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    parser_syc.add_argument(
+        "--run-cluster-mapping-with-env",
+        help="Environment in graphsense-lib config" " to use for the mapping process",
     )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
