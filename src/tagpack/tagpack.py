@@ -297,6 +297,13 @@ class TagPack(object):
                 raise ValidationError(
                     "Value of header field {} must not be empty (None)".format(field)
                 )
+            if field == "is_public":
+                print_warn(
+                    "YAML field 'is_public' is DEPRECATED and will be removed "
+                    "in future versions. Use the commandline flag "
+                    "--public for inserting public tagpacks. By default, tagpacks"
+                    "are inserted with access set to private."
+                )
 
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
