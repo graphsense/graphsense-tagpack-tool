@@ -135,8 +135,14 @@ Fetch and show concepts of a specific remote/local taxonomy (referenced by key: 
 - [Docker][docker], see e.g. https://docs.docker.com/engine/install/
 - Docker Compose: https://docs.docker.com/compose/install/
 
-Setup and start a PostgreSQL instance. First, copy `docker/env.template`
+First, copy `docker/env.template`
 to `.env` and fill the fields `POSTGRES_PASSWORD` and `POSTGRES_PASSWORD_TAGSTORE`.
+
+Run
+
+    cp docker/conf.sql.template docker/conf.sql
+
+and modify the configuration parameters to your requirements.
 
 Start a PostgreSQL instance using Docker Compose:
 
@@ -144,6 +150,8 @@ Start a PostgreSQL instance using Docker Compose:
 
 This will automatically create the database schema as defined
 in `src/tagpack/db/tagstore_schema.sql`.
+
+
 
 #### Option 2: Use an existing PostgreSQL database
 

@@ -13,6 +13,7 @@ services:
     volumes:
       - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
       - ./src/tagpack/db/tagstore_schema.sql:/tmp/schema.sql
+      - ./docker/conf.sql:/tmp/conf.sql
       - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh
     ports:
       - 5432:5432
