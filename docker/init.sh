@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # apply custom settings
-psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /tmp/conf.sql
+psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /tmp/postgres-conf.sql
 
 # create schema
 psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /tmp/schema.sql

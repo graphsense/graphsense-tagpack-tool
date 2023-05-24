@@ -140,9 +140,11 @@ to `.env` and fill the fields `POSTGRES_PASSWORD` and `POSTGRES_PASSWORD_TAGSTOR
 
 Run
 
-    cp docker/conf.sql.template docker/conf.sql
+    cp docker/postgres-conf.sql.template postgres-conf.sql
 
-and modify the configuration parameters to your requirements.
+and modify the configuration parameters to your requirements. If no special config is needed an emtpy file is also valid.
+
+    touch postgres-conf.sql
 
 Start a PostgreSQL instance using Docker Compose:
 
