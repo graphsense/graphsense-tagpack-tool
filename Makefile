@@ -54,4 +54,4 @@ publish: build version
 version:
 	python -m setuptools_scm
 
-.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version
+.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config
