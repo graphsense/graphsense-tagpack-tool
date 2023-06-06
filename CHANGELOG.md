@@ -6,8 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - cluster mapping can now use gs-lib config for import (--use-gs-lib-env option) [#84](https://github.com/graphsense/graphsense-tagpack-tool/issues/84)
 - Sync command has option to directly run cluster mapping via gs-lib (--run-cluster-mapping-with-env) [#84](https://github.com/graphsense/graphsense-tagpack-tool/issues/84)
 - better handling for large yaml tagpack files [#85](https://github.com/graphsense/graphsense-tagpack-tool/issues/85)
+- Support for altering postgres config params in docker-compose setup [#83](https://github.com/graphsense/graphsense-tagpack-tool/issues/83)
 ### Changed
 - Using cSafeLoader for yaml files when possible for better performance
+- Deprecate is_public in config.yaml, in favor of cmd flag [#82](https://github.com/graphsense/graphsense-tagpack-tool/issues/82)
+- Fixed compatibilty issues with python 3.8 (importlib.files)
 
 ## [23.03] 2023-03-30
 
