@@ -1,4 +1,11 @@
 import importlib.resources as pkg_resources
+import sys
+
+if sys.version_info >= (3, 9):
+    from importlib.resources import files as imprtlb_files
+else:
+    from importlib_resources import files as imprtlb_files
+
 import os
 from datetime import datetime
 from urllib.parse import urlparse
@@ -99,6 +106,6 @@ def open_localfile_with_pkgresource_fallback(path):
         filename = os.path.basename(path)
         for res_dir in [conf, db]:
             if pkg_resources.is_resource(res_dir, filename):
-                return pkg_resources.files(res_dir).joinpath(filename).open("r")
+                return imprtlb_files(res_dir).joinpath(filename).open("r")
 
     raise Exception(f"File {path} was not found on disk or in package resources.")
