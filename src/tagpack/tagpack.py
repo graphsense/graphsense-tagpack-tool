@@ -301,7 +301,7 @@ class TagPack(object):
                 print_warn(
                     "YAML field 'is_public' is DEPRECATED and will be removed "
                     "in future versions. Use the commandline flag "
-                    "--public for inserting public tagpacks. By default, tagpacks"
+                    "--public for inserting public tagpacks. By default, tagpacks "
                     "are inserted with access set to private."
                 )
 
