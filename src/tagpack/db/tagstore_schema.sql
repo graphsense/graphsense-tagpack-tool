@@ -34,7 +34,8 @@ CREATE TABLE confidence (
 
 -- Supported currencies
 
-CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
+-- CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
+CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC', 'WETH', 'USDC', 'USDT', 'TRX');
 
 -- Actor and ActorPack tables
 
