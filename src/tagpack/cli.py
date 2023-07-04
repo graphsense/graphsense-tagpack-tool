@@ -495,9 +495,16 @@ def _split_into_chunks(seq, size):
 def insert_cluster_mapping_wp(currency, ks_mapping, args, batch):
     tagstore = TagStore(args.url, args.schema)
     gs = GraphSense(args.db_nodes, ks_mapping)
-    clusters = gs.get_address_clusters(batch, currency)
-    clusters["currency"] = currency
-    tagstore.insert_cluster_mappings(clusters)
+    if gs.keyspace_for_curreny_exists(currency):
+        clusters = gs.get_address_clusters(batch, currency)
+        clusters["currency"] = currency
+        tagstore.insert_cluster_mappings(clusters)
+    else:
+        clusters = []
+        print_fail(
+            "At least one of the configured keyspaces"
+            f" for chain {currency}:{batch} does not exist."
+        )
     return (currency, len(clusters))
 
 
@@ -529,7 +536,7 @@ def load_ks_mapping(args):
             print_fail("Graphsense config not found at ~/.graphsense.yaml")
             sys.exit(1)
     else:
-        if os.path.exists(args.ks_file):
+        if args.ks_file and os.path.exists(args.ks_file):
             return json.load(open(args.ks_file))
         else:
             print_fail(f"Keyspace config file not found at {args.ks_file}")
