@@ -72,6 +72,19 @@ class GraphSense(object):
         result = self.session.execute(query)
         return result[0]
 
+    def keyspace_for_curreny_exists(self, currency: str) -> bool:
+        if self.contains_keyspace_mapping(currency):
+            for k, keyspace in self.ks_map.items():
+                query = "SELECT keyspace_name FROM system_schema.keyspaces"
+                result = self.session.execute(query)
+                keyspaces = [row.keyspace_name for row in result]
+                if keyspace not in keyspaces:
+                    return False
+
+            return True
+        else:
+            return False
+
     def get_address_ids(self, df: DataFrame, currency: str) -> DataFrame:
         """Get address ids for all passed addresses"""
         self._check_passed_params(df, currency, "address")
