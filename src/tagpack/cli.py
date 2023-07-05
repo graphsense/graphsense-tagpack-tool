@@ -503,7 +503,7 @@ def insert_cluster_mapping_wp(currency, ks_mapping, args, batch):
         clusters = []
         print_fail(
             "At least one of the configured keyspaces"
-            f" for chain {currency}:{batch} does not exist."
+            f" for chain {currency} does not exist."
         )
     return (currency, len(clusters))
 

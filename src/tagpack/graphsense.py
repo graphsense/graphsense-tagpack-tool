@@ -77,7 +77,7 @@ class GraphSense(object):
             for k, keyspace in self.ks_map.items():
                 query = "SELECT keyspace_name FROM system_schema.keyspaces"
                 result = self.session.execute(query)
-                keyspaces = [row.keyspace_name for row in result]
+                keyspaces = [row["keyspace_name"] for row in result]
                 if keyspace not in keyspaces:
                     return False
 
