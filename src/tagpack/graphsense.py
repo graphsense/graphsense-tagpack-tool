@@ -74,10 +74,11 @@ class GraphSense(object):
 
     def keyspace_for_curreny_exists(self, currency: str) -> bool:
         if self.contains_keyspace_mapping(currency):
-            for k, keyspace in self.ks_map.items():
+            for k, keyspace in self.ks_map[currency].items():
                 query = "SELECT keyspace_name FROM system_schema.keyspaces"
                 result = self.session.execute(query)
                 keyspaces = [row["keyspace_name"] for row in result]
+
                 if keyspace not in keyspaces:
                     return False
 
