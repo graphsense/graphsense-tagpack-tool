@@ -80,6 +80,11 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     rel_path = str(pathlib.Path(tagpack_file).relative_to(repo_path))
 
     u = next(repo.remotes[0].urls)
+    if u.endswith("/"):
+        u = u[:-1]
+    if not u.endswith(".git"):
+        u += ".git"
+
     g = gup.parse(u).url2https.replace(".git", "")
     res = f"{g}/tree/{repo.active_branch.name}/{rel_path}"
 
