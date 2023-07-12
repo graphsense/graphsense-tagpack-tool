@@ -130,7 +130,7 @@ def test_check_taxonomies(schema, taxonomies):
     schema.schema["actor"]["invalidtax"] = {"taxonomy": "nonexistent"}
     with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("invalidtax", "value", taxonomies)
-    assert "Unknown taxonomy in" in str(e.value)
+    assert "Unknown taxonomy" in str(e.value)
 
     assert schema.check_taxonomies("categories", "exchange", taxonomies)
     with pytest.raises(ValidationError) as e:

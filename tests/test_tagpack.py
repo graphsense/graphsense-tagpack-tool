@@ -24,7 +24,23 @@ def taxonomies():
     tax_abuse = Taxonomy("abuse", "http://example.com/abuse")
     tax_abuse.add_concept("bad_coding", "Bad coding", None, "Really bad")
 
-    taxonomies = {"entity": tax_entity, "abuse": tax_abuse}
+    tax_conf = Taxonomy("confidence", "http://example.com/abuse")
+    tax_conf.add_concept("web_crawl", "web_crawl", None, "Really bad")
+    tax_conf.add_concept("unknown", "unknown", None, "Really bad")
+    tax_conf.add_concept("heuristic", "heuristic", None, "")
+
+    tax_conc = Taxonomy("concept", "http://example.com/abuse")
+    tax_conc.add_concept("web_crawl", "web_crawl", None, "Really bad")
+    tax_conc.add_concept("bad_coding", "bad_coding", None, "Really bad")
+    tax_conc.add_concept("exchange", "exchange", None, "Really bad")
+    tax_conc.add_concept("stuff", "stuff", None, "Really bad")
+
+    taxonomies = {
+        "entity": tax_entity,
+        "abuse": tax_abuse,
+        "confidence": tax_conf,
+        "concept": tax_conc,
+    }
     return taxonomies
 
 
@@ -37,6 +53,9 @@ def tagpack(schema, taxonomies):
             "creator": "GraphSense Team",
             "source": "http://example.com/my_addresses",
             "currency": "BTC",
+            "abuse": "bad_coding",
+            "category": "exchange",
+            "concepts": ["stuff"],
             "lastmod": date.fromisoformat("2021-04-21"),
             "tags": [
                 {
@@ -121,7 +140,18 @@ def tagpack_conf(schema, taxonomies):
 
 
 def test_all_header_fields(tagpack, schema):
-    h = ["confidence", "title", "creator", "source", "currency", "lastmod", "tags"]
+    h = [
+        "confidence",
+        "title",
+        "creator",
+        "source",
+        "currency",
+        "lastmod",
+        "tags",
+        "category",
+        "abuse",
+        "concepts",
+    ]
 
     assert all(field in tagpack.all_header_fields for field in h)
     assert len(h) == len(tagpack.all_header_fields)
@@ -139,12 +169,13 @@ def test_header_fields(tagpack):
 
 def test_explicit_tag_fields(tagpack):
     tag = tagpack.tags[0]
-    t = ["label", "address"]
+    t = ["label", "address", "concepts"]
+
     assert all(field in tag.explicit_fields for field in t)
     assert len(t) == len(tag.explicit_fields)
 
     tag = tagpack.tags[1]
-    t = ["label", "address", "context", "currency"]
+    t = ["label", "address", "context", "currency", "concepts"]
     assert all(field in tag.explicit_fields for field in t)
     assert len(t) == len(tag.explicit_fields)
 
@@ -358,7 +389,7 @@ def test_validate_fail_taxonomy(tagpack):
 
     with pytest.raises(ValidationError) as e:
         tagpack.validate()
-    assert "Undefined concept UNKNOWN in field category" in str(e.value)
+    assert "Undefined concept UNKNOWN" in str(e.value)
 
 
 def test_validate_fail_taxonomy_header(tagpack):
@@ -366,7 +397,7 @@ def test_validate_fail_taxonomy_header(tagpack):
 
     with pytest.raises(ValidationError) as e:
         tagpack.validate()
-    assert "Undefined concept unknown in field category" in str(e.value)
+    assert "Undefined concept unknown" in str(e.value)
 
 
 def test_validate_fail_empty_header_field(tagpack):
@@ -501,7 +532,7 @@ def test_yaml_inclusion_overwrite_abuse(taxonomies):
     assert tagpack.tags[0].contents["abuse"] == "sextortion"
 
 
-def test_empty_tag_list_raises():
+def test_empty_tag_list_raises(taxonomies):
     tagpack = TagPack.load_from_file(
         "http://example.com/packs",
         "tests/testfiles/simple/empty_tag_list.yaml",
@@ -513,7 +544,7 @@ def test_empty_tag_list_raises():
         tagpack.validate()
 
 
-def test_multiple_tags_for_one_address_work():
+def test_multiple_tags_for_one_address_work(taxonomies):
     tagpack = TagPack.load_from_file(
         "http://example.com/packs",
         "tests/testfiles/simple/multiple_tags_for_address.yaml",
@@ -524,7 +555,7 @@ def test_multiple_tags_for_one_address_work():
     tagpack.validate()
 
 
-def test_duplicate_does_not_raise_only_inform(capsys):
+def test_duplicate_does_not_raise_only_inform(capsys, taxonomies):
     tagpack = TagPack.load_from_file(
         "http://example.com/packs",
         "tests/testfiles/simple/duplicate_tag.yaml",
@@ -554,3 +585,29 @@ def test_conf_level_mandatory_preserve_user_set_values(tagpack_conf):
 
     assert tagpack_conf.tags[0].all_fields.get("confidence") == "heuristic"
     assert tagpack_conf.tags[1].all_fields.get("confidence") == "web_crawl"
+
+
+def test_missing_concepts_dont_validate(tagpack):
+    tagpack.contents["concepts"] = ["web_crawl", "bad_coding", "blub"]
+    with pytest.raises(ValidationError) as e:
+        tagpack.validate()
+    assert "Undefined concept blub for concepts field" in str(e.value)
+
+
+def test_existing_concepts_validate(tagpack):
+    tagpack.contents["concepts"] = ["web_crawl", "bad_coding"]
+    tagpack.validate()
+
+
+def test_concepts_always_contain_abuse_and_category(tagpack):
+    assert set(tagpack.tags[0].contents["concepts"]) == {
+        "exchange",
+        "bad_coding",
+        "stuff",
+    }
+    assert set(tagpack.tags[1].contents["concepts"]) == {
+        "exchange",
+        "bad_coding",
+        "stuff",
+    }
+    tagpack.validate()

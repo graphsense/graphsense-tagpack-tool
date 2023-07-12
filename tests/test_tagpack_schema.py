@@ -134,9 +134,9 @@ def test_check_taxonomies(schema, taxonomies):
     assert schema.check_taxonomies("category", "exchange", taxonomies)
     with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("category", "test", taxonomies)
-    assert "Undefined concept test in field category" in str(e.value)
+    assert "Undefined concept test for category field" in str(e.value)
 
     schema.schema["tag"]["dummy"] = {"taxonomy": "test"}
     with pytest.raises(ValidationError) as e:
         assert schema.check_taxonomies("dummy", "test", taxonomies)
-    assert "Unknown taxonomy test" in str(e.value)
+    assert "Unknown taxonomy" in str(e.value) and "test" in str(e.value)

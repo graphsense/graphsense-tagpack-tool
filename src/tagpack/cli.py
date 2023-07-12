@@ -9,6 +9,7 @@ from multiprocessing import Pool, cpu_count
 
 import pandas as pd
 import yaml
+from anytree import RenderTree
 
 # colorama fixes issues with redirecting colored outputs to files
 from colorama import init
@@ -47,6 +48,7 @@ DEFAULT_CONFIG = {
     "taxonomies": {
         "entity": "src/tagpack/db/entities.yaml",
         "abuse": "src/tagpack/db/abuses.yaml",
+        "concept": "src/tagpack/db/concepts.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
     }
@@ -84,7 +86,7 @@ def list_taxonomies(args=None):
         print_line("No configured taxonomies", "fail")
     else:
         for key, value in config["taxonomies"].items():
-            print_line(value)
+            print_info(value)
             count += 1
         print_line(f"{count} configured taxonomies", "success")
 
@@ -100,20 +102,25 @@ def show_taxonomy_concepts(args, remote=False):
     uri = config["taxonomies"][args.taxonomy]
     print(f"URI: {uri}\n")
     taxonomy = _load_taxonomy(config, args.taxonomy)
-    if args.verbose:
-        headers = ["Id", "Label", "Level", "Uri", "Description"]
-        table = [
-            [c.id, c.label, c.level, c.uri, c.description] for c in taxonomy.concepts
-        ]
-    elif args.taxonomy == "confidence":
-        headers = ["Level", "Label"]
-        table = [[c.level, c.label] for c in taxonomy.concepts]
+    if args.tree:
+        for pre, fill, node in RenderTree(taxonomy.get_concept_tree()):
+            print("%s%s" % (pre, node.name))
     else:
-        headers = ["Id", "Label"]
-        table = [[c.id, c.label] for c in taxonomy.concepts]
+        if args.verbose:
+            headers = ["Id", "Label", "Level", "Uri", "Description"]
+            table = [
+                [c.id, c.label, c.level, c.uri, c.description]
+                for c in taxonomy.concepts
+            ]
+        elif args.taxonomy == "confidence":
+            headers = ["Level", "Label"]
+            table = [[c.level, c.label] for c in taxonomy.concepts]
+        else:
+            headers = ["Id", "Label"]
+            table = [[c.id, c.label] for c in taxonomy.concepts]
 
-    print(tabulate(table, headers=headers))
-    print_line(f"{len(taxonomy.concepts)} taxonomy concepts", "success")
+        print(tabulate(table, headers=headers))
+        print_line(f"{len(taxonomy.concepts)} taxonomy concepts", "success")
 
 
 def insert_taxonomy(args, remote=False):
@@ -1435,10 +1442,11 @@ def main():
     pxp_s.add_argument(
         "taxonomy",
         metavar="TAXONOMY_KEY",
-        choices=["abuse", "entity", "confidence", "country"],
+        choices=["abuse", "entity", "confidence", "country", "concept"],
         help="the selected taxonomy",
     )
     pxp_s.add_argument("-v", "--verbose", action="store_true", help="verbose concepts")
+    pxp_s.add_argument("--tree", action="store_true", help="Show as tree")
     pxp_s.set_defaults(func=show_taxonomy_concepts)
 
     # parser for taxonomy insert command

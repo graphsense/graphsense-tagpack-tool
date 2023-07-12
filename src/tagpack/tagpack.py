@@ -532,6 +532,19 @@ class Tag(object):
         if type(self.contents.get("context", None)) == dict:
             apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
 
+        # set default values for concepts field
+        # make sure abuse and category are always part of the context
+        concepts = self.all_fields.get("concepts", [])
+        category = self.all_fields.get("category", None)
+        abuse = self.all_fields.get("abuse", None)
+        if abuse and abuse not in concepts:
+            concepts.append(abuse)
+
+        if category and category not in concepts:
+            concepts.append(category)
+
+        self.contents["concepts"] = concepts
+
     @staticmethod
     def from_contents(contents, tagpack):
         return Tag(contents, tagpack)

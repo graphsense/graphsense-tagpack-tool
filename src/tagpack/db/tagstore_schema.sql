@@ -114,6 +114,14 @@ CREATE TABLE tag (
     CONSTRAINT unique_tag UNIQUE (address, currency, tagpack, label, source)
 );
 
+
+CREATE TABLE tag_concept (
+    id                  SERIAL      PRIMARY KEY,
+    tag_id              INTEGER     REFERENCES tag(id) ON DELETE CASCADE,
+    concept_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE,
+    CONSTRAINT unique_concept UNIQUE (tag_id, concept_id)
+);
+
 CREATE INDEX tag_label_index ON tag (label);
 CREATE INDEX tag_address_index ON tag (address);
 CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);

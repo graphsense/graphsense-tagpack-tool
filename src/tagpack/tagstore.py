@@ -8,7 +8,7 @@ import numpy as np
 from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
 from psycopg2.extensions import AsIs, register_adapter
-from psycopg2.extras import execute_batch
+from psycopg2.extras import execute_batch, execute_values
 
 from tagpack import ValidationError
 from tagpack.utils import get_github_repo_url
@@ -140,29 +140,51 @@ class TagStore(object):
         self.cursor.execute(q, v)
         self.conn.commit()
 
-        addr_sql = "INSERT INTO address (currency, address) VALUES (%s, %s) \
+        addr_sql = "INSERT INTO address (currency, address) VALUES %s \
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
             currency, is_cluster_definer, confidence, lastmod, \
             context, tagpack, actor ) VALUES \
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            %s RETURNING id"
+
+        tag_concept_sql = "INSERT INTO tag_concept (tag_id, concept_id) VALUES %s \
+            ON CONFLICT DO NOTHING"
+
+        def insert_tags_batch(tag_data, tag_concepts, address_data):
+            execute_values(self.cursor, addr_sql, address_data, template="(%s, %s)")
+            new_ids = execute_values(
+                self.cursor,
+                tag_sql,
+                tag_data,
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                fetch=True,
+                page_size=batch,
+            )
+
+            assert len(tag_concepts) == len(new_ids)
+            tcd = []
+            for tag_id, concept_ids in zip(new_ids, tag_concepts):
+                for tc in concept_ids:
+                    tcd.append((tag_id, tc))
+            execute_values(self.cursor, tag_concept_sql, tcd, template="(%s, %s)")
 
         tag_data = []
         address_data = []
+        tag_concepts = []
         for tag in tagpack.get_unique_tags():
             if self._supports_currency(tag):
                 tag_data.append(_get_tag(tag, tagpack_id))
                 address_data.append(_get_currency_and_address(tag))
-            if len(tag_data) > batch:
-                execute_batch(self.cursor, addr_sql, address_data)
-                execute_batch(self.cursor, tag_sql, tag_data)
+                tag_concepts.append(_get_tag_concepts(tag))
 
+            if len(tag_data) > batch:
+                insert_tags_batch(tag_data, tag_concepts, address_data)
                 tag_data = []
                 address_data = []
+                tag_concepts = []
 
         # insert remaining items
-        execute_batch(self.cursor, addr_sql, address_data)
-        execute_batch(self.cursor, tag_sql, tag_data)
+        insert_tags_batch(tag_data, tag_concepts, address_data)
 
     def actorpack_exists(self, prefix, actorpack_name):
         if not self.existing_actorpacks:
@@ -483,10 +505,22 @@ class TagStore(object):
                             t.address,
                             t.label,
                             t.source,
+                            t.actor,
+                            t.is_cluster_definer,
+                            t.category,
+                            t.currency,
+                            t.confidence,
+                            t.abuse,
                             tp.creator,
                             ROW_NUMBER() OVER (PARTITION BY t.address,
                                 t.label,
                                 t.source,
+                                t.actor,
+                                t.is_cluster_definer,
+                                t.category,
+                                t.currency,
+                                t.confidence,
+                                t.abuse,
                                 tp.creator ORDER BY t.id DESC)
                                     AS duplicate_count
                         FROM
@@ -830,6 +864,10 @@ def validate_currency(currency):
     currency = currency.upper()
     if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
         raise ValidationError(f"Currency not supported: {currency}")
+
+
+def _get_tag_concepts(tag):
+    return tag.all_fields.get("concepts", [])
 
 
 def _get_tag(tag, tagpack_id):

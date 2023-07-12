@@ -2,10 +2,12 @@
 
 import csv
 import json
+from collections import deque
 from io import StringIO
 
 import requests
 import yaml
+from anytree import Node
 
 from .utils import open_localfile_with_pkgresource_fallback
 
@@ -21,13 +23,17 @@ class Concept(object):
 
     """
 
-    def __init__(self, taxonomy, id, uri, label, level, description):
+    def __init__(
+        self, taxonomy, id, uri, label, level, description, parent=None, children=None
+    ):
         self.taxonomy = taxonomy
         self.id = id
         self.uri = uri
         self.label = label
         self.level = level
         self.description = description
+        self.parent = parent
+        self.children = children
 
     def to_json(self):
         return json.dumps(
@@ -108,7 +114,16 @@ class Taxonomy(object):
                         level = value.get("level", None)
                         desc = value.get("description", "")
                         self.concepts.append(
-                            Concept(self, ident, uri, label, level, desc)
+                            Concept(
+                                self,
+                                ident,
+                                uri,
+                                label,
+                                level,
+                                desc,
+                                parent=value.get("broader", None),
+                                children=value.get("narrower", None),
+                            )
                         )
 
     @property
@@ -122,6 +137,21 @@ class Taxonomy(object):
 
     def to_json(self):
         return json.dumps({"key": self.key, "uri": self.uri})
+
+    def get_concept_tree(self):
+        root = Node("root")
+        lookup = {None: root}
+        queue = deque(list(self.concepts))
+        while queue:
+            c = queue.popleft()
+            p = c.parent
+            if p in lookup:
+                n = Node(c.id, parent=lookup[p])
+                lookup[c.id] = n
+            else:
+                queue.append(c)
+
+        return root
 
     def __str__(self):
         s = [str(self.key), str(self.uri)]

@@ -78,12 +78,16 @@ class ActorPackSchema(object):
 
         expected_taxonomies = [taxonomies.get(i) for i in expected_taxonomy_ids]
         if None in expected_taxonomies:
-            raise ValidationError(f"Unknown taxonomy in {expected_taxonomy_ids}")
+            raise ValidationError(f"Unknown taxonomy {expected_taxonomy_ids}")
 
         for v in value if isinstance(value, list) else [value]:
+            in_one_tax = False
             for t in expected_taxonomies:
                 if v in t.concept_ids:
-                    return True
+                    in_one_tax = True
+                    break
+            if not in_one_tax:
+                msg = f"Undefined concept {v} for {field} field"
+                raise ValidationError(msg)
 
-            msg = f"Undefined concept {v} for {field} field"
-            raise ValidationError(msg)
+        return True
