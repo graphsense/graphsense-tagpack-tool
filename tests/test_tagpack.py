@@ -421,11 +421,12 @@ def test_simple_file_collection():
     h_files = collect_tagpack_files(prefix)
     header_dir, files = h_files.popitem()
 
-    assert len(files) == 4
+    assert len(files) == 5
     assert f"{prefix}/ex_addr_tagpack.yaml" in files
     assert f"{prefix}/duplicate_tag.yaml" in files
     assert f"{prefix}/empty_tag_list.yaml" in files
     assert f"{prefix}/multiple_tags_for_address.yaml" in files
+    assert f"{prefix}/with_concepts.yaml" in files
 
 
 def test_file_collection_with_yaml_include():
@@ -482,6 +483,28 @@ def test_file_collection_with_missing_yaml_include_raises_exception():
     with pytest.raises(FileNotFoundError) as e:
         TagPack.load_from_file(None, files[0], None, None, headerfile_path)
     assert "No such file or directory: 'header.yaml'" in str(e.value)
+
+
+def test_file_collection_simple_with_concepts(taxonomies):
+    bdir = "tests/testfiles/simple/with_concepts.yaml"
+    h_files = collect_tagpack_files(bdir)
+    headerfile_path, files = h_files.popitem()
+    files = list(files)
+
+    assert not headerfile_path
+
+    tagpack = TagPack.load_from_file(
+        None, files[0], TagPackSchema(), taxonomies, headerfile_path
+    )
+
+    assert tagpack.tags[0].all_fields.get("concepts") == ["stuff"]
+    assert tagpack.tags[1].all_fields.get("concepts") == ["exchange"]
+
+    tagpack.validate()
+
+    tagpack.tags[1].contents["concepts"] = ["asdf"]
+    with pytest.raises(ValidationError):
+        tagpack.validate()
 
 
 def test_load_from_file_addr_tagpack(taxonomies):
