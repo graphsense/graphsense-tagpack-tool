@@ -9,7 +9,7 @@ from pandas import pandas as pd
 
 
 def eth_address_to_hex(address):
-    if isinstance(type(address), bytes):
+    if type(address) is bytes:
         return address
     return "0x" + address.hex()
 

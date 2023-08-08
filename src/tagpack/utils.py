@@ -35,7 +35,7 @@ def try_parse_date(date, format="%Y-%m-%d"):
     Returns:
         Union[str|object]: Either returns a parsed date or the original object
     """
-    if date is not None and isinstance(type(date), str):
+    if date is not None and type(date) is str:
         try:
             return datetime.strptime(date, format)
         except ValueError:
