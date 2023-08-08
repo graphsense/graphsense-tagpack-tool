@@ -64,7 +64,7 @@ def get_user_choice(label, options):
 
     input_message = f"Choose for {bcolors.BOLD}{label}{bcolors.ENDC}\n"
     for index, lbl in enumerate(options):
-        if type(lbl) == tuple:
+        if isinstance(type(lbl), tuple):
             _, lbl = lbl
         input_message += f"\t{bcolors.BOLD}{index}{bcolors.ENDC} {lbl}\n"
     input_message += f"\t{bcolors.BOLD}ENTER{bcolors.ENDC} to skip\n"
@@ -78,7 +78,7 @@ def get_user_choice(label, options):
 
     if user_input:
         result = options[int(user_input)]
-        if type(result) == tuple:
+        if isinstance(type(result), tuple):
             ident, _ = result
             return ident
         return result

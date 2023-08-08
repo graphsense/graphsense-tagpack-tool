@@ -30,7 +30,7 @@ def check_type_dict(udts, field_name, field_definition, dct):
     if "item_type" in field_definition:
         fd_def = load_field_type_definition(udts, field_definition["item_type"])
 
-        if type(fd_def) == str:
+        if isinstance(type(fd_def), str):
             raise ValidationError(f"Type of dict {field_name} is a basic type {fd_def}")
 
         # check mandatory entries

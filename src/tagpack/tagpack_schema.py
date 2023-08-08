@@ -70,7 +70,7 @@ class TagPackSchema(object):
             raise ValidationError("No taxonomies loaded")
 
         expected_taxonomy_ids = self.field_taxonomy(field)
-        if type(expected_taxonomy_ids) == str:
+        if isinstance(type(expected_taxonomy_ids), str):
             expected_taxonomy_ids = [expected_taxonomy_ids]
 
         expected_taxonomies = [taxonomies.get(i) for i in expected_taxonomy_ids]
