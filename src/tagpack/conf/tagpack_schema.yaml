@@ -33,6 +33,7 @@ tag:
     mandatory: false
   confidence:
     type: text
+    taxonomy: confidence
     mandatory: true
   is_cluster_definer:
     type: boolean
@@ -54,3 +55,8 @@ tag:
   actor:
     type: text
     mandatory: false
+  concepts:
+    type: list
+    item_type: text
+    mandatory: false
+    taxonomy: concept

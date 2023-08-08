@@ -1,13 +1,11 @@
 """TagPack - A wrappers TagPack Schema"""
-import datetime
 import importlib.resources as pkg_resources
-import json
-from json import JSONDecodeError
 
 import pandas as pd
 import yaml
 
 from tagpack import ValidationError
+from tagpack.schema import check_type
 
 from . import conf, db
 
@@ -49,56 +47,44 @@ class TagPackSchema(object):
     def field_type(self, field):
         return self.all_fields[field]["type"]
 
+    def field_definition(self, field):
+        return self.all_fields.get(field, None)
+
     def field_taxonomy(self, field):
         return self.all_fields[field].get("taxonomy")
 
     def check_type(self, field, value):
         """Checks whether a field's type matches the definition"""
-        schema_type = self.field_type(field)
-        if schema_type == "text":
-            if not isinstance(value, str):
-                raise ValidationError("Field {} must be of type text".format(field))
-            if not len(value) >= 1:
-                raise ValidationError("Empty value in text field {}".format(field))
-            if field == "context":
-                try:
-                    json.loads(value)
-                except JSONDecodeError as e:
-                    raise ValidationError(
-                        f"Invalid JSON in field context with value {value}: {e}"
-                    )
-            elif field == "confidence":
-                if value not in self.confidences.index:
-                    raise ValidationError(f"{value} is not a valid confidence value.")
-        elif schema_type == "datetime":
-            if not isinstance(value, datetime.date):
-                raise ValidationError("Field {} must be of type datetime".format(field))
-        elif schema_type == "int":
-            if not isinstance(value, int):
-                raise ValidationError("Field {} must be of type integer".format(field))
-        elif schema_type == "boolean":
-            if not isinstance(value, bool):
-                raise ValidationError("Field {} must be of type boolean".format(field))
-        elif schema_type == "list":
-            if not isinstance(value, list):
-                raise ValidationError("Field {} must be of type list".format(field))
-        else:
-            raise ValidationError("Unsupported schema type {}".format(schema_type))
-        return True
+        # schema_type = self.field_type(field)
+        field_def = self.field_definition(field)
+        if field_def is None:
+            raise ValidationError(f"Field {field} not defined in schema.")
+        return check_type(self.schema, field, field_def, value)
 
     def check_taxonomies(self, field, value, taxonomies):
         """Checks whether a field uses values from given taxonomies"""
-        if taxonomies and self.field_taxonomy(field):
-            expected_taxonomy_id = self.field_taxonomy(field)
-            expected_taxonomy = taxonomies.get(expected_taxonomy_id)
+        if not self.field_taxonomy(field):
+            # No taxonomy was requested
+            return True
+        elif not taxonomies:
+            raise ValidationError("No taxonomies loaded")
 
-            if expected_taxonomy is None:
-                raise ValidationError(
-                    "Unknown taxonomy {}".format(expected_taxonomy_id)
-                )
+        expected_taxonomy_ids = self.field_taxonomy(field)
+        if type(expected_taxonomy_ids) == str:
+            expected_taxonomy_ids = [expected_taxonomy_ids]
 
-            if value not in expected_taxonomy.concept_ids:
-                raise ValidationError(
-                    "Undefined concept {} in field {}".format(value, field)
-                )
+        expected_taxonomies = [taxonomies.get(i) for i in expected_taxonomy_ids]
+        if None in expected_taxonomies:
+            raise ValidationError(f"Unknown taxonomy {expected_taxonomy_ids}")
+
+        for v in value if isinstance(value, list) else [value]:
+            in_one_tax = False
+            for t in expected_taxonomies:
+                if v in t.concept_ids:
+                    in_one_tax = True
+                    break
+            if not in_one_tax:
+                msg = f"Undefined concept {v} for {field} field"
+                raise ValidationError(msg)
+
         return True
