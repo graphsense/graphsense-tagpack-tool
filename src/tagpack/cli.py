@@ -408,6 +408,7 @@ def add_actors_to_tagpack(args):
                     tagpack.contents["tags"] = tagpack.contents.pop(
                         "tags"
                     )  # re-insert tags
+                    tagpack.update_lastmod()
                     yaml.dump(
                         tagpack.contents, outfile, sort_keys=False
                     )  # write in order of insertion

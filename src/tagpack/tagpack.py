@@ -6,6 +6,7 @@ import os
 import pathlib
 import sys
 from collections import defaultdict
+from datetime import date
 
 import coinaddrvalidator
 import giturlparse as gup
@@ -199,6 +200,9 @@ class TagPack(object):
                 contents[k] = v
             contents.pop("header")
         return TagPack(uri, contents, schema, taxonomies)
+
+    def update_lastmod(self):
+        self.contents["lastmod"] = date.today()
 
     def init_default_values(self):
         if "confidence" not in self.contents and not all(
