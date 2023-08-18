@@ -785,40 +785,40 @@ class TagStore(object):
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
-    @auto_commit
-    def update_tags_actors(self):
-        """
-        Update the `tag.actor` field by searching an actor.id that matches with
-        the `tag.label`. Tags marked as abuse are excluded from the update.
-        """
-        # TODO this is a test actor list
-        actors = """
-        'bitmex', 'bitfinex', 'huobi', 'binance', 'coinbase', 'zaif',
-        'mtgox', 'okx', 'poloniex', 'kucoin', 'kraken', 'bitstamp', 'bithumb',
-        'shapeshift', 'deribit', 'gemini', 'f2pool', 'bittrex', 'crypto.com',
-        'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io',
-        '0x', '1inch', 'aave', 'badger', 'balancer', 'barnbridge', 'compound',
-        'convex', 'curvefinance', 'dydx', 'fei', 'futureswap',
-        'harvestfinance', 'hegic', 'instadapp', 'maker', 'nexus', 'renvm',
-        'sushiswap', 'synthetix', 'uniswap', 'vesper', 'yearn'
-        """
-        q = (
-            "UPDATE tag SET actor=a.id "
-            f"FROM (SELECT id FROM actor WHERE id in ({actors})) a "
-            "WHERE tag.abuse IS NULL "
-            "AND tag.label ILIKE CONCAT(a.id, '%')"
-        )
-        # "AND tag.label NOT LIKE 'upbit hack%' "\
-        self.cursor.execute(q)
-        rowcount = self.cursor.rowcount
-        # This query is to normalize OKEX/OKX/OKB tags
-        q = (
-            "UPDATE tag SET actor='okx' "
-            "WHERE abuse IS NULL "
-            "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
-        )
-        self.cursor.execute(q)
-        return rowcount
+    # @auto_commit
+    # def update_tags_actors(self):
+    #     """
+    #     Update the `tag.actor` field by searching an actor.id that matches with
+    #     the `tag.label`. Tags marked as abuse are excluded from the update.
+    #     """
+    #     # TODO this is a test actor list
+    #     actors = """
+    #     'bitmex', 'bitfinex', 'huobi', 'binance', 'coinbase', 'zaif',
+    #     'mtgox', 'okx', 'poloniex', 'kucoin', 'kraken', 'bitstamp', 'bithumb',
+    #     'shapeshift', 'deribit', 'gemini', 'f2pool', 'bittrex', 'crypto.com',
+    #     'coinmetro', 'bter.com', 'cryptopia', 'hitbtc', 'paribu', 'gate.io',
+    #     '0x', '1inch', 'aave', 'badger', 'balancer', 'barnbridge', 'compound',
+    #     'convex', 'curvefinance', 'dydx', 'fei', 'futureswap',
+    #     'harvestfinance', 'hegic', 'instadapp', 'maker', 'nexus', 'renvm',
+    #     'sushiswap', 'synthetix', 'uniswap', 'vesper', 'yearn'
+    #     """
+    #     q = (
+    #         "UPDATE tag SET actor=a.id "
+    #         f"FROM (SELECT id FROM actor WHERE id in ({actors})) a "
+    #         "WHERE tag.abuse IS NULL "
+    #         "AND tag.label ILIKE CONCAT(a.id, '%')"
+    #     )
+    #     # "AND tag.label NOT LIKE 'upbit hack%' "\
+    #     self.cursor.execute(q)
+    #     rowcount = self.cursor.rowcount
+    #     # This query is to normalize OKEX/OKX/OKB tags
+    #     q = (
+    #         "UPDATE tag SET actor='okx' "
+    #         "WHERE abuse IS NULL "
+    #         "AND (label ILIKE 'okex%' OR label ILIKE 'okb%')"
+    #     )
+    #     self.cursor.execute(q)
+    #     return rowcount
 
     @auto_commit
     def update_quality_actors(self):
