@@ -46,9 +46,9 @@ CONFIG_FILE = "config.yaml"
 
 DEFAULT_CONFIG = {
     "taxonomies": {
+        "concept": "src/tagpack/db/concepts.yaml",
         "entity": "src/tagpack/db/entities.yaml",
         "abuse": "src/tagpack/db/abuses.yaml",
-        "concept": "src/tagpack/db/concepts.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
     }
@@ -1456,7 +1456,7 @@ def main():
         "taxonomy",
         metavar="TAXONOMY_KEY",
         nargs="?",
-        choices=["abuse", "entity", "confidence", "country"],
+        choices=["abuse", "entity", "confidence", "country", "concept"],
         default=None,
         help="the selected taxonomy",
     )
