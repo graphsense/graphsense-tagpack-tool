@@ -51,7 +51,7 @@ forum_mention:
   prefLabel: Forum Mention
   description: >
     Tag originating from a forum mention
-  broader: mention
+  broader: website_mention
 
 website_mention:
   id: website_mention
@@ -59,7 +59,7 @@ website_mention:
   prefLabel: Website Mention
   description: >
     Tag originating from a website mention
-  broader: forum_mention
+  broader: mention
 
 
 abuse:
