@@ -300,10 +300,10 @@ dark_web:
   type: concept
   prefLabel: Dark web
   description: >
-    Illegal Web content or service offerings exposed via darknets overlay networks, which
+    Web content or service offerings exposed via darknets overlay networks, which
     are only through networks such as Tor.
   seeAlso: https://en.wikipedia.org/wiki/Dark_web
-  broader: abuse
+  broader: source
 
 
 # High-level concepts Entities
