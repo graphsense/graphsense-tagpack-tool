@@ -35,8 +35,7 @@ CREATE TABLE confidence (
 -- Supported currencies
 
 -- CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
-CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC', 'WETH', 'USDC', 'USDT', 'TRX');
-
+-- CREATE TYPE currency AS VARCHAR;
 -- Actor and ActorPack tables
 
 CREATE TABLE actorpack (
@@ -77,7 +76,7 @@ CREATE TABLE actor_jurisdictions (
 -- Tag & TagPack tables
 
 CREATE TABLE address (
-    currency            currency    NOT NULL,
+    currency            VARCHAR    NOT NULL,
     address             VARCHAR     NOT NULL,
     created             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_mapped           BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -104,7 +103,7 @@ CREATE TABLE tag (
     is_cluster_definer  BOOLEAN     DEFAULT FALSE,
     lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     address             VARCHAR     NOT NULL,
-    currency            currency    NOT NULL,
+    currency            VARCHAR    NOT NULL,
     confidence          VARCHAR     REFERENCES confidence(id),
     abuse               VARCHAR     REFERENCES concept(id),
     category            VARCHAR     REFERENCES concept(id),
@@ -130,7 +129,7 @@ CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
 
 CREATE TABLE address_cluster_mapping (
     address             VARCHAR     NOT NULL,
-    currency            currency    NOT NULL,
+    currency            VARCHAR    NOT NULL,
     gs_cluster_id       INTEGER     NOT NULL,
     gs_cluster_def_addr VARCHAR     NOT NULL,
     gs_cluster_no_addr  INTEGER     DEFAULT NULL,
@@ -304,7 +303,7 @@ CREATE VIEW duplicate_tags AS
 DROP TABLE IF EXISTS address_quality;
 CREATE TABLE IF NOT EXISTS address_quality(
 	id SERIAL PRIMARY KEY,
-	currency currency,
+	currency VARCHAR,
 	address VARCHAR,
 	n_tags INTEGER,
 	n_dif_tags INTEGER,
@@ -331,7 +330,7 @@ BEGIN
 	DROP TABLE IF EXISTS quality_pairs;
 	CREATE TEMP TABLE IF NOT EXISTS quality_pairs(
 		id SERIAL PRIMARY KEY,
-		currency currency,
+		currency VARCHAR,
 		address VARCHAR,
 		label1 VARCHAR,
 		label2 VARCHAR,
@@ -340,7 +339,7 @@ BEGIN
 	DROP TABLE IF EXISTS quality_labels;
 	CREATE TEMP TABLE IF NOT EXISTS quality_labels(
 		id SERIAL PRIMARY KEY,
-		currency currency,
+		currency VARCHAR,
 		address VARCHAR,
 		label VARCHAR,
 		label_id INTEGER

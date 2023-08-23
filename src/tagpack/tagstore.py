@@ -44,8 +44,8 @@ class TagStore(object):
         self.conn = connect(url, options=f"-c search_path={schema}")
         self.cursor = self.conn.cursor()
 
-        self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
-        self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+        # self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
+        # self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
         self.existing_packs = None
         self.existing_actorpacks = None
 
@@ -602,7 +602,8 @@ class TagStore(object):
             execute_batch(self.cursor, q, data)
 
     def _supports_currency(self, tag):
-        return tag.all_fields.get("currency") in self.supported_currencies
+        # return tag.all_fields.get("currency") in self.supported_currencies
+        return True
 
     @auto_commit
     def finish_mappings_update(self, keys):

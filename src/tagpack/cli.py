@@ -466,7 +466,7 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     public, force = args.public, args.force
-    supported = tagstore.supported_currencies
+    # supported = tagstore.supported_currencies
     for i, tp in enumerate(sorted(prepared_packs), start=1):
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
@@ -489,8 +489,8 @@ def insert_tagpack(args):
 
     duration = round(time.time() - t0, 2)
     msg = "Processed {}/{} TagPacks with {} Tags in {}s. "
-    msg += "Only tags for supported currencies {} are inserted."
-    print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported), status)
+    # msg += "Only tags for supported currencies {} are inserted."
+    print_line(msg.format(no_passed, n_ppacks, no_tags, duration), status)
     msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
     msg += " consistent!"
     print_info(msg)
