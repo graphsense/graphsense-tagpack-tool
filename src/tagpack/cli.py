@@ -416,6 +416,34 @@ def add_actors_to_tagpack(args):
                 print_success("No actors added, moving on.")
 
 
+class Worker:
+    def __init__(self, url, db_schema, tp_schema, taxonomies, public, force):
+        self.url = url
+        self.db_schema = db_schema
+        self.tp_schema = tp_schema
+        self.taxonomies = taxonomies
+        self.public = public
+        self.force = force
+
+    def __call__(self, data):
+        i, tp = data
+        tagstore = TagStore(self.url, self.db_schema)
+        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
+        tagpack = TagPack.load_from_file(
+            uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
+        )
+
+        try:
+            tagstore.insert_tagpack(
+                tagpack, self.public, self.force, default_prefix, relpath
+            )
+            print_success(f"{i} {tagpack_file}: PROCESSED {len(tagpack.tags)} Tags")
+            return 1, len(tagpack.tags)
+        except Exception as e:
+            print_fail(f"{i} {tagpack_file}: FAILED", e)
+            return 0, 0
+
+
 def insert_tagpack(args):
     t0 = time.time()
     print_line("TagPack insert starts")
@@ -463,27 +491,17 @@ def insert_tagpack(args):
     n_ppacks = len(prepared_packs)
     print_info(f"Collected {n_ppacks} TagPack files\n")
 
-    no_passed = 0
-    no_tags = 0
     public, force = args.public, args.force
     supported = tagstore.supported_currencies
-    for i, tp in enumerate(sorted(prepared_packs), start=1):
-        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
-        tagpack = TagPack.load_from_file(
-            uri, tagpack_file, schema, taxonomies, headerfile_dir
-        )
+    packs = enumerate(sorted(prepared_packs), start=1)
 
-        print(f"{i} {tagpack_file}: ", end="")
-        try:
-            tagstore.insert_tagpack(
-                tagpack, public, force, prefix if prefix else default_prefix, relpath
-            )
-            print_success(f"PROCESSED {len(tagpack.tags)} Tags")
-            no_passed += 1
-            no_tags = no_tags + len(tagpack.tags)
-        except Exception as e:
-            print_fail("FAILED", e)
+    worker = Worker(args.url, args.schema, schema, taxonomies, public, force)
+    pool = Pool(processes=cpu_count() - 2)
+
+    results = [i for i in pool.imap_unordered(worker, packs)]
+
+    no_passed, no_tags = [sum(x) for x in zip(*results)]
 
     status = "fail" if no_passed < n_ppacks else "success"
 
