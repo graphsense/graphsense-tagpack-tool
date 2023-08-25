@@ -28,6 +28,9 @@ tag:
   currency:
     type: text
     mandatory: true
+  chain:
+    type: text
+    mandatory: true
   context:
     type: text
     mandatory: false

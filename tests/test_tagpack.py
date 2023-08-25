@@ -146,6 +146,7 @@ def test_all_header_fields(tagpack, schema):
         "creator",
         "source",
         "currency",
+        "chain",
         "lastmod",
         "tags",
         "category",
@@ -175,7 +176,7 @@ def test_explicit_tag_fields(tagpack):
     assert len(t) == len(tag.explicit_fields)
 
     tag = tagpack.tags[1]
-    t = ["label", "address", "context", "currency", "concepts"]
+    t = ["label", "address", "context", "currency", "chain", "concepts"]
     assert all(field in tag.explicit_fields for field in t)
     assert len(t) == len(tag.explicit_fields)
 

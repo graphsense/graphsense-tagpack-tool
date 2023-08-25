@@ -143,7 +143,7 @@ class TagStore(object):
         addr_sql = "INSERT INTO address (currency, address) VALUES %s \
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
-            currency, is_cluster_definer, confidence, lastmod, \
+            currency, chain, is_cluster_definer, confidence, lastmod, \
             context, tagpack, actor ) VALUES \
             %s RETURNING id"
 
@@ -156,7 +156,7 @@ class TagStore(object):
                 self.cursor,
                 tag_sql,
                 tag_data,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 fetch=True,
                 page_size=batch,
             )
@@ -172,10 +172,9 @@ class TagStore(object):
         address_data = []
         tag_concepts = []
         for tag in tagpack.get_unique_tags():
-            if self._supports_currency(tag):
-                tag_data.append(_get_tag(tag, tagpack_id))
-                address_data.append(_get_currency_and_address(tag))
-                tag_concepts.append(_get_tag_concepts(tag))
+            tag_data.append(_get_tag(tag, tagpack_id))
+            address_data.append(_get_currency_and_address(tag))
+            tag_concepts.append(_get_tag_concepts(tag))
 
             if len(tag_data) > batch:
                 insert_tags_batch(tag_data, tag_concepts, address_data)
@@ -601,10 +600,6 @@ class TagStore(object):
 
             execute_batch(self.cursor, q, data)
 
-    def _supports_currency(self, tag):
-        # return tag.all_fields.get("currency") in self.supported_currencies
-        return True
-
     @auto_commit
     def finish_mappings_update(self, keys):
         q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
@@ -810,6 +805,7 @@ def _get_tag(tag, tagpack_id):
         tag.all_fields.get("abuse", None),
         address,
         tag.all_fields.get("currency"),
+        tag.all_fields.get("chain"),
         tag.all_fields.get("is_cluster_definer"),
         tag.all_fields.get("confidence"),
         lastmod,

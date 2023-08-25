@@ -34,8 +34,6 @@ CREATE TABLE confidence (
 
 -- Supported currencies
 
--- CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
--- CREATE TYPE currency AS VARCHAR;
 -- Actor and ActorPack tables
 
 CREATE TABLE actorpack (
@@ -103,7 +101,8 @@ CREATE TABLE tag (
     is_cluster_definer  BOOLEAN     DEFAULT FALSE,
     lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     address             VARCHAR     NOT NULL,
-    currency            VARCHAR    NOT NULL,
+    currency            VARCHAR     NOT NULL,
+    chain               VARCHAR     NOT NULL,
     confidence          VARCHAR     REFERENCES confidence(id),
     abuse               VARCHAR     REFERENCES concept(id),
     category            VARCHAR     REFERENCES concept(id),
