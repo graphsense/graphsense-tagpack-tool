@@ -416,24 +416,47 @@ def add_actors_to_tagpack(args):
                 print_success("No actors added, moving on.")
 
 
-class Worker:
-    def __init__(self, url, db_schema, tp_schema, taxonomies, public, force):
+class InsertTagpackWorker:
+    def __init__(
+        self,
+        url,
+        db_schema,
+        tp_schema,
+        taxonomies,
+        public,
+        force,
+        single_thread_mode=False,
+        validate_tagpack=False,
+    ):
         self.url = url
         self.db_schema = db_schema
         self.tp_schema = tp_schema
         self.taxonomies = taxonomies
         self.public = public
         self.force = force
+        # if in single thread mode
+        # instead of creating an new instance every time
+        self.tagstore = (
+            TagStore(self.url, self.db_schema) if single_thread_mode else None
+        )
+        self.validate_tagpack = validate_tagpack
 
     def __call__(self, data):
         i, tp = data
-        tagstore = TagStore(self.url, self.db_schema)
+        tagstore = (
+            TagStore(self.url, self.db_schema)
+            if self.tagstore is None
+            else self.tagstore
+        )
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
         tagpack = TagPack.load_from_file(
             uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
         )
 
         try:
+            print_info(f"{i} {tagpack_file}: INSERTING {len(tagpack.tags)} Tags")
+            if self.validate_tagpack:
+                tagpack.validate()
             tagstore.insert_tagpack(
                 tagpack, self.public, self.force, default_prefix, relpath
             )
@@ -496,10 +519,33 @@ def insert_tagpack(args):
 
     packs = enumerate(sorted(prepared_packs), start=1)
 
-    worker = Worker(args.url, args.schema, schema, taxonomies, public, force)
-    pool = Pool(processes=cpu_count() - 2)
+    n_processes = args.n_workers if args.n_workers > 0 else cpu_count() - args.n_workers
 
-    results = [i for i in pool.imap_unordered(worker, packs)]
+    if n_processes < 1:
+        print_fail(f"Can't use {n_processes} adjust your n_workers setting.")
+        sys.exit(100)
+
+    if n_processes > 1:
+        print_info(f"Running parallel insert on {n_processes} workers.")
+
+    worker = InsertTagpackWorker(
+        args.url,
+        args.schema,
+        schema,
+        taxonomies,
+        public,
+        force,
+        single_thread_mode=n_processes == 1,
+        validate_tagpack=not args.no_validation,
+    )
+
+    if n_processes != 1:
+        pool = Pool(processes=n_processes)
+
+        results = list(pool.imap_unordered(worker, packs, chunksize=10))
+    else:
+        # process data in the main process, makes debugging easier
+        results = [worker(p) for p in packs]
 
     no_passed, no_tags = [sum(x) for x in zip(*results)]
 
@@ -962,6 +1008,9 @@ def sync_repos(args):
                             temp_dir_tt,
                             "-u",
                             args.url,
+                            "--n-workers",
+                            str(args.n_workers),
+                            "--no-validation" if args.no_validation else None,
                         ]
                     )
                 )
@@ -1145,6 +1194,21 @@ def main():
         "--run-cluster-mapping-with-env",
         help="Environment in graphsense-lib config" " to use for the mapping process",
     )
+    parser_syc.add_argument(
+        "--n-workers",
+        type=int,
+        default=1,
+        help=(
+            "number of workers to use for the tagpack insert. "
+            "Default is 1. Zero or negative values are used as"
+            "offset of the machines cpu_count."
+        ),
+    )
+    parser_syc.add_argument(
+        "--no-validation",
+        action="store_true",
+        help="Do not validate tagpacks before insert. (better insert speed)",
+    )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
     # parsers for tagpack command
@@ -1254,6 +1318,21 @@ def main():
     )
     ptp_i.add_argument(
         "--no_git", action="store_true", help="Disables check for local git repository"
+    )
+    ptp_i.add_argument(
+        "--n-workers",
+        type=int,
+        default=1,
+        help=(
+            "number of workers to use for the tagpack insert. "
+            "Default is 1. Zero or negative values are used as"
+            "offset of the machines cpu_count."
+        ),
+    )
+    ptp_i.add_argument(
+        "--no-validation",
+        action="store_true",
+        help="Do not validate tagpacks before insert. (better insert speed)",
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import textwrap
+import time
 from datetime import datetime
 from functools import wraps
 from typing import List
@@ -7,10 +8,12 @@ from typing import List
 import numpy as np
 from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
+from psycopg2.errors import DeadlockDetected
 from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch, execute_values
 
 from tagpack import ValidationError
+from tagpack.cmd_utils import print_warn
 from tagpack.utils import get_github_repo_url
 
 register_adapter(np.int64, AsIs)
@@ -37,6 +40,25 @@ def auto_commit(function):
         return output
 
     return wrapper
+
+
+def retry_on_deadlock(times=1):
+    def innerfun(function):
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            while attempt < times:
+                try:
+                    return function(*args, **kwargs)
+                except DeadlockDetected:
+                    time.sleep(1)
+                    print_warn(f"Deadlock Detected retrying, n={times-attempt} times")
+                    attempt += 1
+            return function(*args, **kwargs)
+
+        return wrapper
+
+    return innerfun
 
 
 class TagStore(object):
@@ -114,6 +136,7 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
+    @retry_on_deadlock(times=3)
     @auto_commit
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
