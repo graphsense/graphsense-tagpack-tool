@@ -36,7 +36,7 @@ from tagpack.tagpack import (
     get_uri_for_tagpack,
 )
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.tagstore import TagStore
+from tagpack.tagstore import InsertTagpackWorker, TagStore
 from tagpack.taxonomy import Taxonomy
 from tagpack.utils import strip_empty
 
@@ -416,69 +416,6 @@ def add_actors_to_tagpack(args):
                 print_success("No actors added, moving on.")
 
 
-class InsertTagpackWorker:
-    def __init__(
-        self,
-        url,
-        db_schema,
-        tp_schema,
-        taxonomies,
-        public,
-        force,
-        single_thread_mode=False,
-        validate_tagpack=False,
-    ):
-        self.url = url
-        self.db_schema = db_schema
-        self.tp_schema = tp_schema
-        self.taxonomies = taxonomies
-        self.public = public
-        self.force = force
-        # if in single thread mode
-        # instead of creating an new instance every time
-        self.tagstore = (
-            TagStore(self.url, self.db_schema) if single_thread_mode else None
-        )
-        self.validate_tagpack = validate_tagpack
-
-    def initializer(self):
-        # per worker initializer
-        # see https://docs.python.org/3/library/multiprocessing.html
-        # this should initialize a new db connection per process
-        # https://stackoverflow.com/questions/64860575/initialize-each-instance-for-each-worker-of-multprocessing # noqa
-        # import os
-        # print("{} with PID {} initialized".format(self, os.getpid()))
-        global PER_PROCESS_TAGSTORE_CONNECTION
-        PER_PROCESS_TAGSTORE_CONNECTION = TagStore(self.url, self.db_schema)
-
-    def get_tagstore_connection(self):
-        global PER_PROCESS_TAGSTORE_CONNECTION
-        return self.tagstore if self.tagstore else PER_PROCESS_TAGSTORE_CONNECTION
-
-    def __call__(self, data):
-        i, tp = data
-        tagstore = self.get_tagstore_connection()
-        if tagstore is None:
-            raise Exception("Connection to tagstore needs to be initialized properly!")
-        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
-        tagpack = TagPack.load_from_file(
-            uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
-        )
-
-        try:
-            print_info(f"{i} {tagpack_file}: INSERTING {len(tagpack.tags)} Tags")
-            if self.validate_tagpack:
-                tagpack.validate()
-            tagstore.insert_tagpack(
-                tagpack, self.public, self.force, default_prefix, relpath
-            )
-            print_success(f"{i} {tagpack_file}: PROCESSED {len(tagpack.tags)} Tags")
-            return 1, len(tagpack.tags)
-        except Exception as e:
-            print_fail(f"{i} {tagpack_file}: FAILED", e)
-            return 0, 0
-
-
 def insert_tagpack(args):
     t0 = time.time()
     print_line("TagPack insert starts")
@@ -531,7 +468,7 @@ def insert_tagpack(args):
 
     packs = enumerate(sorted(prepared_packs), start=1)
 
-    n_processes = args.n_workers if args.n_workers > 0 else cpu_count() - args.n_workers
+    n_processes = args.n_workers if args.n_workers > 0 else cpu_count() + args.n_workers
 
     if n_processes < 1:
         print_fail(f"Can't use {n_processes} adjust your n_workers setting.")
