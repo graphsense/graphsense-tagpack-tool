@@ -13,6 +13,7 @@ KNOWN_CURRENCIES = {
     "ETC": "Ethereum Classic",
     "BSV": "Bitcoin Satoshi Vision",
     "XRP": "Ripple",
+    "TRX": "Tron",
     # Token and second layer
     "ARB": "Arbitrum",
     "USDT": "Tether USD",
@@ -34,11 +35,12 @@ KNOWN_CHAINS = {
     "BSV": "Bitcoin Satoshi Vision",
     "XRP": "Ripple",
     "ARB": "Arbitrum",
+    "TRX": "Tron",
 }
 
 CHAIN_SUGGESTIONS = {
-    "USDT": ["ETH", "ARB", "ETC", "BSC"],
-    "USDC": ["ETH", "ARB", "ETC", "BSC"],
+    "USDT": ["ETH", "ARB", "ETC", "BSC", "TRX"],
+    "USDC": ["ETH", "ARB", "ETC", "BSC", "TRX"],
 }
 
 
