@@ -488,8 +488,8 @@ def insert_tagpack(args):
     )
 
     if n_processes != 1:
-        pool = Pool(processes=n_processes)
-        results = list(pool.imap_unordered(worker, packs, chunksize=10))
+        with Pool(processes=n_processes) as pool:
+            results = list(pool.imap_unordered(worker, packs, chunksize=10))
     else:
         # process data in the main process, makes debugging easier
         results = [worker(p) for p in packs]
