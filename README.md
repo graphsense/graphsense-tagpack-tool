@@ -309,7 +309,7 @@ To calculate the quality measure for all the tags in the database, run:
 
 To show the quality measures of all the tags in the database, or those of a specific crypto-currency, run:
 
-    tagpack-tool quality show [--currency [BCH|BTC|ETH|LTC|ZEC]]
+    tagpack-tool quality show [--network [BCH|BTC|ETH|LTC|ZEC|...]]
 
 ## Show tagstore contents/contributions
 

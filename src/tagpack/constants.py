@@ -21,7 +21,7 @@ KNOWN_CURRENCIES = {
 }
 
 
-KNOWN_CHAINS = {
+KNOWN_NETWORKS = {
     "ETH": "Ethereum",
     "BTC": "Bitcoin",
     "BCH": "Bitcoin Cash",
@@ -38,20 +38,20 @@ KNOWN_CHAINS = {
     "TRX": "Tron",
 }
 
-CHAIN_SUGGESTIONS = {
+NETWORK_SUGGESTIONS = {
     "USDT": ["ETH", "ARB", "ETC", "BSC", "TRX"],
     "USDC": ["ETH", "ARB", "ETC", "BSC", "TRX"],
 }
 
 
-def suggest_chains_from_currency(currency, only_unknown=True):
-    if currency in KNOWN_CHAINS and not only_unknown:
+def suggest_networks_from_currency(currency, only_unknown=True):
+    if currency in KNOWN_NETWORKS and not only_unknown:
         return [currency]
-    return CHAIN_SUGGESTIONS.get(currency, [])
+    return NETWORK_SUGGESTIONS.get(currency, [])
 
 
-def is_known_chain(chain):
-    return chain in KNOWN_CHAINS
+def is_known_network(network):
+    return network in KNOWN_NETWORKS
 
 
 def is_known_currency(currency):

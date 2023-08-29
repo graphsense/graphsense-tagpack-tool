@@ -28,7 +28,7 @@ tag:
   currency:
     type: text
     mandatory: true
-  chain:
+  network:
     type: text
     mandatory: true
   context:

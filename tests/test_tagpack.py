@@ -45,6 +45,50 @@ def taxonomies():
 
 
 @pytest.fixture
+def tagpack_w_network(schema, taxonomies):
+    return TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "abuse": "bad_coding",
+            "category": "exchange",
+            "concepts": ["stuff"],
+            "lastmod": date.fromisoformat("2021-04-21"),
+            "tags": [
+                {
+                    "label": "Some attribution tag",
+                    "address": "123Bitcoin45",
+                },  # inherits all header fields
+                {
+                    "label": "Another attribution tag",
+                    "address": "123Bitcoin66",
+                    "context": '{"counts": 1}',
+                    "currency": "USDT",
+                    "network": "ETH23",
+                },  # overrides currency
+                {
+                    "label": "Another attribution tag",
+                    "address": "123Bitcoin66",
+                    "context": '{"counts": 1}',
+                    "currency": "USDT",
+                },  # overrides currency
+                {
+                    "label": "asdf",
+                    "address": "asf",
+                    "context": '{"counts": 1}',
+                    "currency": "CCOIN",
+                },  # overrides currency
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+
+@pytest.fixture
 def tagpack(schema, taxonomies):
     return TagPack(
         "http://example.com",
@@ -146,7 +190,7 @@ def test_all_header_fields(tagpack, schema):
         "creator",
         "source",
         "currency",
-        "chain",
+        "network",
         "lastmod",
         "tags",
         "category",
@@ -176,7 +220,7 @@ def test_explicit_tag_fields(tagpack):
     assert len(t) == len(tag.explicit_fields)
 
     tag = tagpack.tags[1]
-    t = ["label", "address", "context", "currency", "chain", "concepts"]
+    t = ["label", "address", "context", "currency", "network", "concepts"]
     assert all(field in tag.explicit_fields for field in t)
     assert len(t) == len(tag.explicit_fields)
 
@@ -185,12 +229,14 @@ def test_tag_inherits_from_header(tagpack):
     t = tagpack.tags[0]
 
     assert t.all_fields.get("currency") == "BTC"
+    assert t.all_fields.get("network") == "BTC"
 
 
 def test_tag_overrides_header(tagpack):
     t = tagpack.tags[1]
 
     assert t.all_fields.get("currency") == "ETH"
+    assert t.all_fields.get("network") == "ETH"
 
 
 def test_init(tagpack):
@@ -635,3 +681,22 @@ def test_concepts_always_contain_abuse_and_category(tagpack):
         "stuff",
     }
     tagpack.validate()
+
+
+def test_network_from_currency(capsys, tagpack_w_network):
+    t0 = tagpack_w_network.tags[0]
+    t1 = tagpack_w_network.tags[1]
+
+    assert t0.all_fields.get("network") == "BTC"
+    assert t0.all_fields.get("currency") == "BTC"
+    assert t1.all_fields.get("network") == "ETH23"
+    assert t1.all_fields.get("currency") == "USDT"
+
+    tagpack_w_network.validate()
+
+    captured = capsys.readouterr()
+    assert "ETH23 is not a known network." in captured.out
+    assert "CCOIN is not a known network." in captured.out
+    assert "CCOIN is not a known currency." in captured.out
+    assert "USDT is not a known network." in captured.out
+    assert "Did you mean on of: ETH, ARB, ETC, BSC, TRX" in captured.out
