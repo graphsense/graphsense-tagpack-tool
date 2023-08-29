@@ -484,13 +484,11 @@ def insert_tagpack(args):
         taxonomies,
         public,
         force,
-        single_thread_mode=n_processes == 1,
         validate_tagpack=not args.no_validation,
     )
 
     if n_processes != 1:
-        pool = Pool(processes=n_processes, initializer=worker.initializer)
-
+        pool = Pool(processes=n_processes)
         results = list(pool.imap_unordered(worker, packs, chunksize=10))
     else:
         # process data in the main process, makes debugging easier

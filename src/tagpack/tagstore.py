@@ -29,7 +29,6 @@ class InsertTagpackWorker:
         taxonomies,
         public,
         force,
-        single_thread_mode=False,
         validate_tagpack=False,
     ):
         self.url = url
@@ -38,32 +37,13 @@ class InsertTagpackWorker:
         self.taxonomies = taxonomies
         self.public = public
         self.force = force
-        # if in single thread mode
-        # instead of creating an new instance every time
-        self.tagstore = (
-            TagStore(self.url, self.db_schema) if single_thread_mode else None
-        )
+        self.tagstore = None
         self.validate_tagpack = validate_tagpack
-
-    def initializer(self):
-        # per worker initializer
-        # see https://docs.python.org/3/library/multiprocessing.html
-        # this should initialize a new db connection per process
-        # https://stackoverflow.com/questions/64860575/initialize-each-instance-for-each-worker-of-multprocessing # noqa
-        # import os
-        # print("{} with PID {} initialized".format(self, os.getpid()))
-        global PER_PROCESS_TAGSTORE_CONNECTION
-        PER_PROCESS_TAGSTORE_CONNECTION = TagStore(self.url, self.db_schema)
-
-    def get_tagstore_connection(self):
-        global PER_PROCESS_TAGSTORE_CONNECTION
-        return self.tagstore if self.tagstore else PER_PROCESS_TAGSTORE_CONNECTION
 
     def __call__(self, data):
         i, tp = data
-        tagstore = self.get_tagstore_connection()
-        if tagstore is None:
-            raise Exception("Connection to tagstore needs to be initialized properly!")
+        if not self.tagstore:
+            self.tagstore = TagStore(self.url, self.db_schema)
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
         tagpack = TagPack.load_from_file(
             uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
@@ -73,7 +53,7 @@ class InsertTagpackWorker:
             print_info(f"{i} {tagpack_file}: INSERTING {len(tagpack.tags)} Tags")
             if self.validate_tagpack:
                 tagpack.validate()
-            tagstore.insert_tagpack(
+            self.tagstore.insert_tagpack(
                 tagpack, self.public, self.force, default_prefix, relpath
             )
             print_success(f"{i} {tagpack_file}: PROCESSED {len(tagpack.tags)} Tags")
