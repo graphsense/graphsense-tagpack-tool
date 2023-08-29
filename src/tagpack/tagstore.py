@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import textwrap
+import time
 from datetime import datetime
 from functools import wraps
 from typing import List
@@ -7,13 +8,59 @@ from typing import List
 import numpy as np
 from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
+from psycopg2.errors import DeadlockDetected
 from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch, execute_values
 
 from tagpack import ValidationError
+from tagpack.cmd_utils import print_fail, print_info, print_success, print_warn
+from tagpack.tagpack import TagPack
 from tagpack.utils import get_github_repo_url
 
 register_adapter(np.int64, AsIs)
+
+
+class InsertTagpackWorker:
+    def __init__(
+        self,
+        url,
+        db_schema,
+        tp_schema,
+        taxonomies,
+        public,
+        force,
+        validate_tagpack=False,
+    ):
+        self.url = url
+        self.db_schema = db_schema
+        self.tp_schema = tp_schema
+        self.taxonomies = taxonomies
+        self.public = public
+        self.force = force
+        self.tagstore = None
+        self.validate_tagpack = validate_tagpack
+
+    def __call__(self, data):
+        i, tp = data
+        if not self.tagstore:
+            self.tagstore = TagStore(self.url, self.db_schema)
+        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
+        tagpack = TagPack.load_from_file(
+            uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
+        )
+
+        try:
+            print_info(f"{i} {tagpack_file}: INSERTING {len(tagpack.tags)} Tags")
+            if self.validate_tagpack:
+                tagpack.validate()
+            self.tagstore.insert_tagpack(
+                tagpack, self.public, self.force, default_prefix, relpath
+            )
+            print_success(f"{i} {tagpack_file}: PROCESSED {len(tagpack.tags)} Tags")
+            return 1, len(tagpack.tags)
+        except Exception as e:
+            print_fail(f"{i} {tagpack_file}: FAILED", e)
+            return 0, 0
 
 
 def auto_commit(function):
@@ -37,6 +84,25 @@ def auto_commit(function):
         return output
 
     return wrapper
+
+
+def retry_on_deadlock(times=1):
+    def innerfun(function):
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            while attempt < times:
+                try:
+                    return function(*args, **kwargs)
+                except DeadlockDetected:
+                    time.sleep(1)
+                    print_warn(f"Deadlock Detected retrying, n={times-attempt} times")
+                    attempt += 1
+            return function(*args, **kwargs)
+
+        return wrapper
+
+    return innerfun
 
 
 class TagStore(object):
@@ -114,6 +180,7 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
+    @retry_on_deadlock(times=3)
     @auto_commit
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000
