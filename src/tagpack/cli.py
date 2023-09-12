@@ -975,7 +975,7 @@ def sync_repos(args):
         print("Calc Quality metrics ...")
         exec_cli_command(["quality", "calculate", "-u", args.url])
 
-        if args.run_cluster_mapping_with_env:
+        if args.run_cluster_mapping_with_env or args.rerun_cluster_mapping_with_env:
             print("Import cluster mappings ...")
             exec_cli_command(
                 [
@@ -985,6 +985,7 @@ def sync_repos(args):
                     args.url,
                     "--use-gs-lib-config-env",
                     args.run_cluster_mapping_with_env,
+                    "--update" if args.rerun_cluster_mapping_with_env else "",
                 ]
             )
 
@@ -1139,7 +1140,15 @@ def main():
     )
     parser_syc.add_argument(
         "--run-cluster-mapping-with-env",
-        help="Environment in graphsense-lib config" " to use for the mapping process",
+        help="Environment in graphsense-lib config"
+        " to use for the mapping process."
+        " Only inserts non existing mappings.",
+    )
+    parser_syc.add_argument(
+        "--rerun-cluster-mapping-with-env",
+        help="Environment in graphsense-lib config"
+        " to use for the mapping process."
+        " Reinserts all mappings.",
     )
     parser_syc.add_argument(
         "--n-workers",

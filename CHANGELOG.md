@@ -1,5 +1,30 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.06/1.7.0] 2023-09-12
+### Added
+- parallel tagpack insert (-n-workers parameter, default 1 worker)
+- new --rerun-cluster-mapping-with-env flag on sync command to update all cluster mappings
+
+## [23.06/1.6.1] 2023-08-16
+### Fixed
+- old concepts (entity and abuse) have precedence over new concepts (concepts.yaml)
+
+## [23.06/1.6.0] 2023-07-06
+### Added
+- new db field concepts (list) to store multiple categories with a tag (requires db-resync)
+
+## [23.06/1.5.3] 2023-07-06
+### Fixed
+- fix bug in ks_map handling
+
+## [23.06/1.5.2] 2023-07-05
+### Fixed
+- fix field not found error in keyspace check
+
+## [23.06/1.5.1] 2023-07-04
+### Fixed
+- handle if keyspace is not found gracefully
+
 ## [23.06/1.5.0] 2023-06-12
 ### Added
 - new confidence score forensic_investigation (70), [#87](https://github.com/graphsense/graphsense-tagpack-tool/issues/87)
