@@ -494,7 +494,10 @@ def insert_tagpack(args):
         # process data in the main process, makes debugging easier
         results = [worker(p) for p in packs]
 
-    no_passed, no_tags = [sum(x) for x in zip(*results)]
+    if results is not None and len(results) > 0:
+        no_passed, no_tags = [sum(x) for x in zip(*results)]
+    else:
+        no_passed, no_tags = (0, 0)
 
     status = "fail" if no_passed < n_ppacks else "success"
 
