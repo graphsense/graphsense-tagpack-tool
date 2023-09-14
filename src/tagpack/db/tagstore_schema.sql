@@ -32,8 +32,6 @@ CREATE TABLE confidence (
     level               INTEGER     NOT NULL
 );
 
--- Supported currencies
-
 -- Actor and ActorPack tables
 
 CREATE TABLE actorpack (
@@ -74,7 +72,7 @@ CREATE TABLE actor_jurisdictions (
 -- Tag & TagPack tables
 
 CREATE TABLE address (
-    network               VARCHAR    NOT NULL,
+    network             VARCHAR    NOT NULL,
     address             VARCHAR     NOT NULL,
     created             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_mapped           BOOLEAN     NOT NULL DEFAULT FALSE,
