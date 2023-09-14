@@ -1,5 +1,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [23.06/1.7.2] 2023-09-14
+### fixed
+- cluster mapping does not use new rerun-cluster-mapping-with-env env
+
+## [23.06/1.7.1] 2023-09-13
+### fixed
+- error on insert when no tagpacks are loaded
+
 ## [23.06/1.7.0] 2023-09-12
 ### Added
 - parallel tagpack insert (-n-workers parameter, default 1 worker)

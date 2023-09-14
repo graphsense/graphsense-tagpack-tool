@@ -987,7 +987,8 @@ def sync_repos(args):
                     "-u",
                     args.url,
                     "--use-gs-lib-config-env",
-                    args.run_cluster_mapping_with_env,
+                    args.run_cluster_mapping_with_env
+                    or args.rerun_cluster_mapping_with_env,
                     "--update" if args.rerun_cluster_mapping_with_env else "",
                 ]
             )
