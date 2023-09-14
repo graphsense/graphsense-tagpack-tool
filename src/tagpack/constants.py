@@ -14,10 +14,13 @@ KNOWN_CURRENCIES = {
     "BSV": "Bitcoin Satoshi Vision",
     "XRP": "Ripple",
     "TRX": "Tron",
+    "EOS": "EOS",
     # Token and second layer
     "ARB": "Arbitrum",
     "USDT": "Tether USD",
     "USDC": "Circle USD Coin",
+    "KCS": "KuCoin Token",
+    "MATIC": "Polygon Token",
 }
 
 
@@ -36,6 +39,8 @@ KNOWN_NETWORKS = {
     "XRP": "Ripple",
     "ARB": "Arbitrum",
     "TRX": "Tron",
+    "EOSIO": "EOSIO",
+    "MATIC": "Polygon (formerly Matic)",
 }
 
 NETWORK_SUGGESTIONS = {
