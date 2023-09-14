@@ -48,8 +48,9 @@ KNOWN_NETWORKS = {
 }
 
 NETWORK_SUGGESTIONS = {
-    "USDT": ["ETH", "ARB", "ETC", "BSC", "TRX"],
-    "USDC": ["ETH", "ARB", "ETC", "BSC", "TRX"],
+    "USDT": ["ETH", "ARB", "ETC", "BSC", "TRX", "ALGO", "EOSIO", "KCC"],
+    "USDC": ["ETH", "ARB", "ETC", "BSC", "TRX", "OP", "KCC", "ALGO"],
+    "KCS": ["ETH", "KCC"],
 }
 
 
