@@ -15,6 +15,7 @@ KNOWN_CURRENCIES = {
     "XRP": "Ripple",
     "TRX": "Tron",
     "EOS": "EOS",
+    "ALGO": "ALGO",
     # Token and second layer
     "ARB": "Arbitrum",
     "USDT": "Tether USD",
@@ -41,6 +42,9 @@ KNOWN_NETWORKS = {
     "TRX": "Tron",
     "EOSIO": "EOSIO",
     "MATIC": "Polygon (formerly Matic)",
+    "KCC": "Kucoin Community Chain",
+    "ALGO": "Algorand",
+    "OP": "Optimism",
 }
 
 NETWORK_SUGGESTIONS = {
