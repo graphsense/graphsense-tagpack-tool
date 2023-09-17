@@ -146,7 +146,8 @@ class Taxonomy(object):
             c = queue.popleft()
             p = c.parent
             if p in lookup:
-                n = Node(c.id, parent=lookup[p])
+                concept_name = f"{c.label} ({c.id})"
+                n = Node(concept_name, parent=lookup[p])
                 lookup[c.id] = n
             else:
                 queue.append(c)

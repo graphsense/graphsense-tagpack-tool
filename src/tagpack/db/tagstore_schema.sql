@@ -32,11 +32,6 @@ CREATE TABLE confidence (
     level               INTEGER     NOT NULL
 );
 
--- Supported currencies
-
--- CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC');
-CREATE TYPE currency AS ENUM ('BCH', 'BTC', 'ETH', 'LTC', 'ZEC', 'WETH', 'USDC', 'USDT', 'TRX');
-
 -- Actor and ActorPack tables
 
 CREATE TABLE actorpack (
@@ -77,14 +72,14 @@ CREATE TABLE actor_jurisdictions (
 -- Tag & TagPack tables
 
 CREATE TABLE address (
-    currency            currency    NOT NULL,
+    network             VARCHAR    NOT NULL,
     address             VARCHAR     NOT NULL,
     created             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_mapped           BOOLEAN     NOT NULL DEFAULT FALSE,
-    PRIMARY KEY(currency, address)
+    PRIMARY KEY(network, address)
 );
 
-CREATE INDEX curr_addr_index ON address (currency, address);
+CREATE INDEX curr_network_index ON address (network, address);
 
 CREATE TABLE tagpack (
     id                  VARCHAR     PRIMARY KEY,
@@ -104,14 +99,15 @@ CREATE TABLE tag (
     is_cluster_definer  BOOLEAN     DEFAULT FALSE,
     lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     address             VARCHAR     NOT NULL,
-    currency            currency    NOT NULL,
+    currency            VARCHAR     NOT NULL,
+    network             VARCHAR     NOT NULL,
     confidence          VARCHAR     REFERENCES confidence(id),
     abuse               VARCHAR     REFERENCES concept(id),
     category            VARCHAR     REFERENCES concept(id),
     tagpack             VARCHAR     REFERENCES tagpack(id) ON DELETE CASCADE,
     actor               VARCHAR     REFERENCES actor(id),
-    FOREIGN KEY (currency, address) REFERENCES address (currency, address),
-    CONSTRAINT unique_tag UNIQUE (address, currency, tagpack, label, source)
+    FOREIGN KEY (network, address) REFERENCES address (network, address),
+    CONSTRAINT unique_tag UNIQUE (address, network, tagpack, label, source)
 );
 
 
@@ -130,15 +126,15 @@ CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
 
 CREATE TABLE address_cluster_mapping (
     address             VARCHAR     NOT NULL,
-    currency            currency    NOT NULL,
+    network               VARCHAR    NOT NULL,
     gs_cluster_id       INTEGER     NOT NULL,
     gs_cluster_def_addr VARCHAR     NOT NULL,
     gs_cluster_no_addr  INTEGER     DEFAULT NULL,
-    PRIMARY KEY(currency, address),
-    FOREIGN KEY (currency, address) REFERENCES address (currency, address) ON DELETE CASCADE
+    PRIMARY KEY(network, address),
+    FOREIGN KEY (network, address) REFERENCES address (network, address) ON DELETE CASCADE
 );
 
-CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (currency, gs_cluster_id);
+CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (network, gs_cluster_id);
 
 
 -- setup fuzzy search resources
@@ -154,39 +150,39 @@ CREATE MATERIALIZED VIEW label AS SELECT DISTINCT label FROM tag;
 
 CREATE MATERIALIZED VIEW statistics AS
     SELECT
-        explicit.currency,
+        explicit.network,
         no_labels,
         explicit.no_tagged_addresses as no_explicit_tagged_addresses,
         COALESCE(implicit.no_tagged_addresses, explicit.no_tagged_addresses) as no_implicit_tagged_addresses
     FROM
         (SELECT
-            currency,
+            network,
             NULL,
             COUNT(DISTINCT label) AS no_labels,
             COUNT(DISTINCT address) AS no_tagged_addresses
          FROM
             tag
          GROUP BY
-            currency
+            network
         ) explicit
     LEFT JOIN
         (SELECT
             SUM(gs_cluster_no_addr) AS no_tagged_addresses,
-            currency
+            network
          FROM
-            (SELECT DISTINCT ON (gs_cluster_id, currency)
-                currency,
+            (SELECT DISTINCT ON (gs_cluster_id, network)
+                network,
                 gs_cluster_no_addr
              FROM address_cluster_mapping
             ) t
          GROUP
-            BY currency
+            BY network
         ) implicit
-    ON implicit.currency = explicit.currency;
+    ON implicit.network = explicit.network;
 
 CREATE MATERIALIZED VIEW tag_count_by_cluster AS
     SELECT
-        t.currency,
+        t.network,
         acm.gs_cluster_id,
         tp.is_public,
         count(t.address) as count
@@ -196,14 +192,14 @@ CREATE MATERIALIZED VIEW tag_count_by_cluster AS
         address_cluster_mapping acm
     WHERE
         acm.address=t.address
-        AND acm.currency=t.currency
+        AND acm.network=t.network
         AND t.tagpack=tp.id
     GROUP BY
-        t.currency,
+        t.network,
         acm.gs_cluster_id,
         tp.is_public;
 
-CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (currency, gs_cluster_id);
+CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
 
 /* In the end this view fulfils the following requirements in junction with
  * REST's `list_entity_tags_by_entity`:
@@ -217,7 +213,7 @@ CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (currency, gs_
 CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
     SELECT
         acm.gs_cluster_id,
-        t.currency,
+        t.network,
         t.label,
         t.category,
         tp.is_public,
@@ -232,7 +228,7 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         tagpack tp
     WHERE
         acm.address=t.address
-        AND acm.currency=t.currency
+        AND acm.network=t.network
         AND t.is_cluster_definer=true
         AND t.confidence=c.id
         AND tp.id=t.tagpack
@@ -240,13 +236,13 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         c.level,
         t.label,
         t.category,
-        t.currency,
+        t.network,
         acm.gs_cluster_id,
         tp.is_public
     UNION
         SELECT
             gs_cluster_id,
-            t.currency,
+            t.network,
             t.label,
             t.category,
             every(tp.is_public) AS is_public,
@@ -263,17 +259,17 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
             c.id=t.confidence
             and tp.id=t.tagpack
             and t.address=acm.address
-            and t.currency=acm.currency
+            and t.network=acm.network
             and acm.gs_cluster_no_addr = 1
         GROUP BY
             t.label,
             t.category,
-            t.currency,
+            t.network,
             acm.gs_cluster_id
         HAVING
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
-CREATE INDEX cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (currency, gs_cluster_id);
+CREATE INDEX cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (network, gs_cluster_id);
 
 -- Tag quality helper views
 
@@ -304,7 +300,7 @@ CREATE VIEW duplicate_tags AS
 DROP TABLE IF EXISTS address_quality;
 CREATE TABLE IF NOT EXISTS address_quality(
 	id SERIAL PRIMARY KEY,
-	currency currency,
+	network VARCHAR,
 	address VARCHAR,
 	n_tags INTEGER,
 	n_dif_tags INTEGER,
@@ -331,7 +327,7 @@ BEGIN
 	DROP TABLE IF EXISTS quality_pairs;
 	CREATE TEMP TABLE IF NOT EXISTS quality_pairs(
 		id SERIAL PRIMARY KEY,
-		currency currency,
+		network VARCHAR,
 		address VARCHAR,
 		label1 VARCHAR,
 		label2 VARCHAR,
@@ -340,30 +336,30 @@ BEGIN
 	DROP TABLE IF EXISTS quality_labels;
 	CREATE TEMP TABLE IF NOT EXISTS quality_labels(
 		id SERIAL PRIMARY KEY,
-		currency currency,
+		network VARCHAR,
 		address VARCHAR,
 		label VARCHAR,
 		label_id INTEGER
 	);
 	IF actor THEN _tag_column='actor'; ELSE _tag_column='label'; END IF;
 	FOR i in EXECUTE ( format(
-		'SELECT t.currency, t.address, COUNT(DISTINCT t.%1$I) n_labels
+		'SELECT t.network, t.address, COUNT(DISTINCT t.%1$I) n_labels
 		FROM tag t
-		GROUP BY currency, address
+		GROUP BY network, address
 		HAVING COUNT(DISTINCT t.%1$I) > 1'
 		, _tag_column
 	))
 	LOOP
-		FOR e in SELECT * FROM tag WHERE currency=i.currency AND address=i.address LOOP
+		FOR e in SELECT * FROM tag WHERE network=i.network AND address=i.address LOOP
 			-- RAISE NOTICE '%:%', e.address, e.label;
 			FOR s in SELECT u.label label, similarity(u.label, e.label) simi FROM quality_labels u WHERE u.address = e.address LOOP
 				-- RAISE NOTICE '% <-> % = %', e.label, s.label, s.simi;
 				sim = s.simi;
-				INSERT INTO quality_pairs (currency, address, label1, label2, sim)
-				VALUES (e.currency, e.address, e.label, s.label, sim);
+				INSERT INTO quality_pairs (network, address, label1, label2, sim)
+				VALUES (e.network, e.address, e.label, s.label, sim);
 			END LOOP;
-		        INSERT INTO quality_labels (currency, address, label, label_id)
-		        VALUES (e.currency, e.address, e.label, e.id);
+		        INSERT INTO quality_labels (network, address, label, label_id)
+		        VALUES (e.network, e.address, e.label, e.id);
 		END LOOP;
 	END LOOP;
 END $$;
@@ -376,50 +372,50 @@ AS $$
 BEGIN
 TRUNCATE address_quality;
 INSERT INTO address_quality
-	(currency, address, n_tags, n_dif_tags, total_pairs, q1, q2, q3, q4, quality)
+	(network, address, n_tags, n_dif_tags, total_pairs, q1, q2, q3, q4, quality)
 SELECT
-	tags.currency, tags.address, tags.n_tags, tags.n_dif_tags,
+	tags.network, tags.address, tags.n_tags, tags.n_dif_tags,
 	pairs.total total_pairs, sim.q1, sim.q2, sim.q3, sim.q4,
 	1-((sim.q1*0.25+sim.q2*0.5+sim.q3*0.75+sim.q4*1.0)/pairs.total::float) quality
 FROM (
 	SELECT
-		t.currency, t.address, COUNT(t.label) n_tags, COUNT(DISTINCT(t.label)) n_dif_tags
+		t.network, t.address, COUNT(t.label) n_tags, COUNT(DISTINCT(t.label)) n_dif_tags
 	FROM tag t
-	GROUP BY t.currency, t.address
+	GROUP BY t.network, t.address
 	HAVING COUNT(DISTINCT(t.label)) > 1
 ) tags
 LEFT OUTER JOIN (
 	SELECT
-		q.currency, q.address, COUNT(q.sim) n_sim
+		q.network, q.address, COUNT(q.sim) n_sim
 	FROM quality_pairs q
 	WHERE q.sim <= 0.25
-	GROUP BY q.currency, q.address
+	GROUP BY q.network, q.address
 ) quality_q1
-ON tags.currency = quality_q1.currency AND tags.address = quality_q1.address
+ON tags.network = quality_q1.network AND tags.address = quality_q1.address
 LEFT OUTER JOIN (
 	SELECT
-		q.currency, q.address, COUNT(q.sim) n_sim
+		q.network, q.address, COUNT(q.sim) n_sim
 	FROM quality_pairs q
 	WHERE q.sim > 0.25 AND q.sim <= 0.5
-	GROUP BY q.currency, q.address
+	GROUP BY q.network, q.address
 ) quality_q2
-ON tags.currency = quality_q2.currency AND tags.address = quality_q2.address
+ON tags.network = quality_q2.network AND tags.address = quality_q2.address
 LEFT OUTER JOIN (
 	SELECT
-		q.currency, q.address, COUNT(q.sim) n_sim
+		q.network, q.address, COUNT(q.sim) n_sim
 	FROM quality_pairs q
 	WHERE q.sim > 0.50 AND q.sim <= 0.75
-	GROUP BY q.currency, q.address
+	GROUP BY q.network, q.address
 ) quality_q3
-ON tags.currency = quality_q3.currency AND tags.address = quality_q3.address
+ON tags.network = quality_q3.network AND tags.address = quality_q3.address
 LEFT OUTER JOIN (
 	SELECT
-		q.currency, q.address, COUNT(q.sim) n_sim
+		q.network, q.address, COUNT(q.sim) n_sim
 	FROM quality_pairs q
 	WHERE q.sim > 0.75
-	GROUP BY q.currency, q.address
+	GROUP BY q.network, q.address
 ) quality_q4
-ON tags.currency = quality_q4.currency AND tags.address = quality_q4.address
+ON tags.network = quality_q4.network AND tags.address = quality_q4.address
 CROSS JOIN LATERAL (
 	SELECT
 		coalesce(quality_q1.n_sim, 0),

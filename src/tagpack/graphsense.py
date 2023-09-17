@@ -55,16 +55,16 @@ class GraphSense(object):
                     all_results.append(row)
         return pd.DataFrame.from_dict(all_results)
 
-    def contains_keyspace_mapping(self, currency: str) -> bool:
-        return currency in self.ks_map
+    def contains_keyspace_mapping(self, network: str) -> bool:
+        return network in self.ks_map
 
-    def _check_passed_params(self, df: DataFrame, currency: str, req_column: str):
+    def _check_passed_params(self, df: DataFrame, network: str, req_column: str):
         if df.empty:
-            raise Exception(f"Received empty dataframe for currency {currency}")
+            raise Exception(f"Received empty dataframe for network {network}")
         if req_column not in df.columns:
             raise Exception(f"Missing column {req_column}")
-        if not self.contains_keyspace_mapping(currency):
-            raise Exception(f"Currency {currency} not in keyspace mapping")
+        if not self.contains_keyspace_mapping(network):
+            raise Exception(f"Network {network} not in keyspace mapping")
 
     def _query_keyspace_config(self, keyspace: str) -> dict:
         self.session.set_keyspace(keyspace)
@@ -72,9 +72,9 @@ class GraphSense(object):
         result = self.session.execute(query)
         return result[0]
 
-    def keyspace_for_curreny_exists(self, currency: str) -> bool:
-        if self.contains_keyspace_mapping(currency):
-            for k, keyspace in self.ks_map[currency].items():
+    def keyspace_for_network_exists(self, network: str) -> bool:
+        if self.contains_keyspace_mapping(network):
+            for k, keyspace in self.ks_map[network].items():
                 query = "SELECT keyspace_name FROM system_schema.keyspaces"
                 result = self.session.execute(query)
                 keyspaces = [row["keyspace_name"] for row in result]
@@ -86,17 +86,17 @@ class GraphSense(object):
         else:
             return False
 
-    def get_address_ids(self, df: DataFrame, currency: str) -> DataFrame:
+    def get_address_ids(self, df: DataFrame, network: str) -> DataFrame:
         """Get address ids for all passed addresses"""
-        self._check_passed_params(df, currency, "address")
+        self._check_passed_params(df, network, "address")
 
-        keyspace = self.ks_map[currency]["transformed"]
+        keyspace = self.ks_map[network]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
         df_temp = df[["address"]].copy()
         df_temp = df_temp.drop_duplicates()
-        if currency == "ETH":
+        if network == "ETH":
             df_temp["address_prefix"] = df_temp["address"].str[
                 2 : 2 + ks_config["address_prefix_length"]
             ]
@@ -124,19 +124,19 @@ class GraphSense(object):
         parameters = df_temp[["address_prefix", "address"]].to_records(index=False)
 
         result = self._execute_query(statement, parameters)
-        if currency == "ETH":
+        if network == "ETH":
             result["address"] = result["address"].apply(lambda x: eth_address_to_hex(x))
 
         return result
 
-    def get_cluster_ids(self, df: DataFrame, currency: str) -> DataFrame:
+    def get_cluster_ids(self, df: DataFrame, network: str) -> DataFrame:
         """Get cluster ids for all passed address ids"""
-        self._check_passed_params(df, currency, "address_id")
+        self._check_passed_params(df, network, "address_id")
 
-        if currency == "ETH":
+        if network == "ETH":
             raise Exception("eth does not have clusters")
 
-        keyspace = self.ks_map[currency]["transformed"]
+        keyspace = self.ks_map[network]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
@@ -155,14 +155,14 @@ class GraphSense(object):
 
         return self._execute_query(statement, parameters)
 
-    def get_clusters(self, df: DataFrame, currency: str) -> DataFrame:
+    def get_clusters(self, df: DataFrame, network: str) -> DataFrame:
         """Get clusters for all passed cluster ids"""
-        self._check_passed_params(df, currency, "cluster_id")
+        self._check_passed_params(df, network, "cluster_id")
 
-        if currency == "ETH":
+        if network == "ETH":
             raise Exception("eth does not have clusters")
 
-        keyspace = self.ks_map[currency]["transformed"]
+        keyspace = self.ks_map[network]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
@@ -178,8 +178,8 @@ class GraphSense(object):
 
         return self._execute_query(statement, parameters)
 
-    def _get_cluster_definers(self, df: DataFrame, currency: str) -> DataFrame:
-        keyspace = self.ks_map[currency]["transformed"]
+    def _get_cluster_definers(self, df: DataFrame, network: str) -> DataFrame:
+        keyspace = self.ks_map[network]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
         self.session.set_keyspace(keyspace)
 
@@ -200,12 +200,12 @@ class GraphSense(object):
 
         return self._execute_query(statement, parameters)
 
-    def get_address_clusters(self, df: DataFrame, currency: str) -> DataFrame:
-        self._check_passed_params(df, currency, "address")
+    def get_address_clusters(self, df: DataFrame, network: str) -> DataFrame:
+        self._check_passed_params(df, network, "address")
 
         addresses = df.copy()
 
-        if currency == "ETH":
+        if network == "ETH":
             # tagpacks include invalid ETH addresses, ignore those
             addresses.drop(
                 addresses[~addresses.address.str.startswith("0x")].index, inplace=True
@@ -213,10 +213,10 @@ class GraphSense(object):
             addresses.rename(columns={"address": "checksum_address"}, inplace=True)
             addresses.loc[:, "address"] = addresses["checksum_address"].str.lower()
 
-        df_address_ids = self.get_address_ids(addresses, currency)
+        df_address_ids = self.get_address_ids(addresses, network)
         if len(df_address_ids) == 0:
             return DataFrame()
-        if currency == "ETH":
+        if network == "ETH":
             df_address_ids["cluster_id"] = df_address_ids["address_id"]
             df_address_ids["no_addresses"] = 1
 
@@ -228,13 +228,13 @@ class GraphSense(object):
 
             return result
 
-        df_cluster_ids = self.get_cluster_ids(df_address_ids, currency)
+        df_cluster_ids = self.get_cluster_ids(df_address_ids, network)
         if len(df_cluster_ids) == 0:
             return DataFrame()
 
-        df_cluster_definers = self._get_cluster_definers(df_cluster_ids, currency)
+        df_cluster_definers = self._get_cluster_definers(df_cluster_ids, network)
 
-        df_address_clusters = self.get_clusters(df_cluster_ids, currency)
+        df_address_clusters = self.get_clusters(df_cluster_ids, network)
         if len(df_address_clusters) == 0:
             return DataFrame()
 

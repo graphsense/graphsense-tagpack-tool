@@ -16,7 +16,38 @@ from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import bcolors, get_user_choice, print_info, print_warn
+from tagpack.constants import (
+    is_known_currency,
+    is_known_network,
+    suggest_networks_from_currency,
+)
 from tagpack.utils import apply_to_dict_field, try_parse_date
+
+
+def warn_on_possibly_inconsistent_currency_or_network(field, value):
+    if field == "currency" and not is_known_currency(value):
+        print_warn(
+            (
+                f"{value} is not a known currency. "
+                "Be careful to avoid introducing ambiguity into the dataset."
+            )
+        )
+
+    if field == "network" and not is_known_network(value):
+        suggestions = suggest_networks_from_currency(value)
+        print_warn(
+            (
+                (
+                    f"{value} is not a known network. "
+                    "Be careful to avoid introducing ambiguity into the dataset. "
+                )
+                + (
+                    f"Did you mean on of: {', '.join(suggestions)}"
+                    if len(suggestions) > 0
+                    else ""
+                )
+            )
+        )
 
 
 def get_repository(path: str) -> pathlib.Path:
@@ -222,6 +253,15 @@ class TagPack(object):
                 "on tagpack level."
             )
 
+        # if network is not provided in the file, set it to the currency
+        # warnings will be issued in the validate step.
+        if "network" not in self.contents and "currency" in self.contents:
+            self.contents["network"] = self.contents["currency"]
+
+        for t in self.tags:
+            if "network" not in t.contents and "currency" in t.contents:
+                t.contents["network"] = t.contents["currency"]
+
     @property
     def all_header_fields(self):
         """Returns all TagPack header fields, including generic tag fields"""
@@ -274,7 +314,7 @@ class TagPack(object):
                     str(tag.all_fields.get(k)).lower()
                     if k in tag.all_fields.keys()
                     else ""
-                    for k in ["address", "currency", "label", "source"]
+                    for k in ["address", "currency", "network", "label", "source"]
                 ]
             )
             if t in seen:
@@ -314,6 +354,8 @@ class TagPack(object):
                     "are inserted with access set to private."
                 )
 
+            warn_on_possibly_inconsistent_currency_or_network(field, value)
+
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
@@ -351,6 +393,8 @@ class TagPack(object):
                 # check for None values
                 if value is None:
                     raise ValidationError(e4.format(field, tag))
+
+                warn_on_possibly_inconsistent_currency_or_network(field, value)
 
                 # check types and taxomomy use
                 try:

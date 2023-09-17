@@ -11,6 +11,8 @@ from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch, execute_values
 
 from tagpack import ValidationError
+from tagpack.cmd_utils import print_warn
+from tagpack.constants import KNOWN_NETWORKS
 from tagpack.utils import get_github_repo_url
 
 register_adapter(np.int64, AsIs)
@@ -43,9 +45,6 @@ class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
         self.cursor = self.conn.cursor()
-
-        self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
-        self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
         self.existing_packs = None
         self.existing_actorpacks = None
 
@@ -140,10 +139,10 @@ class TagStore(object):
         self.cursor.execute(q, v)
         self.conn.commit()
 
-        addr_sql = "INSERT INTO address (currency, address) VALUES %s \
+        addr_sql = "INSERT INTO address (network, address) VALUES %s \
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
-            currency, is_cluster_definer, confidence, lastmod, \
+            currency, network, is_cluster_definer, confidence, lastmod, \
             context, tagpack, actor ) VALUES \
             %s RETURNING id"
 
@@ -156,7 +155,7 @@ class TagStore(object):
                 self.cursor,
                 tag_sql,
                 tag_data,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 fetch=True,
                 page_size=batch,
             )
@@ -172,10 +171,9 @@ class TagStore(object):
         address_data = []
         tag_concepts = []
         for tag in tagpack.get_unique_tags():
-            if self._supports_currency(tag):
-                tag_data.append(_get_tag(tag, tagpack_id))
-                address_data.append(_get_currency_and_address(tag))
-                tag_concepts.append(_get_tag_concepts(tag))
+            tag_data.append(_get_tag(tag, tagpack_id))
+            address_data.append(_get_network_and_address(tag))
+            tag_concepts.append(_get_tag_concepts(tag))
 
             if len(tag_data) > batch:
                 insert_tags_batch(tag_data, tag_concepts, address_data)
@@ -452,14 +450,14 @@ class TagStore(object):
 
         return [{k: v for k, v in zip(fields, [x])} for x in repos]  # noqa: C416
 
-    def low_quality_address_labels(self, th=0.25, currency="", category="") -> dict:
+    def low_quality_address_labels(self, th=0.25, network="", category="") -> dict:
         """
         This function returns a list of addresses having a quality meassure
         equal or lower than a threshold value, along with the corresponding
         tags for each address.
         """
-        validate_currency(currency)
-        currency = currency if currency else "%"
+        validate_network(network)
+        network = network if network else "%"
         category = category if category else "%"
 
         msg = "Threshold must be a float number between 0 and 1"
@@ -470,22 +468,22 @@ class TagStore(object):
         except ValueError:
             raise ValidationError(msg)
 
-        q = "SELECT j.currency, j.address, array_agg(j.label) labels \
+        q = "SELECT j.network, j.address, array_agg(j.label) labels \
             FROM ( \
-                SELECT q.currency, q.address, t.label \
+                SELECT q.network, q.address, t.label \
                 FROM address_quality q, tag t \
                 WHERE t.category ILIKE %s \
                     AND t.address=q.address \
-                    AND q.currency::text LIKE %s \
+                    AND q.network LIKE %s \
                     AND q.quality <= %s \
             ) as j \
-            GROUP BY j.currency, j.address"
+            GROUP BY j.network, j.address"
 
         self.cursor.execute(
             q,
             (
                 category,
-                currency,
+                network,
                 th,
             ),
         )
@@ -509,6 +507,7 @@ class TagStore(object):
                             t.is_cluster_definer,
                             t.category,
                             t.currency,
+                            t.network,
                             t.confidence,
                             t.abuse,
                             tp.creator,
@@ -519,6 +518,7 @@ class TagStore(object):
                                 t.is_cluster_definer,
                                 t.category,
                                 t.currency,
+                                t.network,
                                 t.confidence,
                                 t.abuse,
                                 tp.creator ORDER BY t.id DESC)
@@ -547,24 +547,24 @@ class TagStore(object):
 
     def get_addresses(self, update_existing):
         if update_existing:
-            self.cursor.execute("SELECT address, currency FROM address")
+            self.cursor.execute("SELECT address, network FROM address")
         else:
-            q = "SELECT address, currency FROM address WHERE NOT is_mapped"
+            q = "SELECT address, network FROM address WHERE NOT is_mapped"
             self.cursor.execute(q)
         for record in self.cursor:
             yield record
 
-    def get_tagstore_composition(self, by_currency=False):
-        if by_currency:
+    def get_tagstore_composition(self, by_network=False):
+        if by_network:
             self.cursor.execute(
                 "SELECT creator, "
                 "category, "
                 "tp.is_public as is_public, "
-                "t.currency as currency, "
+                "t.network as network, "
                 "count(distinct t.label) as labels_count, "
                 "count(*) as tags_count "
                 "FROM tag t, tagpack tp where t.tagpack = tp.id "
-                "group by currency, creator, category, is_public;"
+                "group by network, creator, category, is_public;"
             )
         else:
             self.cursor.execute(
@@ -583,16 +583,16 @@ class TagStore(object):
     @auto_commit
     def insert_cluster_mappings(self, clusters):
         if not clusters.empty:
-            q = "INSERT INTO address_cluster_mapping (address, currency, \
+            q = "INSERT INTO address_cluster_mapping (address, network, \
                 gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr) \
-                VALUES (%s, %s, %s, %s, %s) ON CONFLICT (currency, address) \
+                VALUES (%s, %s, %s, %s, %s) ON CONFLICT (chain, address) \
                 DO UPDATE SET gs_cluster_id = EXCLUDED.gs_cluster_id, \
                 gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr, \
                 gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr"
 
             cols = [
                 "address",
-                "currency",
+                "network",
                 "cluster_id",
                 "cluster_defining_address",
                 "no_addresses",
@@ -601,52 +601,47 @@ class TagStore(object):
 
             execute_batch(self.cursor, q, data)
 
-    def _supports_currency(self, tag):
-        return tag.all_fields.get("currency") in self.supported_currencies
-
     @auto_commit
     def finish_mappings_update(self, keys):
         q = "UPDATE address SET is_mapped=true WHERE NOT is_mapped \
-                AND currency IN %s"
+                AND network IN %s"
         self.cursor.execute(q, (tuple(keys),))
 
     def get_ingested_tagpacks(self) -> List:
         self.cursor.execute("SELECT id from tagpack")
         return [i[0] for i in self.cursor.fetchall()]
 
-    def get_tags_count(self, currency="") -> int:
-        validate_currency(currency)
+    def get_tags_count(self, network="") -> int:
+        validate_network(network)
 
-        if currency:
-            self.cursor.execute(
-                "SELECT count(*) FROM tag where currency=%s", (currency,)
-            )
+        if network:
+            self.cursor.execute("SELECT count(*) FROM tag where network=%s", (network,))
         else:
             self.cursor.execute("SELECT count(*) FROM tag")
 
         return self.cursor.fetchall()[0][0]
 
-    def get_tags_with_actors_count(self, currency="") -> int:
-        validate_currency(currency)
+    def get_tags_with_actors_count(self, network="") -> int:
+        validate_network(network)
 
-        if currency:
+        if network:
             self.cursor.execute(
-                "SELECT count(*) FROM tag where actor is not NULL and currency=%s",
-                (currency,),
+                "SELECT count(*) FROM tag where actor is not NULL and network=%s",
+                (network,),
             )
         else:
             self.cursor.execute("SELECT count(*) FROM tag where actor is not NULL")
 
         return self.cursor.fetchall()[0][0]
 
-    def get_used_actors_count(self, currency="", category="") -> int:
-        validate_currency(currency)
+    def get_used_actors_count(self, network="", category="") -> int:
+        validate_network(network)
 
-        params = {"currency": currency}
-        cat_join, cat_filter, currency_filter = ("", "", "")
+        params = {"network": network}
+        cat_join, cat_filter, network_filter = ("", "", "")
 
-        if currency:
-            currency_filter = "AND currency=%(currency)s"
+        if network:
+            network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
             cat_join = (
@@ -660,20 +655,20 @@ class TagStore(object):
             "SELECT count(DISTINCT actor) FROM tag "
             f"{cat_join} "
             "WHERE actor is not NULL "
-            f"{currency_filter} "
+            f"{network_filter} "
             f"{cat_filter} "
         )
         self.cursor.execute(query, params)
 
         return self.cursor.fetchall()[0][0]
 
-    def get_used_actors_with_jurisdictions(self, currency="", category="") -> int:
-        validate_currency(currency)
-        params = {"currency": currency}
-        cat_join, cat_filter, currency_filter = ("", "", "")
+    def get_used_actors_with_jurisdictions(self, network="", category="") -> int:
+        validate_network(network)
+        params = {"network": network}
+        cat_join, cat_filter, network_filter = ("", "", "")
 
-        if currency:
-            currency_filter = "AND currency=%(currency)s"
+        if network:
+            network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
             cat_join = (
@@ -689,7 +684,7 @@ class TagStore(object):
             "on tag.actor = actor_jurisdictions.actor_id "
             f"{cat_join} "
             "WHERE actor is not NULL "
-            f"{currency_filter} "
+            f"{network_filter} "
             f"{cat_filter} "
         )
 
@@ -697,41 +692,39 @@ class TagStore(object):
 
         return self.cursor.fetchall()[0][0]
 
-    def get_quality_measures(self, currency="") -> dict:
+    def get_quality_measures(self, network="") -> dict:
         """
         This function returns a dict with the quality measures (count, avg, and
-        stddev) for a specific currency, or for all if currency is not
+        stddev) for a specific network, or for all if networks is not
         specified.
         """
-        validate_currency(currency)
+        validate_network(network)
 
         query = "SELECT COUNT(quality), AVG(quality), STDDEV(quality)"
         query += " FROM address_quality"
-        if currency:
-            query += " WHERE currency=%s"
-            self.cursor.execute(query, (currency,))
+        if network:
+            query += " WHERE network=%s"
+            self.cursor.execute(query, (network,))
         else:
             self.cursor.execute(query)
 
         keys = ["count", "avg", "stddev"]
         ret = {keys[i]: v for row in self.cursor.fetchall() for i, v in enumerate(row)}
 
-        ret["tag_count"] = self.get_tags_count(currency=currency)
-        ret["tag_count_with_actors"] = self.get_tags_with_actors_count(
-            currency=currency
-        )
-        ret["nr_actors_used"] = self.get_used_actors_count(currency=currency)
+        ret["tag_count"] = self.get_tags_count(network=network)
+        ret["tag_count_with_actors"] = self.get_tags_with_actors_count(network=network)
+        ret["nr_actors_used"] = self.get_used_actors_count(network=network)
         ret[
             "nr_actors_used_with_jurisdictions"
-        ] = self.get_used_actors_with_jurisdictions(currency=currency)
+        ] = self.get_used_actors_with_jurisdictions(network=network)
 
         ret["nr_actors_used_exchange"] = self.get_used_actors_count(
-            currency=currency, category="exchange"
+            network=network, category="exchange"
         )
         ret[
             "nr_actors_used_with_jurisdictions_exchange"
         ] = self.get_used_actors_with_jurisdictions(
-            currency=currency, category="exchange"
+            network=network, category="exchange"
         )
 
         return ret
@@ -742,19 +735,19 @@ class TagStore(object):
         self.conn.commit()
         return self.get_quality_measures()
 
-    def list_tags(self, unique=False, category="", currency=""):
-        validate_currency(currency)
-        currency = currency if currency else "%"
+    def list_tags(self, unique=False, category="", network=""):
+        validate_network(network)
+        network = network if network else "%"
         category = category if category else "%"
 
         q = (
             f"SELECT {'DISTINCT' if unique else ''} "
-            "t.currency, tp.title, t.label "
+            "t.network, tp.title, t.label "
             "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
-            "AND t.category ILIKE %s AND t.currency::text LIKE %s "
-            "ORDER BY t.currency, tp.title, t.label ASC"
+            "AND t.category ILIKE %s AND t.network LIKE %s "
+            "ORDER BY t.network, tp.title, t.label ASC"
         )
-        v = (category, currency)
+        v = (category, network)
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
@@ -772,16 +765,16 @@ class TagStore(object):
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
-    def list_address_actors(self, currency=""):
-        validate_currency(currency)
-        currency = currency if currency else "%"
+    def list_address_actors(self, network=""):
+        validate_network(network)
+        network = network if network else "%"
         q = (
             "SELECT t.id, t.label, t.address, t.category, a.label "
             "FROM tag t, actor a "
             "WHERE t.label = a.id "
-            "AND t.currency::text LIKE %s"
+            "AND t.network LIKE %s"
         )
-        v = (currency,)
+        v = (network,)
         self.cursor.execute(q, v)
         return self.cursor.fetchall()
 
@@ -820,50 +813,50 @@ class TagStore(object):
     #     self.cursor.execute(q)
     #     return rowcount
 
-    @auto_commit
-    def update_quality_actors(self):
-        """
-        Update all entries in `address_quality` having a unique actor in table
-        `tag`. The corresponding quality is 1, due to the conflicts are solved.
-        """
-        # q = "SELECT t.currency, t.address, COUNT(t.actor) n" \
-        #     "FROM tag t, address_quality q" \
-        #     "WHERE t.currency=q.currency" \
-        #     "AND t.address=q.address" \
-        #     "AND NOT t.actor IS NULL" \
-        #     "GROUP BY t.currency, t.address, t.actor"
+    # @auto_commit
+    # def update_quality_actors(self):
+    #     """
+    #     Update all entries in `address_quality` having a unique actor in table
+    #     `tag`. The corresponding quality is 1, due to the conflicts are solved.
+    #     """
+    #     # q = "SELECT t.currency, t.address, COUNT(t.actor) n" \
+    #     "FROM tag t, address_quality q" \
+    #     "WHERE t.currency=q.currency" \
+    #     "AND t.address=q.address" \
+    #     "AND NOT t.actor IS NULL" \
+    #     "GROUP BY t.currency, t.address, t.actor"
+    #
+    # q = (
+    #     "UPDATE address_quality "
+    #     "SET "
+    #     "n_tags=1, "
+    #     "n_dif_tags=1, "
+    #     "total_pairs=0, "
+    #     "q1=0, "
+    #     "q2=0, "
+    #     "q3=0, "
+    #     "q4=0, "
+    #     "quality=1.0 "
+    #     "FROM ("
+    #     "SELECT currency, address "
+    #     "FROM tag "
+    #     "WHERE NOT actor IS NULL "
+    #     "GROUP BY currency, address "
+    #     "HAVING COUNT(DISTINCT actor) = 1 "
+    #     ") s "
+    #     "WHERE address_quality.currency=s.currency "
+    #     "AND address_quality.address=s.address"
+    # )
+    # self.cursor.execute(q)
+    # rowcount = self.cursor.rowcount
+    # # self.conn.commit()
+    # return rowcount
 
-        q = (
-            "UPDATE address_quality "
-            "SET "
-            "n_tags=1, "
-            "n_dif_tags=1, "
-            "total_pairs=0, "
-            "q1=0, "
-            "q2=0, "
-            "q3=0, "
-            "q4=0, "
-            "quality=1.0 "
-            "FROM ("
-            "SELECT currency, address "
-            "FROM tag "
-            "WHERE NOT actor IS NULL "
-            "GROUP BY currency, address "
-            "HAVING COUNT(DISTINCT actor) = 1 "
-            ") s "
-            "WHERE address_quality.currency=s.currency "
-            "AND address_quality.address=s.address"
-        )
-        self.cursor.execute(q)
-        rowcount = self.cursor.rowcount
-        # self.conn.commit()
-        return rowcount
 
-
-def validate_currency(currency):
-    currency = currency.upper()
-    if currency not in ["", "BCH", "BTC", "ETH", "LTC", "ZEC"]:
-        raise ValidationError(f"Currency not supported: {currency}")
+def validate_network(network):
+    network = network.upper()
+    if network not in ([""] + list(KNOWN_NETWORKS.keys())):
+        print_warn(f"WARNING: Unknown network {network}")
 
 
 def _get_tag_concepts(tag):
@@ -874,7 +867,7 @@ def _get_tag(tag, tagpack_id):
     label = tag.all_fields.get("label").lower().strip()
     lastmod = tag.all_fields.get("lastmod", datetime.now().isoformat())
 
-    _, address = _get_currency_and_address(tag)
+    _, address = _get_network_and_address(tag)
 
     return (
         label,
@@ -882,7 +875,8 @@ def _get_tag(tag, tagpack_id):
         tag.all_fields.get("category", None),
         tag.all_fields.get("abuse", None),
         address,
-        tag.all_fields.get("currency"),
+        tag.all_fields.get("currency").upper(),
+        tag.all_fields.get("network").upper(),
         tag.all_fields.get("is_cluster_definer"),
         tag.all_fields.get("confidence"),
         lastmod,
@@ -892,23 +886,23 @@ def _get_tag(tag, tagpack_id):
     )
 
 
-def _perform_address_modifications(address, curr):
-    if "BCH" == curr.upper() and address.startswith("bitcoincash"):
+def _perform_address_modifications(address, network):
+    if "BCH" == network.upper() and address.startswith("bitcoincash"):
         address = to_legacy_address(address)
 
-    elif "ETH" == curr.upper():
+    elif "ETH" == network.upper():
         address = address.lower()
 
     return address
 
 
-def _get_currency_and_address(tag):
-    curr = tag.all_fields.get("currency")
+def _get_network_and_address(tag):
+    net = tag.all_fields.get("network").upper()
     addr = tag.all_fields.get("address")
 
-    addr = _perform_address_modifications(addr, curr)
+    addr = _perform_address_modifications(addr, net)
 
-    return curr, addr
+    return net, addr
 
 
 def _get_header(tagpack, tid):

@@ -28,6 +28,9 @@ tag:
   currency:
     type: text
     mandatory: true
+  network:
+    type: text
+    mandatory: true
   context:
     type: text
     mandatory: false

@@ -46,9 +46,9 @@ CONFIG_FILE = "config.yaml"
 
 DEFAULT_CONFIG = {
     "taxonomies": {
+        "concept": "src/tagpack/db/concepts.yaml",
         "entity": "src/tagpack/db/entities.yaml",
         "abuse": "src/tagpack/db/abuses.yaml",
-        "concept": "src/tagpack/db/concepts.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
     }
@@ -164,22 +164,22 @@ def low_quality_addresses(args):
     tagstore = TagStore(args.url, args.schema)
 
     try:
-        th, curr, cat = args.threshold, args.currency, args.category
+        th, curr, cat = args.threshold, args.network, args.category
         la = tagstore.low_quality_address_labels(th, curr, cat)
         if la:
             if not args.csv:
-                c = args.currency if args.currency else "all"
+                c = args.network if args.network else "all"
                 print(f"List of {c} addresses and labels ({len(la)}):")
             else:
-                print("currency,address,labels")
+                print("network,address,labels")
 
             intersections = []
-            for (currency, address), labels in la.items():
+            for (network, address), labels in la.items():
                 if args.csv:
                     labels_str = "|".join(labels)
-                    print(f"{currency},{address},{labels_str}")
+                    print(f"{network},{address},{labels_str}")
                 else:
-                    print(f"\t{currency}\t{address}\t{labels}")
+                    print(f"\t{network}\t{address}\t{labels}")
 
                 if not args.cluster:
                     continue
@@ -250,8 +250,8 @@ def show_quality_measures(args):
     tagstore = TagStore(args.url, args.schema)
 
     try:
-        qm = tagstore.get_quality_measures(args.currency)
-        c = args.currency if args.currency else "Global"
+        qm = tagstore.get_quality_measures(args.network)
+        c = args.network if args.network else "Global"
         print(f"{c} quality measures:")
         print_quality_measures(qm)
 
@@ -324,7 +324,7 @@ def validate_tagpack(args):
                 print(f"{tagpack_file}: ", end="\n")
 
                 tagpack.validate()
-                # verify valid blockchain addresses using internal checksum
+                # verify valid blocknetwork addresses using internal checksum
                 if not args.no_address_validation:
                     tagpack.verify_addresses()
 
@@ -466,7 +466,7 @@ def insert_tagpack(args):
     no_passed = 0
     no_tags = 0
     public, force = args.public, args.force
-    supported = tagstore.supported_currencies
+    # supported = tagstore.supported_currencies
     for i, tp in enumerate(sorted(prepared_packs), start=1):
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
@@ -489,8 +489,8 @@ def insert_tagpack(args):
 
     duration = round(time.time() - t0, 2)
     msg = "Processed {}/{} TagPacks with {} Tags in {}s. "
-    msg += "Only tags for supported currencies {} are inserted."
-    print_line(msg.format(no_passed, n_ppacks, no_tags, duration, supported), status)
+    # msg += "Only tags for supported currencies {} are inserted."
+    print_line(msg.format(no_passed, n_ppacks, no_tags, duration), status)
     msg = "Don't forget to run 'tagstore refresh_views' soon to keep the database"
     msg += " consistent!"
     print_info(msg)
@@ -500,20 +500,20 @@ def _split_into_chunks(seq, size):
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
 
-def insert_cluster_mapping_wp(currency, ks_mapping, args, batch):
+def insert_cluster_mapping_wp(network, ks_mapping, args, batch):
     tagstore = TagStore(args.url, args.schema)
     gs = GraphSense(args.db_nodes, ks_mapping)
-    if gs.keyspace_for_curreny_exists(currency):
-        clusters = gs.get_address_clusters(batch, currency)
-        clusters["currency"] = currency
+    if gs.keyspace_for_network_exists(network):
+        clusters = gs.get_address_clusters(batch, network)
+        clusters["network"] = network
         tagstore.insert_cluster_mappings(clusters)
     else:
         clusters = []
         print_fail(
             "At least one of the configured keyspaces"
-            f" for chain {currency} does not exist."
+            f" for network {network} does not exist."
         )
-    return (currency, len(clusters))
+    return (network, len(clusters))
 
 
 def load_ks_mapping(args):
@@ -555,43 +555,41 @@ def insert_cluster_mapping(args, batch_size=5_000):
     t0 = time.time()
     tagstore = TagStore(args.url, args.schema)
     df = pd.DataFrame(
-        tagstore.get_addresses(args.update), columns=["address", "currency"]
+        tagstore.get_addresses(args.update), columns=["address", "network"]
     )
     ks_mapping = load_ks_mapping(args)
     print("Importing with mapping config: ", ks_mapping)
-    currencies = ks_mapping.keys()
+    networks = ks_mapping.keys()
     gs = GraphSense(args.db_nodes, ks_mapping)
 
-    processed_currencies = []
-
     workpackages = []
-    for currency, data in df.groupby("currency"):
-        if gs.contains_keyspace_mapping(currency):
+    for network, data in df.groupby("network"):
+        if gs.contains_keyspace_mapping(network):
             for batch in _split_into_chunks(data, batch_size):
-                workpackages.append((currency, ks_mapping, args, batch))
+                workpackages.append((network, ks_mapping, args, batch))
 
     nr_workers = int(cpu_count() / 2)
     print(
         f"Processing {len(workpackages)} batches for "
-        f"{len(currencies)} currencies on {nr_workers} workers."
+        f"{len(networks)} networks on {nr_workers} workers."
     )
 
     with Pool(processes=nr_workers, maxtasksperchild=1) as pool:
         processed_workpackages = pool.starmap(insert_cluster_mapping_wp, workpackages)
 
-    processed_currencies = {currency for currency, _ in processed_workpackages}
+    processed_networks = {network for network, _ in processed_workpackages}
 
-    for pc in processed_currencies:
+    for pc in processed_networks:
         mappings_count = sum(
-            [items for currency, items in processed_workpackages if currency == pc]
+            [items for network, items in processed_workpackages if network == pc]
         )
         print_success(f"INSERTED/UPDATED {mappings_count} {pc} cluster mappings")
 
-    tagstore.finish_mappings_update(currencies)
+    tagstore.finish_mappings_update(networks)
     duration = round(time.time() - t0, 2)
     print_line(
         f"Inserted {'missing' if not args.update else 'all'} cluster mappings "
-        f"for {processed_currencies} in {duration}s",
+        f"for {processed_networks} in {duration}s",
         "success",
     )
 
@@ -650,12 +648,12 @@ def read_url_from_env():
 def show_tagstore_composition(args):
     tagstore = TagStore(args.url, args.schema)
     headers = (
-        ["creator", "category", "is_public", "currency", "labels_count", "tags_count"]
-        if args.by_currency
+        ["creator", "category", "is_public", "network", "labels_count", "tags_count"]
+        if args.by_network
         else ["creator", "category", "is_public", "labels_count", "tags_count"]
     )
     df = pd.DataFrame(
-        tagstore.get_tagstore_composition(by_currency=args.by_currency), columns=headers
+        tagstore.get_tagstore_composition(by_network=args.by_network), columns=headers
     )
 
     if args.csv:
@@ -819,12 +817,12 @@ def list_tags(args):
     tagstore = TagStore(args.url, args.schema)
 
     try:
-        uniq, cat, curr = args.unique, args.category, args.currency
-        qm = tagstore.list_tags(unique=uniq, category=cat, currency=curr)
+        uniq, cat, net = args.unique, args.category, args.network
+        qm = tagstore.list_tags(unique=uniq, category=cat, network=net)
         if not args.csv:
             print(f"{len(qm)} Tags found")
         else:
-            print("currency,tp_title,tag_label")
+            print("network,tp_title,tag_label")
         for row in qm:
             print(("," if args.csv else ", ").join(map(str, row)))
 
@@ -844,7 +842,7 @@ def list_address_actors(args):
     tagstore = TagStore(args.url, args.schema)
 
     try:
-        qm = tagstore.list_address_actors(currency=args.currency)
+        qm = tagstore.list_address_actors(network=args.network)
         if not args.csv:
             print(f"{len(qm)} addresses found")
         else:
@@ -1158,10 +1156,9 @@ def main():
         "--category", default="", help="List Tags of a specific category"
     )
     ptp_l.add_argument(
-        "--currency",
+        "--network",
         default="",
-        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
-        help="List Tags of a specific crypto-currency",
+        help="List Tags of a specific crypto-currency network",
     )
     ptp_l.add_argument("--csv", action="store_true", help="Show csv output.")
     ptp_l.set_defaults(func=list_tags, url=def_url)
@@ -1339,10 +1336,9 @@ def main():
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
     )
     app_a.add_argument(
-        "--currency",
+        "--network",
         default="",
-        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
-        help="List addresses of a specific crypto-currency",
+        help="List addresses of a specific crypto-currency network",
     )
     app_a.add_argument("--csv", action="store_true", help="Show csv output.")
     app_a.set_defaults(func=list_address_actors, url=def_url)
@@ -1456,7 +1452,7 @@ def main():
         "taxonomy",
         metavar="TAXONOMY_KEY",
         nargs="?",
-        choices=["abuse", "entity", "confidence", "country"],
+        choices=["abuse", "entity", "confidence", "country", "concept"],
         default=None,
         help="the selected taxonomy",
     )
@@ -1567,7 +1563,9 @@ def main():
     )
     psc.add_argument("--csv", action="store_true", help="Show csv output.")
     psc.add_argument(
-        "--by-currency", action="store_true", help="Include currency in statistic."
+        "--by-network",
+        action="store_true",
+        help="Include currency/network in statistic.",
     )
     psc.set_defaults(func=show_tagstore_composition, url=def_url)
 
@@ -1591,7 +1589,7 @@ def main():
     # parser for quality measures
     parser_q = subparsers.add_parser("quality", help="calculate tags quality measures")
     parser_q.set_defaults(
-        func=show_quality_measures, url=def_url, schema=_DEFAULT_SCHEMA, currency=""
+        func=show_quality_measures, url=def_url, schema=_DEFAULT_SCHEMA, network=""
     )
 
     pqp = parser_q.add_subparsers(title="Quality commands")
@@ -1619,10 +1617,9 @@ def main():
         "--category", default="", help="List addresses of a specific category"
     )
     pqp_l.add_argument(
-        "--currency",
+        "--network",
         default="",
-        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
-        help="Show low quality addresses of a specific crypto-currency",
+        help="Show low quality addresses of a specific crypto-currency network",
     )
     pqp_l.add_argument(
         "--threshold",
@@ -1721,10 +1718,9 @@ def main():
     # parser for quality measures show
     pqp_s = pqp.add_parser("show", help="show average quality measures")
     pqp_s.add_argument(
-        "--currency",
+        "--network",
         default="",
-        choices=["BCH", "BTC", "ETH", "LTC", "ZEC"],
-        help="Show the avg quality measure for a specific crypto-currency",
+        help="Show the avg quality measure for a specific crypto-currency network",
     )
     pqp_s.add_argument(
         "--schema",

@@ -29,6 +29,39 @@ behaviour:
   seeAlso: https://www.merriam-webster.com/dictionary/behavior
   broader: concept
 
+source:
+  id: source
+  type: concept
+  prefLabel: Source
+  description: >
+    Attributes about the source of the information
+  broader: concept
+
+mention:
+  id: mention
+  type: concept
+  prefLabel: Mention
+  description: >
+    Tag originates from an mention
+  broader: source
+
+forum_mention:
+  id: forum_mention
+  type: concept
+  prefLabel: Forum Mention
+  description: >
+    Tag originating from a forum mention
+  broader: website_mention
+
+website_mention:
+  id: website_mention
+  type: concept
+  prefLabel: Website Mention
+  description: >
+    Tag originating from a website mention
+  broader: mention
+
+
 abuse:
   id: abuse
   type: concept
@@ -39,7 +72,72 @@ abuse:
   broader: behaviour
   narrower: [scam]
 
+gray_usage:
+    id: gray_usage
+    type: concept
+    prefLabel: Gray usage patterns
+    description: >
+      Usage patterns that can be of concerning depending on the context
+    broader: behaviour
+    narrower: [mixing]
+
+mixing:
+    id: mixing
+    type: concept
+    prefLabel: Mixing
+    description: >
+      An activity to conceal the source or destination of a payment flow
+    broader: gray_usage
+    narrower: [coinjoin]
+
+white_usage:
+  id: white_usage
+  type: concept
+  prefLabel: White (benin) usage patterns
+  description: >
+    Usage patterns that are tipically not concerning
+  broader: behaviour
+  narrower: [mixing]
+
+
 # High-level concepts Abuse
+
+sexual_abuse:
+  id: sexual_abuse
+  type: concept
+  prefLabel: Sexual Abuse
+  description: >
+    Abuseive secual behavior.
+  seeAlso: https://en.wikipedia.org/wiki/Sexual_abuse
+  broader: abuse
+
+child_sexual_abuse:
+  id: child_sexual_abuse
+  type: concept
+  prefLabel: Child Sexual Abuse
+  description: >
+    Abuseive secual behavior towards minors.
+  seeAlso: https://en.wikipedia.org/wiki/Child_sexual_abuse
+  broader: sexual_abuse
+
+
+violence:
+  id: violence
+  type: concept
+  prefLabel: Violence
+  description: >
+    Anything involving Violent behaviour
+  seeAlso: https://www.merriam-webster.com/dictionary/violence
+  broader: abuse
+
+torture:
+  id: torture
+  type: concept
+  prefLabel: Torture
+  description: >
+    Anything involving Violent behaviour
+  seeAlso: https://www.merriam-webster.com/dictionary/torture
+  broader: violence
 
 scam:
   id: scam
@@ -49,6 +147,63 @@ scam:
     Scam denotes a fraudulent or deceptive act or operation.
   seeAlso: https://www.merriam-webster.com/dictionary/scam
   broader: abuse
+
+financial_crime:
+  id: financial_crime
+  type: concept
+  prefLabel: Financial Crime
+  description: >
+    Financial crime is a broad term used to describe criminal activities that involve money or other financial resources.
+  seeAlso: https://www.interpol.int/Crimes/Financial-crime
+  broader: abuse
+  narrower: investment_fraud
+
+investment_fraud:
+  id: investment_fraud
+  type: concept
+  prefLabel: Investment Fraud
+  description: >
+      Investment fraud involves the illegal sale or purported sale of financial instruments.
+      The typical investment fraud schemes are characterized by offers of low- or no-risk
+      investments, guaranteed returns, overly-consistent returns, complex strategies, or
+      unregistered securities.
+  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/investment-fraud
+  narrower: ponzi_scheme
+  broader: financial_crime
+
+ponzi_scheme:
+  id: ponzi_scheme
+  type: concept
+  prefLabel: Ponzi Scheme
+  description: >
+      Ponzi schemes promise high financial returns or dividends not available through traditional
+      investments. Instead of investing the funds of victims, however, the con artist pays
+      dividends to initial investors using the funds of subsequent investors. The scheme generally
+      falls apart when the operator flees with all of the proceeds or when a sufficient number of
+      new investors cannot be found to allow the continued payment of dividends.
+  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/ponzi-schemes
+  narrower: pyramid_scheme
+  broader: investment_fraud
+
+pyramid_scheme:
+  id: pyramid_scheme
+  type: concept
+  prefLabel: Pyramid Scheme
+  description: >
+      As in Ponzi schemes, the money collected from newer victims of pyramid schemes is paid to
+      earlier victims to provide a veneer of legitimacy. In pyramid schemes, however, the victims
+      themselves are induced to recruit further victims through the payment of recruitment commissions.
+  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/pyramid-schemes
+  broader: ponzi_scheme
+
+money_laundering:
+  id: money_laundering
+  type: concept
+  prefLabel: Money Laundering
+  description: >
+    Money laundering is concealing or disguising the origins of illegally obtained proceeds so that they appear to have originated from legitimate sources.
+  seeAlso: https://www.interpol.int/Crimes/Financial-crime/Money-laundering
+  broader: financial_crime
 
 extortion:
   id: extortion
@@ -92,6 +247,15 @@ service_hack:
     funds.
   broader: abuse
 
+payment_card_fraud:
+  id: payment_card_fraud
+  type: concept
+  prefLabel: Payment Card Fraud
+  description: >
+    Criminal activity revolving around payment cards.
+  seeAlso: https://www.interpol.int/Crimes/Financial-crime/Payment-card-fraud
+  broader: financial_crime
+
 ransomware:
   id: ransomware
   type: concept
@@ -101,44 +265,6 @@ ransomware:
     victim's data or perpetually block access to it unless a ransom is paid.
   seeAlso: https://en.wikipedia.org/wiki/Ransomware
   broader: abuse
-
-investment_fraud:
-  id: investment_fraud
-  type: concept
-  prefLabel: Investment Fraud
-  description: >
-      Investment fraud involves the illegal sale or purported sale of financial instruments.
-      The typical investment fraud schemes are characterized by offers of low- or no-risk
-      investments, guaranteed returns, overly-consistent returns, complex strategies, or
-      unregistered securities.
-  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/investment-fraud
-  narrower: ponzi_scheme
-  broader: abuse
-
-ponzi_scheme:
-  id: ponzi_scheme
-  type: concept
-  prefLabel: Ponzi Scheme
-  description: >
-      Ponzi schemes promise high financial returns or dividends not available through traditional
-      investments. Instead of investing the funds of victims, however, the con artist pays
-      dividends to initial investors using the funds of subsequent investors. The scheme generally
-      falls apart when the operator flees with all of the proceeds or when a sufficient number of
-      new investors cannot be found to allow the continued payment of dividends.
-  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/ponzi-schemes
-  narrower: pyramid_scheme
-  broader: investment_fraud
-
-pyramid_scheme:
-  id: pyramid_scheme
-  type: concept
-  prefLabel: Pyramid Scheme
-  description: >
-      As in Ponzi schemes, the money collected from newer victims of pyramid schemes is paid to
-      earlier victims to provide a veneer of legitimacy. In pyramid schemes, however, the victims
-      themselves are induced to recruit further victims through the payment of recruitment commissions.
-  seeAlso: https://www.fbi.gov/scams-and-safety/common-scams-and-crimes/pyramid-schemes
-  broader: ponzi_scheme
 
 sanction:
   id: sanction
@@ -174,10 +300,10 @@ dark_web:
   type: concept
   prefLabel: Dark web
   description: >
-    Illegal Web content or service offerings exposed via darknets overlay networks, which
+    Web content or service offerings exposed via darknets overlay networks, which
     are only through networks such as Tor.
   seeAlso: https://en.wikipedia.org/wiki/Dark_web
-  broader: abuse
+  broader: source
 
 
 # High-level concepts Entities
@@ -298,7 +424,23 @@ cold_wallet:
   prefLabel: Cold Wallet
   description: >
     A wallet that is not connected to the Internet and controlled by some user.
-  broader: service
+  broader: white_usage
+
+hot_wallet:
+  id: hot_wallet
+  type: concept
+  prefLabel: Hot Wallet
+  description: >
+    A hot wallet is a wallet used frequently, typically keys are used in an automated fashion without a user in the loop
+  broader: white_usage
+
+warm_wallet:
+  id: warm_wallet
+  type: concept
+  prefLabel: Warm Wallet
+  description: >
+    A warm wallet is a similar to a hot wallet but with a user in the loop (no automated usage of keys)
+  broader: white_usage
 
 filesharing:
   id: filesharing
@@ -342,7 +484,7 @@ messaging_service:
 mixing_service:
   id: mixing_service
   type: concept
-  prefLabel: Mixing Service
+  prefLabel: Mixing as a Service
   description: >
     A tumbler or mixing service is a service offered to mix potentially identifiable
     or 'tainted' cryptoasset funds with others, so as to obscure the trail back to the
@@ -350,7 +492,6 @@ mixing_service:
     usually bitcoin (hence Bitcoin mixer), since the currencies provide a public ledger of all transactions.
   seeAlso: https://en.wikipedia.org/wiki/Cryptocurrency_tumbler
   broader: service
-  narrower: coinjoin
 
 coinjoin:
   id: coinjoin
@@ -361,16 +502,17 @@ coinjoin:
     conduct transactions with each other, obscuring the sources and destinations of BTC used in
     transactions.
   seeAlso: https://www.investopedia.com/terms/c/coinjoin.asp
-  broader: mixing_service
+  broader: mixing
+
 
 miner:
   id: miner
   type: concept
   prefLabel: Miner
   description: >
-    A service that processes and verifies transactions for various forms of cryptoassets and
+    A service or individual that processes and verifies transactions for various forms of cryptoassets and
     creates blocks to be added to the blockchain digital ledger.
-  broader: service
+  broader: user
 
 mining_service:
   id: mining_service
@@ -378,7 +520,7 @@ mining_service:
   prefLabel: Mining as a Service
   description: >
     A software and computing infrastructure that allows mining of cryptoassets in the cloud
-  broader: miner
+  broader: service
 
 gambling:
   id: gambling
