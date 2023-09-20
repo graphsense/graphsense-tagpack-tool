@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PROJECT := tagpack-tool
 VENV := .venv
-RELEASE := 'v23.06'
+RELEASE := 'v23.09'
 RELEASESEM := 'v1.7.2'
 
 all: format lint test build
