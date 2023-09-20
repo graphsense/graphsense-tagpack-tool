@@ -8,14 +8,16 @@
 
 name: Upload Python Package
 
-on:
-  # release:
-  #   types: [published]
+on: workflow_dispatch
+# on:
+#   # release:
+#   #   types: [published]
+#   on: workflow_dispatch
 
-  push:
-    branches: [ "master" ]
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
+#   push:
+#     branches: [ "master" ]
+#     # Publish semver tags as releases.
+#     tags: [ 'v*.*.*' ]
 
 permissions:
   contents: read
@@ -24,13 +26,16 @@ jobs:
   deploy:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.7", "3.8", "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v3
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: ${{ matrix.python }}
     - name: Install tox and any other packages
       run: pip install tox
     - name: Run Unit Test via tox
