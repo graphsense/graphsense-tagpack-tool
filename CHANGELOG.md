@@ -1,5 +1,8 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.09/1.7.4] 2023-09-21
+### fixed
+- Bump cassandra driver version 3.27, import lz4 to enable cassandra compression
 
 ## [23.09/1.7.3] 2023-09-20
 ### fixed
