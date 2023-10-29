@@ -41,6 +41,10 @@ def auto_commit(function):
     return wrapper
 
 
+def _private_condition(show_private: bool, table: str):
+    return f"and {table}.is_public=true" if not show_private else ""
+
+
 class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
@@ -436,6 +440,18 @@ class TagStore(object):
             for x in self.cursor.fetchall()
         ]
 
+    def _result(self, query, params=None, page=0, pagesize=None):
+        if pagesize:
+            query += f" LIMIT {pagesize}"
+        query += f" OFFSET {page*pagesize if pagesize else 0}"
+        print(query, params)
+        self.cursor.execute(query, params)
+
+        return [
+            dict(zip([column[0] for column in self.cursor.description], row))
+            for row in self.cursor.fetchall()
+        ]
+
     def tagstore_source_repos(self) -> List[dict]:
         fields = ["uri"]
         query = f"SELECT {','.join(fields)} FROM tagpack"
@@ -449,6 +465,361 @@ class TagStore(object):
         repos = {get_repo_part(x[0]) for x in self.cursor.fetchall()}
 
         return [{k: v for k, v in zip(fields, [x])} for x in repos]  # noqa: C416
+
+    def taxonomies(self):
+        fields = ["id", "source", "description"]
+
+        query = f"SELECT {','.join(fields)} FROM taxonomy "
+
+        return self._result(query)
+
+    def concepts(self, taxonomy: str):
+        query = f"SELECT * FROM concept WHERE taxonomy = '{taxonomy}'"
+
+        return self._result(query)
+
+    def count_labels_by_network(self, network: str):
+        query = f"""
+            select
+                no_labels,
+                no_implicit_tagged_addresses as no_tagged_addresses
+            from
+                statistics tp
+            where
+                network = '{network.upper()}'"""
+
+        return self._result(query)
+
+    def count_labels_by_entity(self, network, entity):
+        query = """
+            select sum(count) as count from tag_count_by_cluster
+            where
+               network = %s
+               and gs_cluster_id = %s """
+
+        return self._result(query, params=[network.upper(), entity])
+
+    def tags_by_label(self, label: str, private: bool, page, pagesize):
+        query = f"""SELECT
+                t.*,
+                tp.uri,
+                tp.uri,
+                tp.creator,
+                tp.title,
+                tp.is_public,
+                c.level,
+                acm.gs_cluster_id
+            FROM
+               tag t,
+               tagpack tp,
+               confidence c,
+               address_cluster_mapping acm
+           WHERE
+               t.tagpack = tp.id
+               AND t.confidence = c.id
+               AND acm.address=t.address
+               AND acm.network=t.network
+               {_private_condition(private, "tp")}
+               AND t.label = %s """
+
+        return self._result(query, [label], page, pagesize)
+
+    def tags_by_address(self, address, private, page, pagesize):
+        query = f"""select
+                    t.*,
+                    tp.uri,
+                    tp.creator,
+                    tp.title,
+                    tp.is_public,
+                    c.level,
+                    acm.gs_cluster_id
+                from
+                    tag t,
+                    tagpack tp,
+                    confidence c,
+                    address_cluster_mapping acm
+                where
+                    t.tagpack=tp.id
+                    and c.id=t.confidence
+                    and t.address = %s
+                    and acm.address=t.address
+                    and acm.network=t.network
+                    {_private_condition(private, "tp")}
+                order by
+                    c.level DESC, t.id ASC
+                    """
+
+        return self._result(query, [address], page, pagesize)
+
+    def labels(self, search_string, private, limit):
+        query = f"""select
+                t.label
+               from
+                tag t,
+                label l,
+                tagpack tp
+               where
+                t.label = l.label
+                and tp.id = t.tagpack
+                and similarity(l.label, %s) > 0.2
+                {_private_condition(private, "tp")}
+               order by l.label <-> %s
+               limit %s"""
+
+        return self._result(query, [search_string, search_string, limit])
+
+    def tags_by_entity(self, network, cluster_id, private, page, pagesize):
+        query = f"""select
+                   t.*,
+                   tp.uri,
+                   tp.creator,
+                   tp.title,
+                   tp.is_public,
+                   c.level,
+                   acm.gs_cluster_id
+               from
+                   tag t,
+                   tagpack tp,
+                   address_cluster_mapping acm,
+                   confidence c
+               where
+                   acm.address=t.address
+                   and acm.network=t.network
+                   and c.id=t.confidence
+                   and t.network = %s
+                   and acm.gs_cluster_id = %s
+                   {_private_condition(private, "tp")}
+                   and t.tagpack=tp.id
+               order by
+                   c.level desc,
+                   t.address asc
+                   """
+
+        return self._result(
+            query,
+            [network.upper(), cluster_id],
+            page,
+            pagesize,
+        )
+
+    def best_entity_tag(self, network, cluster_id, private):
+        if network == "eth":
+            # in case of eth we want to propagate the best address tag
+            # regardless of if the tagpack is a defines it as cluster definer
+            # since cluster == entity in eth
+            cluster_definer_condition = ""
+        else:
+            cluster_definer_condition = """and
+                            (cd.is_cluster_definer=true
+                                AND t.is_cluster_definer=true
+                            OR
+                            cd.is_cluster_definer=false
+                                AND t.is_cluster_definer!=true
+                        )"""
+
+        query = f"""select
+                        t.*,
+                        tp.uri,
+                        tp.creator,
+                        tp.title,
+                        tp.is_public,
+                        cd.gs_cluster_id,
+                        c.level
+                   from
+                        tag t,
+                        tagpack tp,
+                        address_cluster_mapping acm,
+                        cluster_defining_tags_by_frequency_and_maxconfidence cd,
+                        confidence c
+                   where
+                        cd.gs_cluster_id=acm.gs_cluster_id
+                        and cd.network = acm.network
+                        and cd.label = t.label
+                        and cd.max_level = c.level
+                        and acm.address=t.address
+                        and t.network = acm.network
+                        and cd.network = %s
+                        and cd.gs_cluster_id = %s
+                        and t.tagpack=tp.id
+                        and t.address=cd.address
+                        {cluster_definer_condition}
+                        and c.id = t.confidence
+                        {_private_condition(private, 'cd')}
+                   order by
+                        cd.max_level desc,
+                        cd.no_addresses desc,
+                        cd.is_cluster_definer desc,
+                        t.address desc
+                   limit 1"""  # noqa
+
+        return self._result(
+            query,
+            [network.upper(), cluster_id],
+        )
+
+    def tags_for_entities(self, network, cluster_ids, private):
+        c = tuple(i for i in cluster_ids)
+
+        query = f"""select
+                acm.gs_cluster_id,
+                json_agg(distinct t.label) as labels
+               from
+                tag t,
+                tagpack tp,
+                address_cluster_mapping acm
+               where
+                t.address = acm.address
+                and t.network = acm.network
+                and t.is_cluster_definer = true
+                and acm.network = %s
+                and acm.gs_cluster_id in %s
+                and tp.id = t.tagpack
+                {_private_condition(private, "tp")}
+               group by
+                acm.gs_cluster_id
+               order by acm.gs_cluster_id"""
+
+        return self._result(
+            query,
+            [network.upper(), c],
+        )
+
+    def tags_for_addresses(self, network, addresses, private):
+        if network == "eth":
+            addresses = tuple(addr.lower().strip() for addr in addresses)
+        else:
+            addresses = tuple(addr.strip() for addr in addresses)
+
+        query = f"""select
+                          t.address,
+                          json_agg(distinct t.label) as labels
+                         from
+                          tag t,
+                          tagpack tp
+                         where
+                          t.tagpack = tp.id
+                          and t.network = %s
+                          and t.address in %s
+                          {_private_condition(private, "tp")}
+                         group by address
+                         order by address"""
+
+        return self._result(query, [network.upper(), addresses])
+
+    def actors_for_address(self, network, address, show_private=False):
+
+        query = f"""select
+                            distinct t.actor as id, ac.label as label
+                           from
+                            tag t,
+                            actor ac,
+                            tagpack tp
+                           where
+                            t.actor = ac.id
+                            and t.tagpack = tp.id
+                            and t.network = %s
+                            and t.address = %s
+                            {_private_condition(show_private, "tp")}
+                            order by label"""
+        return self._result(query, [network.upper(), address])
+
+    def actors_for_entity(self, network, entity, show_private=False):
+
+        query = f"""select
+                       distinct t.actor as id, ac.label as label
+                      from
+                       tag t,
+                       actor ac,
+                       address_cluster_mapping acm,
+                       tagpack tp
+                      where
+                       t.address = acm.address
+                       and t.tagpack = tp.id
+                       and t.network = acm.network
+                       and acm.network = %s
+                       and acm.gs_cluster_id = %s
+                       and ac.id = t.actor
+                       {_private_condition(show_private, "tp")}
+                       order by label"""
+        return self._result(
+            query,
+            [
+                network.upper(),
+                entity,
+            ],
+        )
+
+    def get_matching_actors(self, expression, limit, show_private=False):
+        query = f"""select
+                    a.id,
+                    a.label
+                   from
+                    actor a,
+                    actorpack ap
+                   where
+                    ap.id = a.actorpack
+                    and similarity(a.label, %s) > 0.2
+                    {_private_condition(show_private, 'ap')}
+                   order by a.label <-> %s
+                   limit %s"""
+        return self._result(query, params=[expression, expression, limit])
+
+    def get_actor(self, id):
+        query = "SELECT * FROM actor WHERE id=%s"
+
+        return self._result(query, [id])
+
+    def get_actor_categories(self, id):
+        query = (
+            "SELECT actor_categories.*,concept.label FROM "
+            "actor_categories, concept "
+            "WHERE actor_categories.category_id = concept.id and actor_id=%s"
+        )
+
+        return self._result(query, [id])
+
+    def get_actor_jurisdictions(self, id):
+        query = (
+            "SELECT actor_jurisdictions.*,concept.label FROM "
+            "actor_jurisdictions, concept "
+            "WHERE actor_jurisdictions.country_id = concept.id and actor_id=%s"
+        )
+
+        return self._result(query, [id])
+
+    def get_nr_of_tags_by_actor(self, id):
+        query = "SELECT count(*) FROM tag WHERE actor=%s"
+
+        return self._result(query, [id])
+
+    def get_tags_for_actor(self, id, show_private=False, page=None, pagesize=None):
+        query = f"""select
+                        t.*,
+                        tp.uri,
+                        tp.creator,
+                        tp.title,
+                        tp.is_public,
+                        c.level,
+                        acm.gs_cluster_id
+                    from
+                       tag t,
+                       tagpack tp,
+                       confidence c,
+                       address_cluster_mapping acm
+                   where
+                       t.tagpack = tp.id
+                       and t.confidence = c.id
+                       and acm.address=t.address
+                       and acm.network=t.network
+                       {_private_condition(show_private, "tp")}
+                       and t.actor = %s """
+
+        return self._result(
+            query,
+            [id],
+            page,
+            pagesize,
+        )
 
     def low_quality_address_labels(self, th=0.25, network="", category="") -> dict:
         """
@@ -585,7 +956,7 @@ class TagStore(object):
         if not clusters.empty:
             q = "INSERT INTO address_cluster_mapping (address, network, \
                 gs_cluster_id , gs_cluster_def_addr , gs_cluster_no_addr) \
-                VALUES (%s, %s, %s, %s, %s) ON CONFLICT (chain, address) \
+                VALUES (%s, %s, %s, %s, %s) ON CONFLICT (network, address) \
                 DO UPDATE SET gs_cluster_id = EXCLUDED.gs_cluster_id, \
                 gs_cluster_def_addr = EXCLUDED.gs_cluster_def_addr, \
                 gs_cluster_no_addr = EXCLUDED.gs_cluster_no_addr"
