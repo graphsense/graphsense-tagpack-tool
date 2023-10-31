@@ -17,6 +17,8 @@ from tagpack.cmd_utils import print_fail, print_info, print_success, print_warn
 from tagpack.tagpack import TagPack
 from tagpack.utils import get_github_repo_url
 
+from .utils import open_localfile_with_pkgresource_fallback
+
 register_adapter(np.int64, AsIs)
 
 
@@ -109,11 +111,47 @@ class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
         self.cursor = self.conn.cursor()
+        self.schema = schema
 
-        self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
-        self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+        if self.do_tagstore_tables_exist():
+            self.cursor.execute("SELECT unnest(enum_range(NULL::currency))")
+            self.supported_currencies = [i[0] for i in self.cursor.fetchall()]
+        else:
+            self.supported_currencies = []
         self.existing_packs = None
         self.existing_actorpacks = None
+
+    def does_tagstore_db_exist(self, db_name):
+        self.cursor.execute(
+            "select * from pg_catalog.pg_database where datname=%(d)s;", {"d": db_name}
+        )
+        return self.cursor.rowcount > 0
+
+    def do_tagstore_tables_exist(self):
+        self.cursor.execute(
+            (
+                "set search_path to default; "
+                "select * from pg_tables "
+                "where tablename=%(t)s and schemaname=%(s)s;"
+            ),
+            {"t": "tag", "s": self.schema},
+        )
+        return self.cursor.rowcount > 0
+
+    def create_database(self, db_name):
+        self.cursor.auto_commit = True
+        try:
+            self.cursor.execute("create database %(n)s", {"n": db_name})
+        finally:
+            self.cursor.auto_commit = False
+
+    @auto_commit
+    def create_tables(self):
+        with open_localfile_with_pkgresource_fallback(
+            "src/tagpack/db/tagstore_schema.sql"
+        ) as f:
+            creation_sql = f.read()
+            self.cursor.execute(creation_sql)
 
     @auto_commit
     def insert_taxonomy(self, taxonomy):

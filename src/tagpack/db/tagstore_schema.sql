@@ -1,11 +1,12 @@
--- Monitoring
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-
 DROP SCHEMA IF EXISTS tagstore CASCADE;
 
 CREATE SCHEMA tagstore;
 
 SET search_path to tagstore;
+
+-- Monitoring
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
 
 -- Taxonomy & Concept tables
 

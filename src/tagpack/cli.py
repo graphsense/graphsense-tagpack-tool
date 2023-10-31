@@ -617,6 +617,26 @@ def init_db(args):
         print_line("No taxonomies configured to init the db", "fail")
         return
 
+    tagstore = TagStore(args.url, args.schema)
+
+    if args.create_db is not None:
+        db = args.url.split("/")[-1]
+
+        if not tagstore.does_tagstore_db_exist(db):
+            print_info(f"Creating database: {db}")
+            tagstore.create_database(db)
+        else:
+            print_info("DB exists, nothing to do")
+
+        if not tagstore.do_tagstore_tables_exist():
+            print_info("Creating tables")
+            tagstore.create_tables()
+        else:
+            print_info("Tables already exist.")
+            # tagstore.set_default_permissions(u, p)
+
+    del tagstore
+
     t0 = time.time()
     print_line("Init database starts")
     insert_taxonomy(args)
@@ -920,7 +940,8 @@ def sync_repos(args):
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
         print_line("Init db taxonomies ...")
-        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url]))
+        extra = ["--create-db"] if args.create_db is not None else []
+        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url] + extra))
 
         extra_option = "--force" if args.force else None
         extra_option = "--add_new" if extra_option is None else extra_option
@@ -1168,6 +1189,11 @@ def main():
         "--no-validation",
         action="store_true",
         help="Do not validate tagpacks before insert. (better insert speed)",
+    )
+    parser_syc.add_argument(
+        "--create-db",
+        help="Try to automatically create the database if it does not exist.",
+        action="store_true",
     )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
@@ -1544,6 +1570,11 @@ def main():
     )
     pbp.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    pbp.add_argument(
+        "--create-db",
+        help="Try to automatically create the database if it does not exist.",
+        action="store_true",
     )
     pbp.set_defaults(func=init_db, url=def_url, taxonomy=None)
 
