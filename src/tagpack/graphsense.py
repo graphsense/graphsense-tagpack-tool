@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import hashlib
+
+import base58
 import numpy as np
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent_with_args
 from cassandra.query import dict_factory
 from pandas import DataFrame
 from pandas import pandas as pd
+
+TRON_ADDRESS_PREFIX = b"\x41"
 
 
 def eth_address_to_hex(address):
@@ -14,13 +19,83 @@ def eth_address_to_hex(address):
     return "0x" + address.hex()
 
 
+def eth_address_to_hex_str(address):
+    return "0x" + address.hex()
+
+
 def eth_address_from_hex(address):
     # eth addresses are case insensitive
     try:
         b = bytes.fromhex(address[2:].lower())
-    except Exception:
+    except Exception as e:
+        print(address, e)
         return None
     return b
+
+
+def sha256(bts):
+    m = hashlib.sha256()
+    m.update(bts)
+    return m.digest()
+
+
+def get_tron_address_checksum(addr_bytes_with_prefix: bytes):
+    h0 = sha256(addr_bytes_with_prefix)
+    h1 = sha256(h0)
+    checkSum = h1[0:4]
+    return checkSum
+
+
+def is_eth_like(network: str) -> bool:
+    return network.upper() == "ETH" or network.upper() == "TRX"
+
+
+def add_tron_prefix(address_bytes, prefix: bytes = TRON_ADDRESS_PREFIX):
+    if len(address_bytes) == 20:
+        return prefix + address_bytes
+    return address_bytes
+
+
+def evm_to_tron_address(
+    evm_address_hex: str, prefix: bytes = TRON_ADDRESS_PREFIX
+) -> bytes:
+    # inspired by
+    # https://github.com/tronprotocol/tronweb
+    # /blob/d8c0d48847c0a2dd1c92f4a93f1e01b31c33dc94/src/utils/crypto.js#L14
+    a = add_tron_prefix(eth_address_from_hex(evm_address_hex), prefix)
+    checkSum = get_tron_address_checksum(a)
+    taddress = a + checkSum
+    return base58.b58encode(taddress)
+
+
+def evm_to_tron_address_string(
+    evm_address_hex: str, prefix: bytes = TRON_ADDRESS_PREFIX
+) -> str:
+    return evm_to_tron_address(evm_address_hex, prefix).decode("utf-8")
+
+
+def strip_tron_prefix(address_bytes, prefix: bytes = TRON_ADDRESS_PREFIX):
+    if len(address_bytes) > len(prefix) and address_bytes.startswith(prefix):
+        return address_bytes[len(prefix) :]
+    return address_bytes
+
+
+def tron_address_to_evm(taddress_str: str, validate: bool = True) -> bytes:
+    ab = base58.b58decode(taddress_str)
+    checkSum = ab[-4:]
+    a = ab[:-4]
+
+    # recompute checksum
+    if validate:
+        checkSumComputed = get_tron_address_checksum(a) if validate else None
+
+    if not validate or all(a == b for a, b in zip(checkSum, checkSumComputed)):
+        if not validate and len(ab) < 21:
+            return strip_tron_prefix(ab)
+        else:
+            return strip_tron_prefix(a)
+    else:
+        raise ValueError(f"Invalid checksum on address {taddress_str}")
 
 
 _CONCURRENCY = 100
@@ -96,13 +171,30 @@ class GraphSense(object):
 
         df_temp = df[["address"]].copy()
         df_temp = df_temp.drop_duplicates()
-        if currency == "ETH":
+        if currency == "TRX":
+            # convert t-style to evm
+            df_temp["address"] = df_temp["address"].apply(
+                lambda x: eth_address_to_hex_str(tron_address_to_evm(x))
+            )
+
             df_temp["address_prefix"] = df_temp["address"].str[
                 2 : 2 + ks_config["address_prefix_length"]
             ]
             df_temp["address_prefix"] = df_temp["address_prefix"].apply(
                 lambda x: x.upper()
             )
+            df_temp["address"] = df_temp["address"].apply(
+                lambda x: eth_address_from_hex(x)
+            )
+
+        elif currency == "ETH":
+            df_temp["address_prefix"] = df_temp["address"].str[
+                2 : 2 + ks_config["address_prefix_length"]
+            ]
+            df_temp["address_prefix"] = df_temp["address_prefix"].apply(
+                lambda x: x.upper()
+            )
+
             df_temp["address"] = df["address"].apply(lambda x: eth_address_from_hex(x))
         else:
             if "bech_32_prefix" in ks_config:
@@ -120,12 +212,25 @@ class GraphSense(object):
             + "WHERE address_prefix=? and address=?"
         )
 
+        print("query")
+        print(df_temp)
+
         statement = self.session.prepare(query)
         parameters = df_temp[["address_prefix", "address"]].to_records(index=False)
 
         result = self._execute_query(statement, parameters)
+
+        print("result")
+        print(result)
         if currency == "ETH":
             result["address"] = result["address"].apply(lambda x: eth_address_to_hex(x))
+        elif currency == "TRX":
+            # convert evm to t-style address
+            result["address"] = result["address"].apply(
+                lambda x: evm_to_tron_address_string(eth_address_to_hex_str(x))
+                if x is not None
+                else None
+            )
 
         return result
 
@@ -133,8 +238,8 @@ class GraphSense(object):
         """Get cluster ids for all passed address ids"""
         self._check_passed_params(df, currency, "address_id")
 
-        if currency == "ETH":
-            raise Exception("eth does not have clusters")
+        if is_eth_like(currency):
+            raise Exception(f"{currency} does not have clusters")
 
         keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
@@ -159,8 +264,8 @@ class GraphSense(object):
         """Get clusters for all passed cluster ids"""
         self._check_passed_params(df, currency, "cluster_id")
 
-        if currency == "ETH":
-            raise Exception("eth does not have clusters")
+        if is_eth_like(currency):
+            raise Exception(f"{currency} does not have clusters")
 
         keyspace = self.ks_map[currency]["transformed"]
         ks_config = self._query_keyspace_config(keyspace)
@@ -212,11 +317,14 @@ class GraphSense(object):
             )
             addresses.rename(columns={"address": "checksum_address"}, inplace=True)
             addresses.loc[:, "address"] = addresses["checksum_address"].str.lower()
+        elif currency == "TRX":
+            addresses.rename(columns={"address": "checksum_address"}, inplace=True)
+            addresses.loc[:, "address"] = addresses["checksum_address"]
 
         df_address_ids = self.get_address_ids(addresses, currency)
         if len(df_address_ids) == 0:
             return DataFrame()
-        if currency == "ETH":
+        if is_eth_like(currency):
             df_address_ids["cluster_id"] = df_address_ids["address_id"]
             df_address_ids["no_addresses"] = 1
 

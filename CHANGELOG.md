@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [23.12/1.9.0] 2023-12-21
+### added
+- add cluster mapping for tron
+
 ## [23.09/1.8.0] 2023-10-31
 ### added
 - new --create-db flag for init and sync which tries to automatically create the database if it does not exist
