@@ -10,7 +10,28 @@ from cassandra.query import dict_factory
 from pandas import DataFrame
 from pandas import pandas as pd
 
+from tagpack.cmd_utils import print_warn
+
 TRON_ADDRESS_PREFIX = b"\x41"
+
+
+def try_convert_tron_to_eth(x):
+    try:
+        return eth_address_to_hex_str(tron_address_to_evm(x))
+    except Exception as e:
+        print_warn(f"Can't convert address {x} to eth format; {e}")
+        return None
+
+
+def try_convert_to_tron(x):
+    try:
+        if x is not None:
+            return None
+        else:
+            return evm_to_tron_address_string(eth_address_to_hex_str(x))
+    except Exception as e:
+        print_warn(f"Can't convert address {x} to tron format; {e}")
+        return None
 
 
 def eth_address_to_hex(address):
@@ -173,9 +194,10 @@ class GraphSense(object):
         df_temp = df_temp.drop_duplicates()
         if currency == "TRX":
             # convert t-style to evm
-            df_temp["address"] = df_temp["address"].apply(
-                lambda x: eth_address_to_hex_str(tron_address_to_evm(x))
-            )
+            df_temp["address"] = df_temp["address"].apply(try_convert_tron_to_eth)
+
+            # filter non convertible addresses
+            df_temp = df_temp[df_temp["address"].notnull()]
 
             df_temp["address_prefix"] = df_temp["address"].str[
                 2 : 2 + ks_config["address_prefix_length"]
@@ -212,25 +234,16 @@ class GraphSense(object):
             + "WHERE address_prefix=? and address=?"
         )
 
-        print("query")
-        print(df_temp)
-
         statement = self.session.prepare(query)
         parameters = df_temp[["address_prefix", "address"]].to_records(index=False)
 
         result = self._execute_query(statement, parameters)
 
-        print("result")
-        print(result)
         if currency == "ETH":
             result["address"] = result["address"].apply(lambda x: eth_address_to_hex(x))
         elif currency == "TRX":
             # convert evm to t-style address
-            result["address"] = result["address"].apply(
-                lambda x: evm_to_tron_address_string(eth_address_to_hex_str(x))
-                if x is not None
-                else None
-            )
+            result["address"] = result["address"].apply(try_convert_to_tron)
 
         return result
 
