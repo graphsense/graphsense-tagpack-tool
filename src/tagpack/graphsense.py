@@ -17,6 +17,8 @@ TRON_ADDRESS_PREFIX = b"\x41"
 
 def try_convert_tron_to_eth(x):
     try:
+        if x.startswith("0x"):
+            return x
         return eth_address_to_hex_str(tron_address_to_evm(x))
     except Exception as e:
         print_warn(f"Can't convert address {x} to eth format; {e}")
@@ -25,7 +27,7 @@ def try_convert_tron_to_eth(x):
 
 def try_convert_to_tron(x):
     try:
-        if x is not None:
+        if x is None:
             return None
         else:
             return evm_to_tron_address_string(eth_address_to_hex_str(x))
@@ -49,7 +51,7 @@ def eth_address_from_hex(address):
     try:
         b = bytes.fromhex(address[2:].lower())
     except Exception as e:
-        print(address, e)
+        print_warn(f"can't convert to hex {address}; {e}")
         return None
     return b
 
