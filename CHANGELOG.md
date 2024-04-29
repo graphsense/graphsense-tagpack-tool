@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [24.01.3] 2024-03-29
+### changed
+- add new concept for tokens (defi_token)
+
 ## [24.01.2] 2024-03-22
 ### changed
 - allow all concepts to be used in category field (align category and concepts)
