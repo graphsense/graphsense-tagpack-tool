@@ -1,5 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [24.01.4] 2024-05-29
+### fixed
+- clustermappings for eth did not work
+
 ## [24.01.3] 2024-03-29
 ### changed
 - add new concept for tokens (defi_token)

@@ -242,7 +242,7 @@ class GraphSense(object):
         result = self._execute_query(statement, parameters)
 
         if currency == "ETH":
-            result["address"] = result["address"].apply(lambda x: eth_address_to_hex(x))
+            result["address"] = result["address"].apply(eth_address_to_hex_str)
         elif currency == "TRX":
             # convert evm to t-style address
             result["address"] = result["address"].apply(try_convert_to_tron)
