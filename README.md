@@ -1,5 +1,3 @@
-![Test TagPack Tool](https://github.com/graphsense/graphsense-tagpack-tool/actions/workflows/test_and_build.yaml/badge.svg)
-
 # GraphSense TagPack Management Tool
 
 [![Test and Build Status](https://github.com/graphsense/graphsense-tagpack-tool/actions/workflows/test_and_build.yaml/badge.svg)](https://github.com/graphsense/graphsense-tagpack-tool/actions) [![PyPI version](https://badge.fury.io/py/tagpack-tool.svg)](https://badge.fury.io/py/graphsense-lib) [![Python](https://img.shields.io/pypi/pyversions/tagpack-tool)](https://pypi.org/project/tagpack-tool/) [![Downloads](https://static.pepy.tech/badge/tagpack-tool)](https://pepy.tech/project/tagpack-tool)
