@@ -1,5 +1,8 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [24.01.6] 2024-06-20
+### fixed
+- avoid errors with numpy 2.0 setting version restriction to < 2.0
 
 ## [24.01.5] 2024-06-03
 ### fixed
