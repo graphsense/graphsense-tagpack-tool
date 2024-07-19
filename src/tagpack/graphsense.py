@@ -211,6 +211,10 @@ class GraphSense(object):
                 lambda x: eth_address_from_hex(x)
             )
 
+            # the last step can fail two, eg, wrongly encoded addresses
+            # so we filter again filter non convertible addresses
+            df_temp = df_temp[df_temp["address"].notnull()]
+
         elif currency == "ETH":
             df_temp["address_prefix"] = df_temp["address"].str[
                 2 : 2 + ks_config["address_prefix_length"]
@@ -220,6 +224,10 @@ class GraphSense(object):
             )
 
             df_temp["address"] = df["address"].apply(lambda x: eth_address_from_hex(x))
+
+            # the last step can fail two, eg, wrongly encoded addresses
+            # so we filter again filter non convertible addresses
+            df_temp = df_temp[df_temp["address"].notnull()]
         else:
             if "bech_32_prefix" in ks_config:
                 df_temp["a"] = df_temp["address"].apply(

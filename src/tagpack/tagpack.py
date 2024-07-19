@@ -1,4 +1,5 @@
 """TagPack - A wrapper for TagPacks files"""
+
 import glob
 import hashlib
 import json
@@ -271,9 +272,11 @@ class TagPack(object):
             # check if duplicate entry
             t = tuple(
                 [
-                    str(tag.all_fields.get(k)).lower()
-                    if k in tag.all_fields.keys()
-                    else ""
+                    (
+                        str(tag.all_fields.get(k)).lower()
+                        if k in tag.all_fields.keys()
+                        else ""
+                    )
                     for k in ["address", "currency", "label", "source"]
                 ]
             )
