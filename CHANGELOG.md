@@ -1,5 +1,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [24.01.8] 2024-08-12
+### fixed
+- update coinaddrvalidator dep to avoid error on install
+### added
+- support for python 3.11
+
 ## [24.01.7] 2024-07-19
 ### fixed
 - fix cluster mapping errors on invalid addresses. Instead just skip them.
