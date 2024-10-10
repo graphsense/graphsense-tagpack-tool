@@ -1,5 +1,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [24.10.0] 2024-10-10
+### changed
+- liftet upperbound < 2.0 on pandas dependency
+- tagpack without any tags does not raise an validation error anymore
+
 ## [24.01.8] 2024-08-12
 ### fixed
 - update coinaddrvalidator dep to avoid error on install
