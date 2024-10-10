@@ -10,7 +10,7 @@ concepts:
 tags:
 - address: 1bacdeddg32dsfk5692dmn23
   concepts:
-    - stuff
+    - organization
   label: sometag
 - address: 1bacdeddg32dsfk5692dmn23
   label: othertag

@@ -314,7 +314,6 @@ def validate_tagpack(args):
     print_info(f"Collected {n_tagpacks} TagPack files\n")
 
     no_passed = 0
-    failed = False
     try:
         for headerfile_dir, files in tagpack_files.items():
             for tagpack_file in files:
@@ -334,9 +333,10 @@ def validate_tagpack(args):
                 no_passed += 1
     except (ValidationError, TagPackFileError) as e:
         print_fail("FAILED", e)
-        failed = True
 
-    status = "fail" if no_passed < n_tagpacks else "success"
+    failed = no_passed < n_tagpacks
+
+    status = "fail" if failed else "success"
 
     duration = round(time.time() - t0, 2)
     print_line(
@@ -724,7 +724,6 @@ def validate_actorpack(args):
     print_info(f"Collected {n_actorpacks} ActorPack files\n")
 
     no_passed = 0
-    failed = False
     try:
         for headerfile_dir, files in actorpack_files.items():
             for actorpack_file in files:
@@ -740,9 +739,10 @@ def validate_actorpack(args):
                 no_passed += 1
     except (ValidationError, TagPackFileError, ParserError, ScannerError) as e:
         print_fail("FAILED", e)
-        failed = True
 
-    status = "fail" if no_passed < n_actorpacks else "success"
+    failed = no_passed < n_actorpacks
+
+    status = "fail" if failed else "success"
 
     duration = round(time.time() - t0, 2)
     msg = f"{no_passed}/{n_actorpacks} ActorPacks passed in {duration}s"
