@@ -12,8 +12,8 @@ tag-version:
 	#-git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASESEM) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 	git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASE) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 
-run:
-	gs_tagpack_tool_db_url='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn src.tagpack.web:app
+serve:
+	gs_tagstore_db_url='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --log-level debug src.tagstore.web.main:app
 
 test:
 	pytest -v -m "not slow" --cov=src
@@ -60,4 +60,4 @@ publish: build version
 version:
 	python -m setuptools_scm
 
-.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config run
+.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config serve

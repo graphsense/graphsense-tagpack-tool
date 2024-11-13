@@ -11,35 +11,15 @@ services:
     environment:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - "$LOCAL_DATA_DIR:/var/lib/postgresql/data"
-      - ./src/tagpack/db/tagstore_schema.sql:/tmp/schema.sql
+      - "$LOCAL_DATA_DIR:/var/lib/postgresql/data:Z"
+      - ./src/tagpack/db/tagstore_schema.sql:/tmp/schema.sql:Z
       - ./postgres-conf.sql:/tmp/postgres-conf.sql:Z
-      - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh
+      - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh:Z
     ports:
       - 5432:5432
     shm_size: "2048mb"
 
-  bouncer:
-    image: bitnami/pgbouncer:1.17.0-debian-11-r14
-    restart: always
-    depends_on:
-      - db
-    environment:
-      - POSTGRESQL_USERNAME=${POSTGRES_USER_TAGSTORE}
-      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD_TAGSTORE}
-      - POSTGRESQL_HOST=db
-      - POSTGRESQL_DATABASE=${POSTGRES_DB}
-      - PGBOUNCER_DATABASE=${POSTGRES_DB}
-      - PGBOUNCER_AUTH_USER=${POSTGRES_USER}
-      - PGBOUNCER_STATS_USERS=${POSTGRES_USER}
-      - PGBOUNCER_PORT=6432
-      - PGBOUNCER_AUTH_TYPE=md5
-      - PGBOUNCER_SET_DATABASE_USER=yes
-      - PGBOUNCER_SET_DATABASE_PASSWORD=yes
-      - PGBOUNCER_IGNORE_STARTUP_PARAMETERS=extra_float_digits
-    ports:
-      - 6432:6432
-
 networks:
   default:
     name: tagpack
+    external: true

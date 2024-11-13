@@ -248,12 +248,13 @@ class TagStore(object):
 
         addr_sql = "INSERT INTO address (network, address) VALUES %s \
             ON CONFLICT DO NOTHING"
-        tag_sql = "INSERT INTO tag (label, source, category, abuse, address, \
-            currency, network, is_cluster_definer, confidence, lastmod, \
+        tag_sql = "INSERT INTO tag (label, source, identifier, \
+            asset, network, is_cluster_definer, confidence, lastmod, \
             context, tagpack, actor ) VALUES \
             %s RETURNING id"
 
-        tag_concept_sql = "INSERT INTO tag_concept (tag_id, concept_id) VALUES %s \
+        tag_concept_sql = "INSERT INTO tag_concept (tag_id, concept_type, \
+            concept_id) VALUES %s \
             ON CONFLICT DO NOTHING"
 
         def insert_tags_batch(tag_data, tag_concepts, address_data):
@@ -262,7 +263,7 @@ class TagStore(object):
                 self.cursor,
                 tag_sql,
                 tag_data,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 fetch=True,
                 page_size=batch,
             )
@@ -270,9 +271,9 @@ class TagStore(object):
             assert len(tag_concepts) == len(new_ids)
             tcd = []
             for tag_id, concept_ids in zip(new_ids, tag_concepts):
-                for tc in concept_ids:
-                    tcd.append((tag_id, tc))
-            execute_values(self.cursor, tag_concept_sql, tcd, template="(%s, %s)")
+                for tc, t in concept_ids:
+                    tcd.append((tag_id, t, tc))
+            execute_values(self.cursor, tag_concept_sql, tcd, template="(%s, %s, %s)")
 
         tag_data = []
         address_data = []
@@ -974,27 +975,23 @@ class TagStore(object):
                     SELECT id FROM
                         (SELECT
                             t.id,
-                            t.address,
+                            t.identifier,
                             t.label,
                             t.source,
                             t.actor,
                             t.is_cluster_definer,
-                            t.category,
-                            t.currency,
+                            t.asset,
                             t.network,
                             t.confidence,
-                            t.abuse,
                             tp.creator,
-                            ROW_NUMBER() OVER (PARTITION BY t.address,
+                            ROW_NUMBER() OVER (PARTITION BY t.identifier,
                                 t.label,
                                 t.source,
                                 t.actor,
                                 t.is_cluster_definer,
-                                t.category,
-                                t.currency,
+                                t.asset,
                                 t.network,
                                 t.confidence,
-                                t.abuse,
                                 tp.creator ORDER BY t.id DESC)
                                     AS duplicate_count
                         FROM
@@ -1260,7 +1257,15 @@ def validate_network(network):
 
 
 def _get_tag_concepts(tag):
-    return tag.all_fields.get("concepts", [])
+    tc = [(c, None) for c in tag.all_fields.get("concepts", [])]
+    abuse = tag.all_fields.get("abuse", None)
+    category = tag.all_fields.get("category", None)
+    if abuse is not None and abuse not in tc:
+        tc.append((abuse, "abuse"))
+
+    if category is not None and category not in tc:
+        tc.append((category, "category"))
+    return tc
 
 
 def _get_tag(tag, tagpack_id):
@@ -1272,8 +1277,8 @@ def _get_tag(tag, tagpack_id):
     return (
         label,
         tag.all_fields.get("source"),
-        tag.all_fields.get("category", None),
-        tag.all_fields.get("abuse", None),
+        # tag.all_fields.get("category", None),
+        # tag.all_fields.get("abuse", None),
         address,
         tag.all_fields.get("currency").upper(),
         tag.all_fields.get("network").upper(),
