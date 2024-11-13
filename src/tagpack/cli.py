@@ -36,7 +36,7 @@ from tagpack.tagpack import (
     get_uri_for_tagpack,
 )
 from tagpack.tagpack_schema import TagPackSchema, ValidationError
-from tagpack.tagstore import TagStore
+from tagpack.tagstore import InsertTagpackWorker, TagStore
 from tagpack.taxonomy import Taxonomy
 from tagpack.utils import strip_empty
 
@@ -334,12 +334,16 @@ def validate_tagpack(args):
     except (ValidationError, TagPackFileError) as e:
         print_fail("FAILED", e)
 
-    status = "fail" if no_passed < n_tagpacks else "success"
+    failed = no_passed < n_tagpacks
+
+    status = "fail" if failed else "success"
 
     duration = round(time.time() - t0, 2)
     print_line(
         "{}/{} TagPacks passed in {}s".format(no_passed, n_tagpacks, duration), status
     )
+
+    sys.exit(0 if not failed else 1)
 
 
 def suggest_actors(args):
@@ -463,27 +467,44 @@ def insert_tagpack(args):
     n_ppacks = len(prepared_packs)
     print_info(f"Collected {n_ppacks} TagPack files\n")
 
-    no_passed = 0
-    no_tags = 0
     public, force = args.public, args.force
+
     # supported = tagstore.supported_currencies
     for i, tp in enumerate(sorted(prepared_packs), start=1):
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
-        tagpack = TagPack.load_from_file(
-            uri, tagpack_file, schema, taxonomies, headerfile_dir
-        )
+    packs = enumerate(sorted(prepared_packs), start=1)
 
-        print(f"{i} {tagpack_file}: ", end="")
-        try:
-            tagstore.insert_tagpack(
-                tagpack, public, force, prefix if prefix else default_prefix, relpath
-            )
-            print_success(f"PROCESSED {len(tagpack.tags)} Tags")
-            no_passed += 1
-            no_tags = no_tags + len(tagpack.tags)
-        except Exception as e:
-            print_fail("FAILED", e)
+    n_processes = args.n_workers if args.n_workers > 0 else cpu_count() + args.n_workers
+
+    if n_processes < 1:
+        print_fail(f"Can't use {n_processes} adjust your n_workers setting.")
+        sys.exit(100)
+
+    if n_processes > 1:
+        print_info(f"Running parallel insert on {n_processes} workers.")
+
+    worker = InsertTagpackWorker(
+        args.url,
+        args.schema,
+        schema,
+        taxonomies,
+        public,
+        force,
+        validate_tagpack=not args.no_validation,
+    )
+
+    if n_processes != 1:
+        with Pool(processes=n_processes) as pool:
+            results = list(pool.imap_unordered(worker, packs, chunksize=10))
+    else:
+        # process data in the main process, makes debugging easier
+        results = [worker(p) for p in packs]
+
+    if results is not None and len(results) > 0:
+        no_passed, no_tags = [sum(x) for x in zip(*results)]
+    else:
+        no_passed, no_tags = (0, 0)
 
     status = "fail" if no_passed < n_ppacks else "success"
 
@@ -601,6 +622,26 @@ def init_db(args):
         print_line("No taxonomies configured to init the db", "fail")
         return
 
+    tagstore = TagStore(args.url, args.schema)
+
+    if args.create_db is not None:
+        db = args.url.split("/")[-1]
+
+        if not tagstore.does_tagstore_db_exist(db):
+            print_info(f"Creating database: {db}")
+            tagstore.create_database(db)
+        else:
+            print_info("DB exists, nothing to do")
+
+        if not tagstore.do_tagstore_tables_exist():
+            print_info("Creating tables")
+            tagstore.create_tables()
+        else:
+            print_info("Tables already exist.")
+            # tagstore.set_default_permissions(u, p)
+
+    del tagstore
+
     t0 = time.time()
     print_line("Init database starts")
     insert_taxonomy(args)
@@ -700,11 +741,15 @@ def validate_actorpack(args):
     except (ValidationError, TagPackFileError, ParserError, ScannerError) as e:
         print_fail("FAILED", e)
 
-    status = "fail" if no_passed < n_actorpacks else "success"
+    failed = no_passed < n_actorpacks
+
+    status = "fail" if failed else "success"
 
     duration = round(time.time() - t0, 2)
     msg = f"{no_passed}/{n_actorpacks} ActorPacks passed in {duration}s"
     print_line(msg, status)
+
+    sys.exit(0 if not failed else 1)
 
 
 def insert_actorpacks(args):
@@ -879,7 +924,8 @@ def sync_repos(args):
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
         print_line("Init db taxonomies ...")
-        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url]))
+        extra = ["--create-db"] if args.create_db is not None else []
+        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url] + extra))
 
         extra_option = "--force" if args.force else None
         extra_option = "--add_new" if extra_option is None else extra_option
@@ -917,6 +963,9 @@ def sync_repos(args):
                             temp_dir_tt,
                             "-u",
                             args.url,
+                            "--n-workers",
+                            str(args.n_workers),
+                            "--no-validation" if args.no_validation else None,
                         ]
                     )
                 )
@@ -934,7 +983,7 @@ def sync_repos(args):
         print("Calc Quality metrics ...")
         exec_cli_command(["quality", "calculate", "-u", args.url])
 
-        if args.run_cluster_mapping_with_env:
+        if args.run_cluster_mapping_with_env or args.rerun_cluster_mapping_with_env:
             print("Import cluster mappings ...")
             exec_cli_command(
                 [
@@ -943,7 +992,9 @@ def sync_repos(args):
                     "-u",
                     args.url,
                     "--use-gs-lib-config-env",
-                    args.run_cluster_mapping_with_env,
+                    args.run_cluster_mapping_with_env
+                    or args.rerun_cluster_mapping_with_env,
+                    "--update" if args.rerun_cluster_mapping_with_env else "",
                 ]
             )
 
@@ -1098,7 +1149,35 @@ def main():
     )
     parser_syc.add_argument(
         "--run-cluster-mapping-with-env",
-        help="Environment in graphsense-lib config" " to use for the mapping process",
+        help="Environment in graphsense-lib config"
+        " to use for the mapping process."
+        " Only inserts non existing mappings.",
+    )
+    parser_syc.add_argument(
+        "--rerun-cluster-mapping-with-env",
+        help="Environment in graphsense-lib config"
+        " to use for the mapping process."
+        " Reinserts all mappings.",
+    )
+    parser_syc.add_argument(
+        "--n-workers",
+        type=int,
+        default=1,
+        help=(
+            "number of workers to use for the tagpack insert. "
+            "Default is 1. Zero or negative values are used as"
+            "offset of the machines cpu_count."
+        ),
+    )
+    parser_syc.add_argument(
+        "--no-validation",
+        action="store_true",
+        help="Do not validate tagpacks before insert. (better insert speed)",
+    )
+    parser_syc.add_argument(
+        "--create-db",
+        help="Try to automatically create the database if it does not exist.",
+        action="store_true",
     )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
@@ -1208,6 +1287,21 @@ def main():
     )
     ptp_i.add_argument(
         "--no_git", action="store_true", help="Disables check for local git repository"
+    )
+    ptp_i.add_argument(
+        "--n-workers",
+        type=int,
+        default=1,
+        help=(
+            "number of workers to use for the tagpack insert. "
+            "Default is 1. Zero or negative values are used as"
+            "offset of the machines cpu_count."
+        ),
+    )
+    ptp_i.add_argument(
+        "--no-validation",
+        action="store_true",
+        help="Do not validate tagpacks before insert. (better insert speed)",
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 
@@ -1444,6 +1538,11 @@ def main():
     )
     pbp.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
+    )
+    pbp.add_argument(
+        "--create-db",
+        help="Try to automatically create the database if it does not exist.",
+        action="store_true",
     )
     pbp.set_defaults(func=init_db, url=def_url, taxonomy=None)
 

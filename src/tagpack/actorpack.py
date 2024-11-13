@@ -1,4 +1,5 @@
 """ActorPack - A wrapper for ActorPack files"""
+
 import json
 import os
 import re

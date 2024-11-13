@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import textwrap
+import time
 from datetime import datetime
 from functools import wraps
 from typing import List
@@ -7,15 +8,62 @@ from typing import List
 import numpy as np
 from cashaddress.convert import to_legacy_address
 from psycopg2 import connect
+from psycopg2.errors import DeadlockDetected
 from psycopg2.extensions import AsIs, register_adapter
 from psycopg2.extras import execute_batch, execute_values
 
 from tagpack import ValidationError
-from tagpack.cmd_utils import print_warn
+from tagpack.cmd_utils import print_fail, print_info, print_success, print_warn
 from tagpack.constants import KNOWN_NETWORKS
+from tagpack.tagpack import TagPack
 from tagpack.utils import get_github_repo_url
 
+from .utils import open_localfile_with_pkgresource_fallback
+
 register_adapter(np.int64, AsIs)
+
+
+class InsertTagpackWorker:
+    def __init__(
+        self,
+        url,
+        db_schema,
+        tp_schema,
+        taxonomies,
+        public,
+        force,
+        validate_tagpack=False,
+    ):
+        self.url = url
+        self.db_schema = db_schema
+        self.tp_schema = tp_schema
+        self.taxonomies = taxonomies
+        self.public = public
+        self.force = force
+        self.tagstore = None
+        self.validate_tagpack = validate_tagpack
+
+    def __call__(self, data):
+        i, tp = data
+        if not self.tagstore:
+            self.tagstore = TagStore(self.url, self.db_schema)
+        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
+        tagpack = TagPack.load_from_file(
+            uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
+        )
+
+        try:
+            print_info(f"{i} {tagpack_file}: INSERTING {len(tagpack.tags)} Tags")
+            if self.validate_tagpack:
+                tagpack.validate()
+            self.tagstore.insert_tagpack(
+                tagpack, self.public, self.force, default_prefix, relpath
+            )
+            print_success(f"{i} {tagpack_file}: PROCESSED {len(tagpack.tags)} Tags")
+            return 1, len(tagpack.tags)
+        except Exception as e:
+            print_fail(f"{i} {tagpack_file}: FAILED", e)
+            return 0, 0
 
 
 def auto_commit(function):
@@ -45,12 +93,66 @@ def _private_condition(show_private: bool, table: str):
     return f"and {table}.is_public=true" if not show_private else ""
 
 
+def retry_on_deadlock(times=1):
+    def innerfun(function):
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            while attempt < times:
+                try:
+                    return function(*args, **kwargs)
+                except DeadlockDetected:
+                    time.sleep(1)
+                    print_warn(f"Deadlock Detected retrying, n={times-attempt} times")
+                    attempt += 1
+            return function(*args, **kwargs)
+
+        return wrapper
+
+    return innerfun
+
+
 class TagStore(object):
     def __init__(self, url, schema):
         self.conn = connect(url, options=f"-c search_path={schema}")
         self.cursor = self.conn.cursor()
+
+        self.schema = schema
+
         self.existing_packs = None
         self.existing_actorpacks = None
+
+    def does_tagstore_db_exist(self, db_name):
+        self.cursor.execute(
+            "select * from pg_catalog.pg_database where datname=%(d)s;", {"d": db_name}
+        )
+        return self.cursor.rowcount > 0
+
+    def do_tagstore_tables_exist(self):
+        self.cursor.execute(
+            (
+                "set search_path to default; "
+                "select * from pg_tables "
+                "where tablename=%(t)s and schemaname=%(s)s;"
+            ),
+            {"t": "tag", "s": self.schema},
+        )
+        return self.cursor.rowcount > 0
+
+    def create_database(self, db_name):
+        self.cursor.auto_commit = True
+        try:
+            self.cursor.execute("create database %(n)s", {"n": db_name})
+        finally:
+            self.cursor.auto_commit = False
+
+    @auto_commit
+    def create_tables(self):
+        with open_localfile_with_pkgresource_fallback(
+            "src/tagpack/db/tagstore_schema.sql"
+        ) as f:
+            creation_sql = f.read()
+            self.cursor.execute(creation_sql)
 
     @auto_commit
     def insert_taxonomy(self, taxonomy):
@@ -117,6 +219,7 @@ class TagStore(object):
     def create_id(self, prefix, rel_path):
         return ":".join([prefix, rel_path]) if prefix else rel_path
 
+    @retry_on_deadlock(times=3)
     @auto_commit
     def insert_tagpack(
         self, tagpack, is_public, force_insert, prefix, rel_path, batch=1000

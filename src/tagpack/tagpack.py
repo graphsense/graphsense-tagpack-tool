@@ -1,4 +1,5 @@
 """TagPack - A wrapper for TagPacks files"""
+
 import glob
 import hashlib
 import json
@@ -311,9 +312,11 @@ class TagPack(object):
             # check if duplicate entry
             t = tuple(
                 [
-                    str(tag.all_fields.get(k)).lower()
-                    if k in tag.all_fields.keys()
-                    else ""
+                    (
+                        str(tag.all_fields.get(k)).lower()
+                        if k in tag.all_fields.keys()
+                        else ""
+                    )
                     for k in ["address", "currency", "network", "label", "source"]
                 ]
             )
@@ -359,8 +362,8 @@ class TagPack(object):
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
-        if len(self.tags) < 1:
-            raise ValidationError("no tags found.")
+        # if len(self.tags) < 1:
+        #     raise ValidationError("no tags found.")
 
         # iterate over all tags, check types, taxonomy and mandatory use
         e2 = "Mandatory tag field {} missing in {}"

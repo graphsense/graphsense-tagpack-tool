@@ -15,13 +15,13 @@ def schema(monkeypatch):
 
 @pytest.fixture
 def taxonomies():
-    tax_entity = Taxonomy("entity", "http://example.com/entity")
+    tax_entity = Taxonomy("concept", "http://example.com/entity")
     tax_entity.add_concept("exchange", "Exchange", None, "Some description")
 
     tax_abuse = Taxonomy("abuse", "http://example.com/abuse")
     tax_abuse.add_concept("bad_coding", "Bad coding", None, "Really bad")
 
-    taxonomies = {"entity": tax_entity, "abuse": tax_abuse}
+    taxonomies = {"concept": tax_entity, "abuse": tax_abuse}
     return taxonomies
 
 
@@ -101,7 +101,7 @@ def test_field_type(schema):
 
 
 def test_field_taxonomy(schema):
-    assert schema.field_taxonomy("category") == "entity"
+    assert schema.field_taxonomy("category") == "concept"
 
 
 def test_field_no_taxonomy(schema):

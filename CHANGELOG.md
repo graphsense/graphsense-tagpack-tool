@@ -1,5 +1,94 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+## [24.10.0] 2024-10-10
+### changed
+- liftet upperbound < 2.0 on pandas dependency
+- tagpack without any tags does not raise an validation error anymore
+
+## [24.01.8] 2024-08-12
+### fixed
+- update coinaddrvalidator dep to avoid error on install
+### added
+- support for python 3.11
+
+## [24.01.7] 2024-07-19
+### fixed
+- fix cluster mapping errors on invalid addresses. Instead just skip them.
+
+## [24.01.6] 2024-06-20
+### fixed
+- avoid errors with numpy 2.0 setting version restriction to < 2.0
+
+## [24.01.5] 2024-06-03
+### fixed
+- avoid install errors by setting proper python version upper bound to 3.10
+
+## [24.01.4] 2024-05-29
+### fixed
+- clustermappings for eth did not work
+
+## [24.01.3] 2024-03-29
+### changed
+- add new concept for tokens (defi_token)
+
+## [24.01.2] 2024-03-22
+### changed
+- allow all concepts to be used in category field (align category and concepts)
+
+## [24.01.1] 2024-01-09
+### changed
+- switched to calver
+
+## [24.01.0/1.9.0] 2023-12-21
+### added
+- add cluster mapping for tron
+
+## [23.09/1.8.0] 2023-10-31
+### added
+- new --create-db flag for init and sync which tries to automatically create the database if it does not exist
+
+## [23.09/1.7.4] 2023-09-21
+### fixed
+- Bump cassandra driver version 3.27, import lz4 to enable cassandra compression
+
+## [23.09/1.7.3] 2023-09-20
+### fixed
+- setup automatic pypi publish with github actions
+
+## [23.09/1.7.2] 2023-09-14
+### fixed
+- cluster mapping does not use new rerun-cluster-mapping-with-env env
+
+## [23.06/1.7.1] 2023-09-13
+### fixed
+- error on insert when no tagpacks are loaded
+
+## [23.06/1.7.0] 2023-09-12
+### Added
+- parallel tagpack insert (-n-workers parameter, default 1 worker)
+- new --rerun-cluster-mapping-with-env flag on sync command to update all cluster mappings
+
+## [23.06/1.6.1] 2023-08-16
+### Fixed
+- old concepts (entity and abuse) have precedence over new concepts (concepts.yaml)
+
+## [23.06/1.6.0] 2023-07-06
+### Added
+- new db field concepts (list) to store multiple categories with a tag (requires db-resync)
+
+## [23.06/1.5.3] 2023-07-06
+### Fixed
+- fix bug in ks_map handling
+
+## [23.06/1.5.2] 2023-07-05
+### Fixed
+- fix field not found error in keyspace check
+
+## [23.06/1.5.1] 2023-07-04
+### Fixed
+- handle if keyspace is not found gracefully
+
 ## [23.06/1.5.0] 2023-06-12
 ### Added
 - new confidence score forensic_investigation (70), [#87](https://github.com/graphsense/graphsense-tagpack-tool/issues/87)

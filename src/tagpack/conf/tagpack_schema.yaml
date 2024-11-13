@@ -47,7 +47,7 @@ tag:
   category:
     type: text
     mandatory: false
-    taxonomy: entity
+    taxonomy: concept
   abuse:
     type: text
     mandatory: false

@@ -295,6 +295,15 @@ terrorism:
   seeAlso: https://gifct.org/wp-content/uploads/2021/07/GIFCT-TaxonomyReport-2021.pdf
   broader: extremism
 
+terrorism_financing:
+  id: terrorism_financing
+  type: concept
+  prefLabel: Terrorism Financing
+  description: >
+    Financial support to terrorism related entities
+  seeAlso: https://gifct.org/wp-content/uploads/2021/07/GIFCT-TaxonomyReport-2021.pdf
+  broader: extremism
+
 dark_web:
   id: dark_web
   type: concept
@@ -610,6 +619,16 @@ defi:
   description: >
     A program offering financial services in the form of smart contracts.
   broader: service
+
+defi_token:
+  id: defi_token
+  type: concept
+  prefLabel: An address responsible to manage the holdings of a user defined asset.
+  description: >
+    A Token lets users create assets that enable safe exchange within the ecosystem and beyond.
+    Examples are ERC20, BRC20, BTC20, TRC20 tokens implemented as smart contracts or TRC10 implemented as protocol extensions.
+  broader: defi
+  example: [USDT, USDC, WETH]
 
 defi_lending:
   id: defi_lending
