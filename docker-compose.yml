@@ -3,7 +3,7 @@ version: "3.5"
 services:
 
   db:
-    image: postgres:14.0-alpine3.14
+    image: postgres:17.0-alpine
     restart: always
     command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.max=10000 -c max_connections=200
     env_file:

@@ -90,7 +90,7 @@ def auto_commit(function):
 
 
 def _private_condition(show_private: bool, table: str):
-    return f"and {table}.is_public=true" if not show_private else ""
+    return f"and {table}.acl_group='public'" if not show_private else ""
 
 
 def retry_on_deadlock(times=1):
@@ -174,7 +174,7 @@ class TagStore(object):
         )
 
         statement = (
-            "INSERT INTO concept (id, label, taxonomy, source, description) "
+            f"INSERT INTO {taxonomy.key} (id, label, taxonomy, source, description) "
             "VALUES (%(id)s,%(label)s,%(taxonomy)s,%(source)s,%(description)s)"
             "ON CONFLICT (id) DO UPDATE "
             "SET (label, taxonomy, source, description) = "
@@ -233,7 +233,7 @@ class TagStore(object):
             self.cursor.execute(q, (tagpack_id,))
 
         q = "INSERT INTO tagpack \
-            (id, title, description, creator, uri, is_public) \
+            (id, title, description, creator, uri, acl_group) \
             VALUES (%s,%s,%s,%s,%s,%s)"
         v = (
             h.get("id"),
@@ -241,7 +241,7 @@ class TagStore(object):
             h.get("description"),
             h.get("creator"),
             tagpack.uri,
-            is_public,
+            "public" if is_public else "private",
         )
         self.cursor.execute(q, v)
         self.conn.commit()
@@ -250,7 +250,7 @@ class TagStore(object):
             ON CONFLICT DO NOTHING"
         tag_sql = "INSERT INTO tag (label, source, identifier, \
             asset, network, is_cluster_definer, confidence, lastmod, \
-            context, tagpack, actor ) VALUES \
+            context, tagpack, actor, tag_type, tag_subject ) VALUES \
             %s RETURNING id"
 
         tag_concept_sql = "INSERT INTO tag_concept (tag_id, concept_type, \
@@ -258,15 +258,15 @@ class TagStore(object):
             ON CONFLICT DO NOTHING"
 
         def insert_tags_batch(tag_data, tag_concepts, address_data):
-            execute_values(self.cursor, addr_sql, address_data, template="(%s, %s)")
             new_ids = execute_values(
                 self.cursor,
                 tag_sql,
                 tag_data,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 fetch=True,
                 page_size=batch,
             )
+            execute_values(self.cursor, addr_sql, address_data, template="(%s, %s)")
 
             assert len(tag_concepts) == len(new_ids)
             tcd = []
@@ -306,9 +306,7 @@ class TagStore(object):
         return [i[0] for i in self.cursor.fetchall()]
 
     @auto_commit
-    def insert_actorpack(
-        self, actorpack, is_public, force_insert, prefix, rel_path, batch=1000
-    ):
+    def insert_actorpack(self, actorpack, force_insert, prefix, rel_path, batch=1000):
         actorpack_id = self.create_actorpack_id(prefix, rel_path)
         h = _get_actor_header(actorpack, actorpack_id)
 
@@ -319,19 +317,18 @@ class TagStore(object):
 
         q = (
             "INSERT INTO actorpack "
-            "(id, title, creator, description, is_public, uri) "
+            "(id, title, creator, description, uri) "
             "VALUES "
-            "(%(id)s,%(title)s,%(creator)s,%(description)s,%(is_public)s,%(uri)s) "
+            "(%(id)s,%(title)s,%(creator)s,%(description)s,%(uri)s) "
             "ON CONFLICT (id) DO UPDATE "
-            "SET (title, creator, description, is_public, uri) = "
-            "(%(title)s,%(creator)s,%(description)s,%(is_public)s,%(uri)s);"
+            "SET (title, creator, description, uri) = "
+            "(%(title)s,%(creator)s,%(description)s,%(uri)s);"
         )
         v = {
             "id": h.get("id"),
             "title": h.get("title"),
             "creator": h.get("creator"),
             "description": h.get("description"),
-            "is_public": is_public,
             "uri": actorpack.uri,
         }
         self.cursor.execute(q, v)
@@ -346,12 +343,12 @@ class TagStore(object):
         )
 
         act_cat_sql = (
-            "INSERT INTO actor_categories (actor_id, category_id) "
+            "INSERT INTO actor_concept (actor_id, category_id) "
             "VALUES (%(actor_id)s, %(category_id)s) "
             "ON CONFLICT (actor_id, category_id) DO NOTHING;"
         )
         act_jur_sql = (
-            "INSERT INTO actor_jurisdictions (actor_id, country_id) "
+            "INSERT INTO actor_jurisdiction (actor_id, country_id) "
             "VALUES (%(actor_id)s, %(country_id)s) "
             "ON CONFLICT (actor_id, country_id) DO NOTHING;"
         )
@@ -361,7 +358,7 @@ class TagStore(object):
         jur_data = []
         for actor in actorpack.get_unique_actors():
             actor_data.append(_get_actor(actor, actorpack_id))
-            cat_data.extend(_get_actor_categories(actor))
+            cat_data.extend(_get_actor_concepts(actor))
             jur_data.extend(_get_actor_jurisdictions(actor))
 
             # Handle writes in batches.
@@ -470,22 +467,22 @@ class TagStore(object):
         cat_clause = ""
         if len(category) > 0:
             params["category"] = category.strip()
-            cat_clause = "and actor_categories.category_id = %(category)s "
+            cat_clause = "and actor_concept.category_id = %(category)s "
 
         actor_join = "LEFT OUTER JOIN " if include_not_used else "INNER JOIN"
 
         query = (
             f"SELECT {fields_str} "
-            ", string_agg(actor_categories.category_id, ', ') as categories  "
-            ", string_agg(actor_jurisdictions.country_id, ', ') as jurisdictions  "
+            ", string_agg(actor_concept.category_id, ', ') as categories  "
+            ", string_agg(actor_jurisdiction.country_id, ', ') as jurisdictions  "
             ", count(distinct tag.id) as nr_tags  "
             "FROM actor "
             f"{actor_join} tag on actor.id = tag.actor "
-            "INNER JOIN actor_categories on actor.id = actor_categories.actor_id "
+            "INNER JOIN actor_concept on actor.id = actor_concept.actor_id "
             "LEFT OUTER JOIN "
-            "actor_jurisdictions on actor.id = actor_jurisdictions.actor_id "
+            "actor_jurisdiction on actor.id = actor_jurisdiction.actor_id "
             "WHERE "
-            "actor_jurisdictions.country_id is NULL "
+            "actor_jurisdiction.country_id is NULL "
             f"{cat_clause} "
             "GROUP BY actor.id "
             "ORDER BY nr_tags DESC "
@@ -610,7 +607,7 @@ class TagStore(object):
                 tp.uri,
                 tp.creator,
                 tp.title,
-                tp.is_public,
+                tp.group,
                 c.level,
                 acm.gs_cluster_id
             FROM
@@ -873,20 +870,20 @@ class TagStore(object):
 
         return self._result(query, [id])
 
-    def get_actor_categories(self, id):
+    def get_actor_concepts(self, id):
         query = (
-            "SELECT actor_categories.*,concept.label FROM "
-            "actor_categories, concept "
-            "WHERE actor_categories.category_id = concept.id and actor_id=%s"
+            "SELECT actor_concept.*,concept.label FROM "
+            "actor_concept, concept "
+            "WHERE actor_concept.category_id = concept.id and actor_id=%s"
         )
 
         return self._result(query, [id])
 
     def get_actor_jurisdictions(self, id):
         query = (
-            "SELECT actor_jurisdictions.*,concept.label FROM "
-            "actor_jurisdictions, concept "
-            "WHERE actor_jurisdictions.country_id = concept.id and actor_id=%s"
+            "SELECT actor_jurisdiction.*,concept.label FROM "
+            "actor_jurisdiction, concept "
+            "WHERE actor_jurisdiction.country_id = concept.id and actor_id=%s"
         )
 
         return self._result(query, [id])
@@ -1116,10 +1113,9 @@ class TagStore(object):
 
         if len(category) > 0:
             cat_join = (
-                "INNER JOIN actor_categories "
-                "on tag.actor = actor_categories.actor_id"
+                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
             )
-            cat_filter = "AND actor_categories.category_id = %(category)s"
+            cat_filter = "AND actor_concept.category_id = %(category)s"
             params["category"] = category.strip()
 
         query = (
@@ -1143,16 +1139,15 @@ class TagStore(object):
 
         if len(category) > 0:
             cat_join = (
-                "INNER JOIN actor_categories "
-                "on tag.actor = actor_categories.actor_id"
+                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
             )
-            cat_filter = "AND actor_categories.category_id = %(category)s"
+            cat_filter = "AND actor_concept.category_id = %(category)s"
             params["category"] = category.strip()
 
         query = (
             "SELECT count(DISTINCT actor) FROM tag "
-            "INNER JOIN actor_jurisdictions "
-            "on tag.actor = actor_jurisdictions.actor_id "
+            "INNER JOIN actor_jurisdiction "
+            "on tag.actor = actor_jurisdiction.actor_id "
             f"{cat_join} "
             "WHERE actor is not NULL "
             f"{network_filter} "
@@ -1227,7 +1222,7 @@ class TagStore(object):
 
         q = (
             "SELECT a.actorpack, a.id, a.label, c.label "
-            "FROM actor a, actor_categories ac, concept c "
+            "FROM actor a, actor_concept ac, concept c "
             "WHERE ac.actor_id = a.id AND ac.category_id = c.id "
             "AND c.label ILIKE %s "
             "ORDER BY a.id ASC"
@@ -1288,6 +1283,8 @@ def _get_tag(tag, tagpack_id):
         tag.all_fields.get("context"),
         tagpack_id,
         tag.all_fields.get("actor", None),
+        tag.all_fields.get("tag_type", "actor"),
+        "address",
     )
 
 
@@ -1343,7 +1340,7 @@ def _get_actor(actor, actorpack_id):
     }
 
 
-def _get_actor_categories(actor):
+def _get_actor_concepts(actor):
     data = []
     actor_id = actor.all_fields.get("id")
     for category in actor.all_fields.get("categories"):

@@ -13,7 +13,7 @@ tag-version:
 	git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASE) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 
 serve:
-	gs_tagstore_db_url='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --log-level debug src.tagstore.web.main:app
+	gs_tagstore_db_url='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --reload --log-level debug src.tagstore.web.main:app
 
 test:
 	pytest -v -m "not slow" --cov=src

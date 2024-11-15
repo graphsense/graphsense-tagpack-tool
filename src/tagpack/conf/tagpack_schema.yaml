@@ -51,7 +51,7 @@ tag:
   abuse:
     type: text
     mandatory: false
-    taxonomy: abuse
+    taxonomy: concept
   address:
     type: text
     mandatory: true
@@ -63,3 +63,7 @@ tag:
     item_type: text
     mandatory: false
     taxonomy: concept
+  tag_type:
+    type: text
+    mandatory: false
+    taxonomy: tag_types

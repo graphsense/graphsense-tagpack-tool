@@ -47,15 +47,17 @@ CONFIG_FILE = "config.yaml"
 DEFAULT_CONFIG = {
     "taxonomies": {
         "concept": "src/tagpack/db/concepts.yaml",
-        "entity": "src/tagpack/db/entities.yaml",
-        "abuse": "src/tagpack/db/abuses.yaml",
+        # "entity": "src/tagpack/db/entities.yaml",
+        # "abuse": "src/tagpack/db/abuses.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
+        "tag_type": "src/tagpack/db/tag_types.csv",
+        "tag_subject": "src/tagpack/db/tag_subject.csv",
     }
 }
 
 
-_DEFAULT_SCHEMA = "tagstore"
+_DEFAULT_SCHEMA = "public"
 
 
 def _load_taxonomies(config):
@@ -802,7 +804,7 @@ def insert_actorpacks(args):
 
     no_passed = 0
     no_actors = 0
-    public, force = args.public, args.force
+    force = args.force
 
     for i, pack in enumerate(sorted(prepared_packs), start=1):
         actorpack_file, headerfile_dir, uri, relpath, default_prefix = pack
@@ -814,7 +816,7 @@ def insert_actorpacks(args):
         print(f"{i} {actorpack_file}: ", end="")
         try:
             tagstore.insert_actorpack(
-                actorpack, public, force, prefix if prefix else default_prefix, relpath
+                actorpack, force, prefix if prefix else default_prefix, relpath
             )
             print_success(f"PROCESSED {len(actorpack.actors)} Actors")
             no_passed += 1
@@ -1448,12 +1450,6 @@ def main():
         type=int,
         default=1000,
         help="batch size for insert",
-    )
-    app_i.add_argument(
-        "--public",
-        action="store_true",
-        help="By default, actorpacks are declared private in the database.\
-                    Use this switch to declare them public.",
     )
     app_i.add_argument(
         "--force",

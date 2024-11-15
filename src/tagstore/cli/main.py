@@ -1,6 +1,6 @@
 import typer
 
-from tagpack import __version__
+from ...tagpack import __version__
 
 app = typer.Typer()
 
