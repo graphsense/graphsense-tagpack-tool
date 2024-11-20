@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PROJECT := tagpack-tool
 VENV := .venv
-RELEASE := 'v24.10.0'
+RELEASE := 'v24.12.0-dev1'
 # RELEASESEM := 'v1.9.0'
 
 include .env
@@ -9,11 +9,10 @@ include .env
 all: format lint test build
 
 tag-version:
-	#-git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASESEM) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 	git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASE) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 
 serve:
-	gs_tagstore_db_url='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --reload --log-level debug src.tagstore.web.main:app
+	gs_tagstore_db_url='postgresql+asyncpg://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --reload --log-level debug src.tagstore.web.main:app
 
 test:
 	pytest -v -m "not slow" --cov=src
@@ -37,12 +36,6 @@ lint:
 format:
 	isort --profile black src
 	black tests src
-
-docs:
-	tox -e docs
-
-docs-latex:
-	tox -e docs-latex
 
 pre-commit:
 	pre-commit run --all-files

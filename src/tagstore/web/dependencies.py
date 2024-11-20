@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from ..config import TagstoreSettings
+from ..db import TagstoreDbAsync
 
 
 def _get_session(request: Request):
@@ -13,13 +14,19 @@ def _get_session(request: Request):
         yield session
 
 
+def _get_tagstore_db_async(request: Request):
+    return TagstoreDbAsync(request.app.state.db_engine)
+
+
 class PageingState(BaseModel):
     page_nr: int
     page_size: int
 
+    @property
     def offset(self) -> int:
         return self.page_nr * self.page_size
 
+    @property
     def limit(self) -> int:
         return self.page_size
 
@@ -44,7 +51,7 @@ async def _acl_groups(
     groups: Annotated[
         Optional[List[str]],
         Query(alias="groups", description="Which groups of tags to consider."),
-    ] = None
+    ] = ["public"]
 ) -> Optional[List[str]]:
     return groups
 
@@ -60,6 +67,8 @@ async def _db(request: Request):
 TsSettingsParam = Annotated[TagstoreSettings, Depends(_gs_tagstore_settings)]
 
 TsDbSessionParam = Annotated[Session, Depends(_get_session)]
+
+TsDbParam = Annotated[TagstoreDbAsync, Depends(_get_tagstore_db_async)]
 
 TsPagingParam = Annotated[PageingState, Depends(_paging_parameters)]
 

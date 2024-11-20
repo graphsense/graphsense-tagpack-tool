@@ -154,6 +154,22 @@ class Taxonomy(object):
 
         return root
 
+    def get_concept_tree_id(self):
+        root = Node("root")
+        lookup = {None: root}
+        queue = deque(list(self.concepts))
+        while queue:
+            c = queue.popleft()
+            p = c.parent
+            if p in lookup:
+                concept_name = f"{c.id}"
+                n = Node(concept_name, parent=lookup[p])
+                lookup[c.id] = n
+            else:
+                queue.append(c)
+
+        return root
+
     def __str__(self):
         s = [str(self.key), str(self.uri)]
         return "[" + " | ".join(s) + "]"

@@ -150,8 +150,11 @@ Start a PostgreSQL instance using Docker Compose:
 
     docker-compose up -d
 
-This will automatically create the database schema as defined
-in `src/tagpack/db/tagstore_schema.sql`.
+This will automatically create the database with the nessesary permissions for the `POSTGRES_USER_TAGSTORE`.
+
+    tagstore init
+
+then generates the nessesary tables, views etc. and populates the database with some default entries.
 
 
 

@@ -1,168 +1,8 @@
-CREATE TABLE taxonomy (
-    id                  VARCHAR     PRIMARY KEY,
-    source              VARCHAR     NOT NULL,
-    description         VARCHAR     DEFAULT NULL
-);
-
-CREATE TABLE concept (
-    id                  VARCHAR     PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    source              VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    taxonomy            VARCHAR     NOT NULL REFERENCES taxonomy(id) ON DELETE CASCADE
-);
-
-CREATE TABLE tag_type (
-    id                  VARCHAR     PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    source              VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    taxonomy            VARCHAR     NOT NULL REFERENCES taxonomy(id) ON DELETE CASCADE
-);
-
-CREATE TABLE country (
-    id                  VARCHAR     PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    source              VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    taxonomy            VARCHAR     NOT NULL REFERENCES taxonomy(id) ON DELETE CASCADE
-);
-
-
-CREATE TABLE tag_subject (
-    id                  VARCHAR     PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    source              VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    taxonomy            VARCHAR     NOT NULL REFERENCES taxonomy(id) ON DELETE CASCADE
-);
-
-
--- Pre-defined confidence levels
-
-CREATE TABLE confidence (
-    id                  VARCHAR     PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    level               INTEGER     NOT NULL
-);
-
-
--- Actor and ActorPack tables
-
-CREATE TABLE actorpack (
-    id                  VARCHAR     PRIMARY KEY,
-    title               VARCHAR     NOT NULL,
-    creator             VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    uri                 VARCHAR     ,
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE actor (
-    id                  VARCHAR     PRIMARY KEY,
-    uri                 VARCHAR     ,
-    label               VARCHAR     NOT NULL,
-    context             VARCHAR     DEFAULT NULL,
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    actorpack           VARCHAR     REFERENCES actorpack(id) ON DELETE CASCADE,
-    CONSTRAINT unique_actor UNIQUE (id)
-);
-
-
-CREATE TABLE tagpack (
-    id                  VARCHAR     PRIMARY KEY,
-    title               VARCHAR     NOT NULL,
-    description         VARCHAR     NOT NULL,
-    creator             VARCHAR     NOT NULL,
-    uri                 VARCHAR     ,
-    acl_group           VARCHAR     NOT NULL DEFAULT 'public',
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE tag (
-    id                  SERIAL      PRIMARY KEY,
-    label               VARCHAR     NOT NULL,
-    source              VARCHAR     DEFAULT NULL,
-    context             VARCHAR     DEFAULT NULL,
-    is_cluster_definer  BOOLEAN     DEFAULT FALSE,
-    lastmod             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    identifier          VARCHAR     NOT NULL,
-    asset               VARCHAR     NOT NULL,
-    network             VARCHAR     NOT NULL,
-    confidence          VARCHAR     REFERENCES confidence(id),
-    tag_type            VARCHAR     REFERENCES tag_type(id) NOT NULL,
-    tag_subject         VARCHAR     REFERENCES tag_subject(id) NOT NULL,
-    tagpack             VARCHAR     REFERENCES tagpack(id) ON DELETE CASCADE,
-    actor               VARCHAR     REFERENCES actor(id),
-    CONSTRAINT unique_tag UNIQUE (identifier, network, tagpack, label, source)
-);
-
-CREATE TABLE address (
-    network             VARCHAR    NOT NULL,
-    address             VARCHAR     NOT NULL,
-    created             TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_mapped           BOOLEAN     NOT NULL DEFAULT FALSE,
-    -- FOREIGN KEY (network, address) REFERENCES tag (network, identifier),
-    PRIMARY KEY (network, address)
-);
-
--- CREATE INDEX curr_network_index ON address (network, address);
-
-CREATE TABLE actor_concept (
-    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    category_id         VARCHAR     REFERENCES concept(id) ON DELETE CASCADE,
-    CONSTRAINT unique_category UNIQUE (actor_id, category_id),
-    PRIMARY KEY (actor_id, category_id)
-);
-
-CREATE TABLE actor_jurisdiction (
-    actor_id            VARCHAR     REFERENCES actor(id) ON DELETE CASCADE,
-    country_id          VARCHAR     REFERENCES country(id) ON DELETE CASCADE,
-    CONSTRAINT unique_jurisdiction UNIQUE (actor_id, country_id),
-    PRIMARY KEY (actor_id, country_id)
-);
-
-CREATE TABLE tag_concept (
-    tag_id              INTEGER     REFERENCES tag(id) ON DELETE CASCADE,
-    concept_type        VARCHAR     DEFAULT NULL,
-    concept_id          VARCHAR     REFERENCES concept(id) ON DELETE CASCADE,
-    CONSTRAINT unique_concept UNIQUE (tag_id, concept_id),
-    PRIMARY KEY (tag_id, concept_id)
-);
-
-
-CREATE INDEX tag_label_index ON tag (label);
-CREATE INDEX tag_ident_index ON tag (identifier);
-CREATE INDEX tag_is_cluster_definer_index ON tag (is_cluster_definer);
-
--- GraphSense mapping table
-
-CREATE TABLE address_cluster_mapping (
-    address             VARCHAR     NOT NULL,
-    network               VARCHAR    NOT NULL,
-    gs_cluster_id       INTEGER     NOT NULL,
-    gs_cluster_def_addr VARCHAR     NOT NULL,
-    gs_cluster_no_addr  INTEGER     DEFAULT NULL,
-    PRIMARY KEY(network, address),
-    FOREIGN KEY (network, address) REFERENCES address (network, address) ON DELETE CASCADE
-);
-CREATE INDEX acm_gs_cluster_id_index ON address_cluster_mapping (network, gs_cluster_id);
-
-
--- setup fuzzy search resources
-DROP EXTENSION IF EXISTS fuzzystrmatch;
-DROP EXTENSION IF EXISTS pg_trgm;
-
-CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-
-CREATE MATERIALIZED VIEW label AS SELECT DISTINCT label FROM tag;
+CREATE MATERIALIZED VIEW IF NOT EXISTS label AS SELECT DISTINCT label FROM tag;
 
 -- -- TODO: add triggers updating lastmod on update
 
-CREATE MATERIALIZED VIEW statistics AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
     SELECT
         explicit.network,
         no_labels,
@@ -194,7 +34,7 @@ CREATE MATERIALIZED VIEW statistics AS
         ) implicit
     ON implicit.network = explicit.network;
 
-CREATE MATERIALIZED VIEW tag_count_by_cluster AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS  tag_count_by_cluster AS
     SELECT
         t.network,
         acm.gs_cluster_id,
@@ -213,7 +53,7 @@ CREATE MATERIALIZED VIEW tag_count_by_cluster AS
         acm.gs_cluster_id,
         tp.acl_group;
 
-CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
+CREATE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
 
 /* In the end this view fulfils the following requirements in junction with
  * REST's `list_entity_tags_by_entity`:
@@ -224,7 +64,7 @@ CREATE INDEX tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_c
  *  If cluster size = 1 and there is an address tag on that single address -> assign to cluster level
  *  If cluster size = 1 and there are several address tags on that single address -> assign the one with highest confidence
  */
-CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS cluster_defining_tags_by_frequency_and_maxconfidence AS
     SELECT
         acm.gs_cluster_id,
         t.network,
@@ -285,31 +125,7 @@ CREATE MATERIALIZED VIEW cluster_defining_tags_by_frequency_and_maxconfidence AS
         HAVING
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
-CREATE INDEX cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (network, gs_cluster_id);
-
--- -- Tag quality helper views
-
--- -- CREATE VIEW duplicate_tags AS
--- --     SELECT
--- --         t.address,
--- --         t.label,
--- --         t.source,
--- --         tp.creator,
--- --         COUNT(*)
--- --     FROM
--- --         tag t,
--- --         tagpack tp
--- --     WHERE
--- --         t.tagpack = tp.id
--- --     GROUP BY
--- --         t.address,
--- --         t.label,
--- --         t.source,
--- --         tp.creator
--- --     HAVING
--- --         COUNT(*) > 1
--- --     ORDER BY
--- --         count DESC;
+CREATE INDEX IF NOT EXISTS cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (network, gs_cluster_id);
 
 -- Quality measures
 
@@ -330,7 +146,7 @@ CREATE TABLE IF NOT EXISTS address_quality(
 
 -- Procedure to calculate the quality measures, usage: CALL calculate_quality();
 
-CREATE PROCEDURE calculate_quality(actor BOOLEAN DEFAULT FALSE)
+CREATE OR REPLACE PROCEDURE calculate_quality(actor BOOLEAN DEFAULT FALSE)
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
@@ -382,7 +198,7 @@ END $$;
 
 -- Save quality measures into address_quality table
 
-CREATE PROCEDURE insert_address_quality()
+CREATE OR REPLACE PROCEDURE insert_address_quality()
 LANGUAGE PLPGSQL
 AS $$
 BEGIN

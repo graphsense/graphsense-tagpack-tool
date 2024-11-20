@@ -17,6 +17,7 @@ from yamlinclude import YamlIncludeConstructor
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import bcolors, get_user_choice, print_info, print_warn
+from tagpack.concept_mapping import map_concepts_to_supported_concepts
 from tagpack.constants import (
     is_known_currency,
     is_known_network,
@@ -593,6 +594,19 @@ class Tag(object):
 
         if category and category not in concepts:
             concepts.append(category)
+
+        # add tags from "tags" field in concepts.
+        try:
+            ctx = self.all_fields.get("context")
+            if ctx is not None:
+                tags = json.loads(ctx).get("tags", None)
+                if tags is not None:
+                    mcs = map_concepts_to_supported_concepts(tags)
+                    for mc in mcs:
+                        if mc not in concepts:
+                            concepts.append(mc)
+        except json.decoder.JSONDecodeError:
+            pass
 
         self.contents["concepts"] = concepts
 

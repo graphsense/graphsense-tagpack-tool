@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -47,12 +48,11 @@ CONFIG_FILE = "config.yaml"
 DEFAULT_CONFIG = {
     "taxonomies": {
         "concept": "src/tagpack/db/concepts.yaml",
-        # "entity": "src/tagpack/db/entities.yaml",
-        # "abuse": "src/tagpack/db/abuses.yaml",
         "confidence": "src/tagpack/db/confidence.csv",
         "country": "src/tagpack/db/countries.csv",
         "tag_type": "src/tagpack/db/tag_types.csv",
         "tag_subject": "src/tagpack/db/tag_subject.csv",
+        "concept_relation_annotation": "src/tagpack/db/concept_relation_annotation.csv",
     }
 }
 
@@ -126,38 +126,12 @@ def show_taxonomy_concepts(args, remote=False):
 
 
 def insert_taxonomy(args, remote=False):
-    config = _load_config(args.config)
-
-    if "taxonomies" not in config:
-        print_line("No taxonomies configured", "fail")
-        return
-
-    tax_keys = [args.taxonomy]
-
-    if not args.taxonomy:  # insert all available taxonomies
-        tax_keys = config["taxonomies"].keys()
-
-    t0 = time.time()
-    print_line("Taxonomy insert starts")
-
-    tagstore = TagStore(args.url, args.schema)
-
-    for t in tax_keys:
-        print(f"Taxonomy: {t}")
-        try:
-            taxonomy = _load_taxonomy(config, t)
-            tagstore.insert_taxonomy(taxonomy)
-
-            print(f"{taxonomy.key} | {taxonomy.uri}:", end=" ")
-            print_success("INSERTED")
-
-            duration = round(time.time() - t0, 2)
-            print_line(
-                f"Inserted {len(taxonomy.concepts)} concepts in {duration}s", "success"
-            )
-        except Exception as e:
-            print_fail(e)
-            print_line("Aborted insert", "fail")
+    print_line(
+        "tagpack-tool taxonomy insert was"
+        " retired in favor of tagstore init, please use this command",
+        "fail",
+    )
+    sys.exit(1)
 
 
 def low_quality_addresses(args):
@@ -494,6 +468,7 @@ def insert_tagpack(args):
         public,
         force,
         validate_tagpack=not args.no_validation,
+        tag_type_default=args.tag_type_default,
     )
 
     if n_processes != 1:
@@ -618,37 +593,12 @@ def insert_cluster_mapping(args, batch_size=5_000):
 
 
 def init_db(args):
-    config = _load_config(args.config)
-
-    if "taxonomies" not in config:
-        print_line("No taxonomies configured to init the db", "fail")
-        return
-
-    tagstore = TagStore(args.url, args.schema)
-
-    if args.create_db is not None:
-        db = args.url.split("/")[-1]
-
-        if not tagstore.does_tagstore_db_exist(db):
-            print_info(f"Creating database: {db}")
-            tagstore.create_database(db)
-        else:
-            print_info("DB exists, nothing to do")
-
-        if not tagstore.do_tagstore_tables_exist():
-            print_info("Creating tables")
-            tagstore.create_tables()
-        else:
-            print_info("Tables already exist.")
-            # tagstore.set_default_permissions(u, p)
-
-    del tagstore
-
-    t0 = time.time()
-    print_line("Init database starts")
-    insert_taxonomy(args)
-    duration = round(time.time() - t0, 2)
-    print_line(f"Init database in {duration}s", "success")
+    print_line(
+        "tagpack-tool init was retired"
+        " in favor of tagstore init, please use this command",
+        "fail",
+    )
+    sys.exit(1)
 
 
 def update_db(args):
@@ -925,9 +875,8 @@ def sync_repos(args):
         temp_dir = tempfile.gettempdir()
         temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
-        print_line("Init db taxonomies ...")
-        extra = ["--create-db"] if args.create_db is not None else []
-        exec_cli_command(strip_empty(["tagstore", "init", "-u", args.url] + extra))
+        print_line("Init db and add taxonomies ...")
+        subprocess.call(["gs-tagstore", "init", "--db-url", args.url])
 
         extra_option = "--force" if args.force else None
         extra_option = "--add_new" if extra_option is None else extra_option
@@ -952,6 +901,10 @@ def sync_repos(args):
                 print("Inserting tagpacks ...")
                 public = len(branch_etc) > 1 and branch_etc[1].strip() == "public"
 
+                tag_type_default = (
+                    branch_etc[2].strip() if len(branch_etc) > 2 else None
+                )
+
                 if public:
                     print("Caution: This repo is imported as public.")
 
@@ -968,6 +921,11 @@ def sync_repos(args):
                             "--n-workers",
                             str(args.n_workers),
                             "--no-validation" if args.no_validation else None,
+                            (
+                                f"--tag-type-default={tag_type_default}"
+                                if tag_type_default
+                                else None
+                            ),
                         ]
                     )
                 )
@@ -1176,11 +1134,6 @@ def main():
         action="store_true",
         help="Do not validate tagpacks before insert. (better insert speed)",
     )
-    parser_syc.add_argument(
-        "--create-db",
-        help="Try to automatically create the database if it does not exist.",
-        action="store_true",
-    )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 
     # parsers for tagpack command
@@ -1304,6 +1257,15 @@ def main():
         "--no-validation",
         action="store_true",
         help="Do not validate tagpacks before insert. (better insert speed)",
+    )
+    ptp_i.add_argument(
+        "--tag-type-default",
+        type=str,
+        default="actor",
+        help=(
+            "Default value for tag-type if missing in the tagpack. "
+            "Default is legacy value actor."
+        ),
     )
     ptp_i.set_defaults(func=insert_tagpack, url=def_url)
 
@@ -1534,11 +1496,6 @@ def main():
     )
     pbp.add_argument(
         "-u", "--url", help="postgresql://user:password@db_host:port/database"
-    )
-    pbp.add_argument(
-        "--create-db",
-        help="Try to automatically create the database if it does not exist.",
-        action="store_true",
     )
     pbp.set_defaults(func=init_db, url=def_url, taxonomy=None)
 

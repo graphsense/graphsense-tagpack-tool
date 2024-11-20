@@ -37,30 +37,6 @@ source:
     Attributes about the source of the information
   broader: concept
 
-mention:
-  id: mention
-  type: concept
-  prefLabel: Mention
-  description: >
-    Tag originates from an mention
-  broader: source
-
-forum_mention:
-  id: forum_mention
-  type: concept
-  prefLabel: Forum Mention
-  description: >
-    Tag originating from a forum mention
-  broader: website_mention
-
-website_mention:
-  id: website_mention
-  type: concept
-  prefLabel: Website Mention
-  description: >
-    Tag originating from a website mention
-  broader: mention
-
 
 abuse:
   id: abuse
@@ -97,7 +73,7 @@ white_usage:
   description: >
     Usage patterns that are tipically not concerning
   broader: behaviour
-  narrower: [mixing]
+  narrower: [cold_wallet]
 
 
 # High-level concepts Abuse
@@ -130,6 +106,24 @@ violence:
   seeAlso: https://www.merriam-webster.com/dictionary/violence
   broader: abuse
 
+human_trafficking:
+  id: human_trafficking
+  type: concept
+  prefLabel: Human Trafficking
+  description: >
+    Human trafficking is the trade of humans for the purpose of forced labour, sexual slavery, or commercial sexual exploitation.
+  seeAlso: https://en.wikipedia.org/wiki/Human_trafficking
+  broader: abuse
+
+murder:
+  id: murder
+  type: concept
+  prefLabel: Murder
+  description: >
+    Unlawful killing of another human
+  seeAlso: https://en.wikipedia.org/wiki/Murder
+  broader: violence
+
 torture:
   id: torture
   type: concept
@@ -147,6 +141,7 @@ scam:
     Scam denotes a fraudulent or deceptive act or operation.
   seeAlso: https://www.merriam-webster.com/dictionary/scam
   broader: abuse
+
 
 financial_crime:
   id: financial_crime
@@ -238,6 +233,15 @@ phishing:
   seeAlso: https://en.wikipedia.org/wiki/Phishing
   broader: abuse
 
+hacking:
+  id: hacking
+  type: concept
+  prefLabel: Hacking
+  description: >
+    Related to hacking activity
+  seeAlso: https://en.wikipedia.org/wiki/Hacker
+  broader: abuse
+
 service_hack:
   id: service_hack
   type: concept
@@ -245,6 +249,68 @@ service_hack:
   description: >
     A service hack denotes the digital intrusion into a service with the goal to steal
     funds.
+  broader: hacking
+
+account_hack:
+  id: account_hack
+  type: concept
+  prefLabel: Account Hack
+  description: >
+    A hacked account either to exploit finanically or via impersonation
+  broader: hacking
+
+exploit:
+  id: exploit
+  type: concept
+  prefLabel: Exploit
+  description: >
+    An exploit is a method or piece of code that takes advantage of vulnerabilities in software
+  seeAlso: https://en.wikipedia.org/wiki/Exploit_(computer_security)
+  broader: hacking
+
+data_breach:
+  id: data_breach
+  type: concept
+  prefLabel: Data Breach
+  description: >
+    A data breach, also known as data leakage, is "the unauthorized exposure, disclosure, or loss of personal information".
+  seeAlso: https://en.wikipedia.org/wiki/Data_breach
+  broader: hacking
+
+social_engineering:
+  id: social_engineering
+  type: concept
+  prefLabel: Social Engineering
+  description: >
+    In the context of information security, social engineering is the psychological manipulation of people into performing actions or divulging confidential information.
+  seeAlso: https://en.wikipedia.org/wiki/Social_engineering_(security)
+  broader: hacking
+
+malware:
+  id: malware
+  type: concept
+  prefLabel: Malware
+  description: >
+    Malware is any software intentionally designed to cause disruption to a computer, server, client, or computer network, leak private information, gain unauthorized access to information or systems, deprive access to information, or which unknowingly interferes with the user's computer security and privacy.
+  seeAlso: https://en.wikipedia.org/wiki/Malware
+  broader: hacking
+
+drugs:
+  id: drugs
+  type: concept
+  prefLabel: Drugs
+  description: >
+    Related to (illegal) drugs.
+  seeAlso: https://en.wikipedia.org/wiki/Drug
+  broader: abuse
+
+weapons:
+  id: weapons
+  type: concept
+  prefLabel: Weapons
+  description: >
+    A weapon, arm, or armament is any implement or device that is used to deter, threaten, inflict physical damage, harm, or kill.
+  seeAlso: https://en.wikipedia.org/wiki/Weapon
   broader: abuse
 
 payment_card_fraud:
@@ -273,6 +339,15 @@ sanction:
   description: >
       An entry appears on a sanction list published by governments and international
       authorities to combat illegal activities.
+  broader: abuse
+
+counterfeit:
+  id: counterfeit
+  type: concept
+  prefLabel: Counterfeit
+  description: >
+      A counterfeit is a fake or unauthorized replica of a genuine product-
+  seeAlso: https://en.wikipedia.org/wiki/Counterfeit
   broader: abuse
 
 extremism:

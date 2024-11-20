@@ -1,49 +1,78 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy import Column, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy.sql import func
 from sqlmodel import Field, Relationship, SQLModel
 
-_SCHEMA = "tagstore"
-_SHARED_TABLE_ARGS = {"schema": _SCHEMA}
+_SCHEMA = "public"
+_SHARED_TABLE_ARGS = {}
 
 
-class ClusterMapping(SQLModel, table=True):
-    address: str = Field(primary_key=True)
-    network: str = Field(primary_key=True)
-    gs_cluster_id: int
-    gs_cluster_def_addr: str
-    gs_cluster_no_addr: int | None
-
-
-class ActorPack(SQLModel, table=True):
-    __tablename__ = "actorpack"
+class Taxonomy(SQLModel, table=True):
+    __tablename__ = "taxonomy"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
-    title: str
-    creator: str
-    description: str
-    is_public: bool
-    uri: str | None
-    lastmod: datetime
+    id: str = Field(primary_key=True)  # noqa
+    source: str
+    description: str | None = Field(default=None)  # noqa
 
 
-class Actor(SQLModel, table=True):
-    __tablename__ = "actor"
+class Concept(SQLModel, table=True):
+    __tablename__ = "concept"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
-    uri: str | None
+    id: str = Field(primary_key=True)  # noqa
     label: str
-    context: str
-    lastmod: datetime
+    source: str
+    description: str
+    parent: str | None
+    is_abuse: str
+    taxonomy: str = Field(foreign_key="taxonomy.id")
 
-    # FK data
-    actorpack_id: str = Field(
-        sa_column=Column("actorpack", String, ForeignKey(f"{_SCHEMA}.actorpack.id"))
-    )
-    actorpack: ActorPack = Relationship()
+
+class TagType(SQLModel, table=True):
+    __tablename__ = "tag_type"
+    __table_args__ = _SHARED_TABLE_ARGS
+
+    id: str = Field(primary_key=True)  # noqa
+    label: str
+    source: str
+    description: str
+    taxonomy: str = Field(foreign_key="taxonomy.id")
+
+
+class Country(SQLModel, table=True):
+    __tablename__ = "country"
+    __table_args__ = _SHARED_TABLE_ARGS
+
+    id: str = Field(primary_key=True)  # noqa
+    label: str
+    source: str
+    description: str
+    taxonomy: str = Field(foreign_key="taxonomy.id")
+
+
+class TagSubject(SQLModel, table=True):
+    __tablename__ = "tag_subject"
+    __table_args__ = _SHARED_TABLE_ARGS
+
+    id: str = Field(primary_key=True)  # noqa
+    label: str
+    source: str
+    description: str
+    taxonomy: str = Field(foreign_key="taxonomy.id")
+
+
+class ConceptRelationAnnotation(SQLModel, table=True):
+    __tablename__ = "concept_relation_annotation"
+    __table_args__ = _SHARED_TABLE_ARGS
+
+    id: str = Field(primary_key=True)  # noqa
+    label: str
+    source: str
+    description: str
+    taxonomy: str = Field(foreign_key="taxonomy.id")
 
 
 class Confidence(SQLModel, table=True):
@@ -56,67 +85,168 @@ class Confidence(SQLModel, table=True):
     level: int
 
 
-class Concept(SQLModel, table=True):
-    __tablename__ = "concept"
+class ActorPack(SQLModel, table=True):
+    __tablename__ = "actorpack"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str = Field(primary_key=True)  # noqa
-    label: str
-    source: str
+    id: str | None = Field(default=None, primary_key=True)  # noqa
+    title: str
+    creator: str
     description: str
-    taxonomy: str
+    uri: str | None
+    lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
+
+
+class Actor(SQLModel, table=True):
+    __tablename__ = "actor"
+    __table_args__ = _SHARED_TABLE_ARGS
+
+    id: str | None = Field(default=None, primary_key=True)  # noqa
+    uri: str | None
+    label: str
+    context: str | None
+    lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
+
+    # FK data
+    actorpack_id: str = Field(
+        sa_column=Column(
+            "actorpack", String, ForeignKey("actorpack.id", ondelete="CASCADE")
+        )
+    )
+    actorpack: ActorPack = Relationship()
 
 
 class TagPack(SQLModel, table=True):
     __tablename__ = "tagpack"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: int | None = Field(default=None, primary_key=True)  # noqa
-    uri: str
+    id: str | None = Field(default=None, primary_key=True)  # noqa
+    title: str
+    description: str
     creator: str
-    acl_group: str
+    uri: str | None
+    acl_group: str = Field(sa_column_kwargs={"server_default": "public"})
+    lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
 
 
 class Tag(SQLModel, table=True):
     __tablename__ = "tag"
-    __table_args__ = _SHARED_TABLE_ARGS
+    __table_args__ = (
+        UniqueConstraint(
+            "identifier", "network", "label", "tagpack", "source", name="unique_tag"
+        ),
+        _SHARED_TABLE_ARGS,
+    )
 
     id: int | None = Field(default=None, primary_key=True)  # noqa
-    label: str
+    label: str = Field(index=True)
     source: str | None
     context: str | None
-    is_cluster_definer: bool | None = Field(default=False)
-    lastmod: datetime
-    identifier: str
+    is_cluster_definer: bool = Field(
+        default=False, index=True, sa_column_kwargs={"server_default": "false"}
+    )
+    lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
+    identifier: str = Field(index=True)
     asset: str | None
     network: str
 
     # FK data
     confidence_id: str = Field(
-        sa_column=Column("confidence", String, ForeignKey(f"{_SCHEMA}.confidence.id"))
+        sa_column=Column("confidence", String, ForeignKey("confidence.id"))
     )
-    confidence: Confidence = Relationship()
+    confidence: Confidence = Relationship(sa_relationship_kwargs={"lazy": "subquery"})
+
+    tag_type_id: str = Field(
+        sa_column=Column("tag_type", String, ForeignKey("tag_type.id"), nullable=False)
+    )
+    tag_type: TagType = Relationship(
+        sa_relationship_kwargs={"viewonly": True, "lazy": "subquery"}
+    )
+
+    tag_subject_id: str = Field(
+        sa_column=Column(
+            "tag_subject", String, ForeignKey("tag_subject.id"), nullable=False
+        )
+    )
+    tag_subject: TagSubject = Relationship(
+        sa_relationship_kwargs={"viewonly": True, "lazy": "subquery"}
+    )
+
     tagpack_id: str = Field(
-        sa_column=Column("tagpack", String, ForeignKey(f"{_SCHEMA}.tagpack.id"))
+        sa_column=Column(
+            "tagpack",
+            String,
+            ForeignKey("tagpack.id", ondelete="CASCADE"),
+            nullable=False,
+        )
     )
     tagpack: TagPack = Relationship()
-    actor_id: str = Field(
-        sa_column=Column("actor", String, ForeignKey(f"{_SCHEMA}.actor.id"))
-    )
+    actor_id: str = Field(sa_column=Column("actor", String, ForeignKey("actor.id")))
     actor: Actor = Relationship()
     concepts: List["TagConcept"] = Relationship(
-        sa_relationship_kwargs={"lazy": "subquery"}
+        cascade_delete=True, sa_relationship_kwargs={"lazy": "subquery"}
     )
 
 
 class TagConcept(SQLModel, table=True):
     __tablename__ = "tag_concept"
-    __table_args__ = _SHARED_TABLE_ARGS
+    __table_args__ = (
+        UniqueConstraint("tag_id", "concept_id", name="unique_concept"),
+        _SHARED_TABLE_ARGS,
+    )
 
-    id: int | None = Field(default=None, primary_key=True)  # noqa
-    tag_id: int = Field(foreign_key=f"{_SCHEMA}.tag.id")
-    concept_type: str
+    tag_id: int = Field(foreign_key="tag.id", primary_key=True, ondelete="CASCADE")
+    concept_relation_annotation_id: str | None = Field(
+        foreign_key="concept_relation_annotation.id"
+    )
+    concept_relation_annotation: ConceptRelationAnnotation = Relationship()
 
     # FK data
-    concept_id: str = Field(foreign_key=f"{_SCHEMA}.concept.id")
+    concept_id: str = Field(foreign_key="concept.id", primary_key=True)
     concept: Concept = Relationship()
+
+
+class ActorJurisdiction(SQLModel, table=True):
+    __tablename__ = "actor_jurisdiction"
+    __table_args__ = (
+        UniqueConstraint("actor_id", "country_id", name="unique_jurisdiction"),
+        _SHARED_TABLE_ARGS,
+    )
+
+    actor_id: str = Field(foreign_key="actor.id", primary_key=True, ondelete="CASCADE")
+    # FK data
+    country_id: str = Field(foreign_key="country.id", primary_key=True)
+    country: Country = Relationship()
+
+
+class ActorConcept(SQLModel, table=True):
+    __tablename__ = "actor_concept"
+    __table_args__ = (
+        UniqueConstraint("actor_id", "concept_id", name="unique_actor_concept"),
+        _SHARED_TABLE_ARGS,
+    )
+
+    actor_id: str = Field(foreign_key="actor.id", primary_key=True, ondelete="CASCADE")
+    # FK data
+    concept_id: str = Field(foreign_key="concept.id", primary_key=True)
+    concept: Concept = Relationship()
+
+
+class Address(SQLModel, table=True):
+    network: str = Field(primary_key=True)
+    address: str = Field(primary_key=True)
+    created: datetime = Field(sa_column_kwargs={"server_default": func.now()})
+    is_mapped: bool = Field(sa_column_kwargs={"server_default": "false"})
+
+
+class AddressClusterMapping(SQLModel, table=True):
+    __tablename__ = "address_cluster_mapping"
+    __table_args__ = (
+        Index("acm_gs_cluster_id_index", "network", "gs_cluster_id"),
+        _SHARED_TABLE_ARGS,
+    )
+    address: str = Field(primary_key=True)
+    network: str = Field(primary_key=True)
+    gs_cluster_id: int
+    gs_cluster_def_addr: str
+    gs_cluster_no_addr: int | None
