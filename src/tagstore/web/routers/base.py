@@ -3,7 +3,13 @@ from typing import List
 from fastapi import APIRouter
 
 from ....tagpack import __version__
-from ...db import ActorPublic, TagPublic, Taxonomies, TaxonomiesPublic
+from ...db import (
+    ActorPublic,
+    TagPublic,
+    TagstoreStatisticsPublic,
+    Taxonomies,
+    TaxonomiesPublic,
+)
 from ..dependencies import TsACLGroupsParam, TsDbParam, TsPagingParam, TsTagsQueryParam
 
 router = APIRouter()
@@ -15,7 +21,7 @@ async def get_version() -> str:
 
 
 @router.get(
-    "/taxonomy/", tags=["General"], name="Get a labels and description for id values."
+    "/taxonomy", tags=["General"], name="Get a labels and description for id values."
 )
 async def get_taxonomies(db: TsDbParam) -> TaxonomiesPublic:
     """
@@ -30,6 +36,16 @@ async def get_taxonomies(db: TsDbParam) -> TaxonomiesPublic:
             Taxonomies.TAG_TYPE,
         }
     )
+
+
+@router.get(
+    "/statistics", tags=["General"], name="Get a per network statistic of tag counts."
+)
+async def get_statistics(db: TsDbParam) -> TagstoreStatisticsPublic:
+    """
+    Loads statistics on tag counts in the database.
+    """
+    return await db.get_network_statistics()
 
 
 @router.get(

@@ -3,6 +3,7 @@ from .queries import (
     ActorPublic,
     TagPublic,
     TagstoreDbAsync,
+    TagstoreStatisticsPublic,
     Taxonomies,
     TaxonomiesPublic,
 )

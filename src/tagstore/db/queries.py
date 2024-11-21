@@ -3,10 +3,10 @@ import logging
 from enum import IntEnum
 from functools import wraps
 from json import JSONDecodeError
-from typing import List, Set
+from typing import Dict, List, Set
 
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import distinct, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -125,6 +125,16 @@ class ActorPublic(BaseModel):
         )
 
 
+class NetworkStatisticsPublic(BaseModel):
+    nr_tags: int
+    nr_identifiers: int
+    nr_labels: int
+
+
+class TagstoreStatisticsPublic(BaseModel):
+    by_network: Dict[str, NetworkStatisticsPublic]
+
+
 class TagPublic(BaseModel):
     identifier: str
     label: str
@@ -226,6 +236,15 @@ def _get_actor_by_id_stmt(actor: str):
 
 def _get_actor_tag_count_stmt(actor: str):
     return select(func.count()).select_from(Tag).where(Tag.actor_id == actor)
+
+
+def _get_per_network_statistics_stmt():
+    return select(
+        Tag.network,
+        func.count(Tag.identifier),
+        func.count(distinct(Tag.identifier)),
+        func.count(distinct(Tag.label)),
+    ).group_by(Tag.network)
 
 
 # Facades
@@ -442,4 +461,16 @@ class TagstoreDbAsync:
                     ]
                 )
             ),
+        )
+
+    @_inject_session
+    async def get_network_statistics(self, session=None):
+        results = await session.exec(_get_per_network_statistics_stmt())
+        return TagstoreStatisticsPublic(
+            by_network={
+                net: NetworkStatisticsPublic(
+                    nr_tags=nr_tags, nr_identifiers=nr_identifiers, nr_labels=nr_labels
+                )
+                for net, nr_tags, nr_identifiers, nr_labels in results
+            }
         )
