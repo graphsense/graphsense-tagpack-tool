@@ -3,8 +3,8 @@ from typing import List
 from fastapi import APIRouter
 
 from ....tagpack import __version__
-from ...db import TagPublic, Taxonomies, TaxonomiesPublic
-from ..dependencies import TsACLGroupsParam, TsDbParam, TsIdentifierParam, TsPagingParam
+from ...db import ActorPublic, TagPublic, Taxonomies, TaxonomiesPublic
+from ..dependencies import TsACLGroupsParam, TsDbParam, TsPagingParam, TsTagsQueryParam
 
 router = APIRouter()
 
@@ -33,27 +33,41 @@ async def get_taxonomies(db: TsDbParam) -> TaxonomiesPublic:
 
 
 @router.get(
-    "/tag/{identifier}",
+    "/tags",
     tags=["Tags"],
-    name="Get all tags for an identifier (e.g. and address or transaction)",
+    name="Get all tags for an query",
 )
 async def get_tags(
-    identifier: TsIdentifierParam,
+    query: TsTagsQueryParam,
     page: TsPagingParam,
     groups: TsACLGroupsParam,
     db: TsDbParam,
 ) -> List[TagPublic]:
     """
-    Loads tags by identifier
+    Loads tags for a tx hash, address (subject_id),
+      label (label), actor (actor_id) or cluster id (cluster_id)
     """
-    return await db.get_tags_by_id(identifier, page.offset, page.limit, groups)
+    if query.label is not None:
+        return await db.get_tags_by_label(query.label, page.offset, page.limit, groups)
+    elif query.actor_id is not None:
+        return await db.get_tags_by_actorid(
+            query.actor_id, page.offset, page.limit, groups
+        )
+    elif query.subject_id is not None:
+        return await db.get_tags_by_id(
+            query.subject_id, page.offset, page.limit, groups
+        )
+    elif query.cluster_id is not None:
+        return await db.get_tags_by_clusterid(
+            query.cluster_id, page.offset, page.limit, groups
+        )
 
 
-@router.get("/tag/by_label/{label}", tags=["Tags"], name="Get all tags for a label")
-async def get_tags_by_label(
-    label: str, page: TsPagingParam, groups: TsACLGroupsParam, db: TsDbParam
-) -> List[TagPublic]:
+@router.get("/actor/{actor}", tags=["Actor"], name="Get an Actor by its id.")
+async def get_actor_by_id(
+    actor: str, db: TsDbParam, include_tag_count: bool = False
+) -> ActorPublic | None:
     """
-    Loads tags by label
+    Loads actor by id
     """
-    return await db.get_tags_by_label(label, page.offset, page.limit, groups)
+    return await db.get_actor_by_id(actor, include_tag_count)

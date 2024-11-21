@@ -26,7 +26,7 @@ class Concept(SQLModel, table=True):
     label: str
     source: str
     description: str
-    parent: str | None
+    parent: str | None = Field(foreign_key="concept.id")
     is_abuse: str
     taxonomy: str = Field(foreign_key="taxonomy.id")
 
@@ -79,10 +79,11 @@ class Confidence(SQLModel, table=True):
     __tablename__ = "confidence"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
+    id: str = Field(default=None, primary_key=True)  # noqa
     label: str
     description: str
     level: int
+    taxonomy: str = Field(foreign_key="taxonomy.id")
 
 
 class ActorPack(SQLModel, table=True):
@@ -114,6 +115,14 @@ class Actor(SQLModel, table=True):
         )
     )
     actorpack: ActorPack = Relationship()
+
+    concepts: List["ActorConcept"] = Relationship(
+        cascade_delete=True, sa_relationship_kwargs={"lazy": "subquery"}
+    )
+
+    jurisdictions: List["ActorJurisdiction"] = Relationship(
+        cascade_delete=True, sa_relationship_kwargs={"lazy": "subquery"}
+    )
 
 
 class TagPack(SQLModel, table=True):
@@ -152,9 +161,13 @@ class Tag(SQLModel, table=True):
 
     # FK data
     confidence_id: str = Field(
-        sa_column=Column("confidence", String, ForeignKey("confidence.id"))
+        sa_column=Column(
+            "confidence", String, ForeignKey("confidence.id"), nullable=False
+        )
     )
-    confidence: Confidence = Relationship(sa_relationship_kwargs={"lazy": "subquery"})
+    confidence: Confidence = Relationship(
+        sa_relationship_kwargs={}  # {"lazy": "subquery"}
+    )
 
     tag_type_id: str = Field(
         sa_column=Column("tag_type", String, ForeignKey("tag_type.id"), nullable=False)
@@ -181,8 +194,12 @@ class Tag(SQLModel, table=True):
         )
     )
     tagpack: TagPack = Relationship()
-    actor_id: str = Field(sa_column=Column("actor", String, ForeignKey("actor.id")))
-    actor: Actor = Relationship()
+    actor_id: str | None = Field(
+        sa_column=Column(
+            "actor", String, ForeignKey("actor.id"), nullable=True, index=True
+        )
+    )
+    actor: Actor | None = Relationship()
     concepts: List["TagConcept"] = Relationship(
         cascade_delete=True, sa_relationship_kwargs={"lazy": "subquery"}
     )

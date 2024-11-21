@@ -1,6 +1,6 @@
 from typing import Annotated, List, Optional
 
-from fastapi import Depends, Path, Query, Request
+from fastapi import Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Session
 
@@ -31,18 +31,40 @@ class PageingState(BaseModel):
         return self.page_size
 
 
+class TagsQueryParams(BaseModel):
+    label: str | None = None
+    actor_id: str | None = None
+    cluster_id: int | None = None
+    subject_id: str | None = None
+
+
+def _get_tags_query_params(
+    label: str | None = None,
+    actor_id: str | None = None,
+    cluster_id: int | None = None,
+    subject_id: str | None = None,
+) -> TagsQueryParams:
+    if sum(i is not None for i in [label, actor_id, cluster_id, subject_id]) != 1:
+        raise HTTPException(
+            400,
+            "Please provide exactly one of either"
+            " label, actor_id, cluster_id or subject_id",
+        )
+    else:
+        return TagsQueryParams(
+            label=label, actor_id=actor_id, cluster_id=cluster_id, subject_id=subject_id
+        )
+
+
 async def _paging_parameters(
     page_nr: Annotated[
         int,
-        Query(alias="page_nr", description="Which page to serve"),
+        Query(alias="page_nr", description="Which page to serve", ge=0),
     ] = 0,
     page_size: Annotated[
         int,
-        Query(
-            alias="page_size",
-            description="size of a page",
-        ),
-    ] = 1000,
+        Query(alias="page_size", description="size of a page", le=5000, gt=0),
+    ] = 50,
 ) -> PageingState:
     return PageingState(page_nr=page_nr, page_size=page_size)
 
@@ -72,8 +94,10 @@ TsDbParam = Annotated[TagstoreDbAsync, Depends(_get_tagstore_db_async)]
 
 TsPagingParam = Annotated[PageingState, Depends(_paging_parameters)]
 
-TsIdentifierParam = Annotated[
-    str, Path(alias="identifier", description="Address or Transaction-hash")
-]
+# TsIdentifierParam = Annotated[
+#     str, Path(alias="identifier", description="Address or Transaction-hash")
+# ]
+
+TsTagsQueryParam = Annotated[TagsQueryParams, Depends(_get_tags_query_params)]
 
 TsACLGroupsParam = Annotated[Optional[List[str]], Depends(_acl_groups)]
