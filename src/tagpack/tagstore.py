@@ -1101,17 +1101,17 @@ class TagStore(object):
         ret["tag_count"] = self.get_tags_count(network=network)
         ret["tag_count_with_actors"] = self.get_tags_with_actors_count(network=network)
         ret["nr_actors_used"] = self.get_used_actors_count(network=network)
-        ret[
-            "nr_actors_used_with_jurisdictions"
-        ] = self.get_used_actors_with_jurisdictions(network=network)
+        ret["nr_actors_used_with_jurisdictions"] = (
+            self.get_used_actors_with_jurisdictions(network=network)
+        )
 
         ret["nr_actors_used_exchange"] = self.get_used_actors_count(
             network=network, category="exchange"
         )
-        ret[
-            "nr_actors_used_with_jurisdictions_exchange"
-        ] = self.get_used_actors_with_jurisdictions(
-            network=network, category="exchange"
+        ret["nr_actors_used_with_jurisdictions_exchange"] = (
+            self.get_used_actors_with_jurisdictions(
+                network=network, category="exchange"
+            )
         )
 
         return ret
