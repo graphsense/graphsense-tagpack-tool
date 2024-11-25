@@ -928,12 +928,13 @@ class TagStore(object):
 
     @auto_commit
     def refresh_db(self):
-        self.cursor.execute("REFRESH MATERIALIZED VIEW label")
-        self.cursor.execute("REFRESH MATERIALIZED VIEW statistics")
-        self.cursor.execute("REFRESH MATERIALIZED VIEW tag_count_by_cluster")
+        # self.cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY label")
+        self.cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY statistics")
         self.cursor.execute(
-            "REFRESH MATERIALIZED VIEW "
-            "cluster_defining_tags_by_frequency_and_maxconfidence"
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY tag_count_by_cluster"
+        )
+        self.cursor.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY " "best_cluster_tag"
         )  # noqa
 
     def get_addresses(self, update_existing):
@@ -1177,11 +1178,15 @@ def _get_tag_concepts(tag):
     abuse = tag.all_fields.get("abuse", None)
     category = tag.all_fields.get("category", None)
     if abuse is not None and abuse not in tc:
-        tc.remove((abuse, None))
+        x = (abuse, None)
+        if x in tc:
+            tc.remove(x)
         tc.append((abuse, "abuse"))
 
     if category is not None and category not in tc:
-        tc.remove((category, None))
+        x = (category, None)
+        if x in tc:
+            tc.remove(x)
         tc.append((category, "primary"))
     return tc
 

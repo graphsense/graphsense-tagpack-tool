@@ -15,6 +15,7 @@ from .database import get_db_engine_async
 from .models import (
     Actor,
     AddressClusterMapping,
+    BestClusterTag,
     Concept,
     Confidence,
     Country,
@@ -176,8 +177,10 @@ class TagPublic(BaseModel):
 
 
 # Statements
-def _get_tags_by_id_stmt(
-    identifier: str, offset: int, page_size: int, groups: List[str]
+
+
+def _get_tags_by_subjectid_stmt(
+    identifier: str, offset: int | None, page_size: int | None, groups: List[str]
 ):
     return (
         select(Tag, TagPack)
@@ -190,8 +193,31 @@ def _get_tags_by_id_stmt(
     )
 
 
+def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
+    return (
+        select(Tag, TagPack)
+        .options(selectinload(Tag.confidence))
+        .where(Tag.id == tag_id)
+        .where(Tag.tagpack_id == TagPack.id)
+        .where(TagPack.acl_group.in_(groups))
+        .limit(1)
+    )
+
+
+def _get_best_cluster_tag_stmt(cluster_id: int, groups: List[str]):
+    return (
+        select(Tag, TagPack, BestClusterTag)
+        .options(selectinload(Tag.confidence))
+        .where(BestClusterTag.cluster_id == cluster_id)
+        .where(Tag.tagpack_id == TagPack.id)
+        .where(BestClusterTag.tag_id == Tag.id)
+        .where(TagPack.acl_group.in_(groups))
+        .limit(1)
+    )
+
+
 def _get_tags_by_actorid_stmt(
-    actor: str, offset: int, page_size: int, groups: List[str]
+    actor: str, offset: int | None, page_size: int | None, groups: List[str]
 ):
     return (
         select(Tag, TagPack)
@@ -204,7 +230,7 @@ def _get_tags_by_actorid_stmt(
 
 
 def _get_tags_by_clusterid_stmt(
-    cluster_id: int, offset: int, page_size: int, groups: List[str]
+    cluster_id: int, offset: int | None, page_size: int | None, groups: List[str]
 ):
     return (
         select(Tag, TagPack, AddressClusterMapping)
@@ -218,7 +244,9 @@ def _get_tags_by_clusterid_stmt(
     )
 
 
-def _get_tags_by_label_stmt(label: str, offset: int, page_size: int, groups: List[str]):
+def _get_tags_by_label_stmt(
+    label: str, offset: int | None, page_size: int | None, groups: List[str]
+):
     return (
         select(Tag, TagPack)
         .options(selectinload(Tag.confidence))
@@ -274,9 +302,35 @@ class TagstoreDbAsync:
     def from_engine(db_url):
         return TagstoreDbAsync(get_db_engine_async(db_url))
 
-    # Get Tags by Id
+    # get Tag by id
+
+    # Get Tags by subject id
     @_inject_session
-    async def _get_tags_by_id(
+    async def _get_tag_by_id(
+        self,
+        tag_id: int,
+        groups: List[str],
+        session=None,
+    ) -> Tag | None:
+        return await session.exec(_get_tag_by_id_stmt(tag_id, groups)).first()
+
+    @_inject_session
+    async def get_tag_by_id(
+        self,
+        tag_id: str,
+        groups: List[str],
+        session=None,
+    ) -> TagPublic | None:
+        result = await self._get_tags_by_id(tag_id, groups, session=session)
+        if result is not None:
+            t, tp = result
+            return TagPublic.fromDB(t, tp)
+
+        return None
+
+    # Get Tags by subject id
+    @_inject_session
+    async def _get_tags_by_subjectid(
         self,
         identifier: str,
         offset: int,
@@ -285,20 +339,20 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[Tag]:
         return await session.exec(
-            _get_tags_by_id_stmt(identifier, offset, page_size, groups)
+            _get_tags_by_subjectid_stmt(identifier, offset, page_size, groups)
         )
 
     @_inject_session
-    async def get_tags_by_id(
+    async def get_tags_by_subjectid(
         self,
-        identifier: str,
-        offset: int,
-        page_size: int,
+        subject_id: str,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_id(
-            identifier, offset, page_size, groups, session=session
+            subject_id, offset, page_size, groups, session=session
         )
         return [TagPublic.fromDB(t, tp) for t, tp in results]
 
@@ -307,8 +361,8 @@ class TagstoreDbAsync:
     async def _get_tags_by_label(
         self,
         label: str,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[Tag]:
@@ -320,8 +374,8 @@ class TagstoreDbAsync:
     async def get_tags_by_label(
         self,
         label: str,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
@@ -336,8 +390,8 @@ class TagstoreDbAsync:
     async def _get_tags_by_clusterid(
         self,
         cluster_id: int,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[Tag]:
@@ -349,8 +403,8 @@ class TagstoreDbAsync:
     async def get_tags_by_clusterid(
         self,
         cluster_id: int,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
@@ -382,8 +436,8 @@ class TagstoreDbAsync:
     async def _get_tags_by_actorid(
         self,
         actor: str,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[Tag]:
@@ -395,8 +449,8 @@ class TagstoreDbAsync:
     async def get_tags_by_actorid(
         self,
         actor: str,
-        offset: int,
-        page_size: int,
+        offset: int | None,
+        page_size: int | None,
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
@@ -404,6 +458,19 @@ class TagstoreDbAsync:
             actor, offset, page_size, groups, session=session
         )
         return [TagPublic.fromDB(t, tp) for t, tp in results]
+
+    # Other tag stuff
+
+    @_inject_session
+    async def get_best_cluster_tag(
+        self, cluster_id: int, groups: List[str], session=False
+    ) -> TagPublic | None:
+        result = await session.exec(
+            _get_best_cluster_tag_stmt(cluster_id, groups, session=session)
+        ).first()
+        if result is not None:
+            t, tp, _ = result
+            return TagPublic.fromDB(t, tp)
 
     # Other
     @_inject_session

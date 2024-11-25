@@ -267,3 +267,13 @@ class AddressClusterMapping(SQLModel, table=True):
     gs_cluster_id: int
     gs_cluster_def_addr: str
     gs_cluster_no_addr: int | None
+
+
+# Materialized views only to make access uniform
+
+
+class BestClusterTag(SQLModel):
+    __tablename__ = "best_cluster_tag"
+    cluster_id: int
+    network: str
+    tag_id: int

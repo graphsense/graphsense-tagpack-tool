@@ -1,6 +1,10 @@
-CREATE MATERIALIZED VIEW IF NOT EXISTS label AS SELECT DISTINCT label FROM tag;
+# PERFORMANCE TUNING
 
--- -- TODO: add triggers updating lastmod on update
+CREATE EXTENSION pg_trgm;
+CREATE INDEX tag_label_like_idx ON tag USING GIN (label gin_trgm_ops)
+
+# MATERIALIZED VIEWS
+
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
     SELECT
@@ -34,6 +38,9 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
         ) implicit
     ON implicit.network = explicit.network;
 
+CREATE UNIQUE INDEX IF NOT EXISTS statistics_by_network
+  ON statistics (network);
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS  tag_count_by_cluster AS
     SELECT
         t.network,
@@ -53,7 +60,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS  tag_count_by_cluster AS
         acm.gs_cluster_id,
         tp.acl_group;
 
-CREATE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
+CREATE UNIQUE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
 
 /* In the end this view fulfils the following requirements in junction with
  * REST's `list_entity_tags_by_entity`:
@@ -64,17 +71,11 @@ CREATE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster 
  *  If cluster size = 1 and there is an address tag on that single address -> assign to cluster level
  *  If cluster size = 1 and there are several address tags on that single address -> assign the one with highest confidence
  */
-CREATE MATERIALIZED VIEW IF NOT EXISTS cluster_defining_tags_by_frequency_and_maxconfidence AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS best_cluster_tag AS
     SELECT
-        acm.gs_cluster_id,
-        t.network,
-        t.label,
-        -- t.category,
-        tp.acl_group,
-        MIN(t.identifier) as address,
-        COUNT(t.identifier) AS no_addresses,
-        c.level AS max_level,
-        true AS is_cluster_definer
+        acm.gs_cluster_id as cluster_id,
+        t.network as network,
+        t.id as tag_id
     FROM
         tag t,
         address_cluster_mapping acm,
@@ -88,23 +89,16 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS cluster_defining_tags_by_frequency_and_ma
         AND tp.id=t.tagpack
     GROUP BY
         c.level,
-        t.label,
+        t.id,
         -- t.category,
         t.network,
         acm.gs_cluster_id,
         tp.acl_group
     UNION
         SELECT
-            gs_cluster_id,
-            t.network,
-            t.label,
-            -- t.category,
-            -- string_agg(tp.acl_group,'|') AS acl_group,
-            tp.acl_group,
-            MIN(t.identifier) as address,
-            1 AS no_addresses,
-            MAX(c.level) AS max_level,
-            false AS is_cluster_definer
+            acm.gs_cluster_id as cluster_id,
+            t.network as network,
+            t.id as tag_id
         FROM
             address_cluster_mapping acm,
             tag t,
@@ -117,7 +111,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS cluster_defining_tags_by_frequency_and_ma
             and t.network=acm.network
             and acm.gs_cluster_no_addr = 1
         GROUP BY
-            t.label,
+            t.id,
             -- t.category,
             t.network,
             acm.gs_cluster_id,
@@ -125,7 +119,9 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS cluster_defining_tags_by_frequency_and_ma
         HAVING
             every(t.is_cluster_definer=false or t.is_cluster_definer is null);
 
-CREATE INDEX IF NOT EXISTS cluster_tags_gs_cluster_index ON cluster_defining_tags_by_frequency_and_maxconfidence (network, gs_cluster_id);
+CREATE INDEX IF NOT EXISTS cluster_tags_by_clstr ON best_cluster_tag (cluster_id);
+CREATE INDEX IF NOT EXISTS cluster_tags_by_clstr_and_network ON best_cluster_tag (network, cluster_id);
+CREATE UNIQUE INDEX IF NOT EXISTS cluster_tag_unique ON best_cluster_tag (network, cluster_id, tag_id);
 
 -- Quality measures
 

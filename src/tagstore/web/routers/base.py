@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter
 
 from ....tagpack import __version__
+from ...algorithms.tag_digest import TagDigest, compute_tag_digest
 from ...db import (
     ActorPublic,
     TagPublic,
@@ -70,13 +71,49 @@ async def get_tags(
             query.actor_id, page.offset, page.limit, groups
         )
     elif query.subject_id is not None:
-        return await db.get_tags_by_id(
+        return await db.get_tags_by_subjectid(
             query.subject_id, page.offset, page.limit, groups
         )
     elif query.cluster_id is not None:
         return await db.get_tags_by_clusterid(
             query.cluster_id, page.offset, page.limit, groups
         )
+
+
+@router.get(
+    "/tag-digest/{tag_subject}",
+    tags=["Digest"],
+    name="Get a digest of all tags on an tx, address or other identifier",
+)
+async def get_tag_digest(
+    subject_id: str,
+    groups: TsACLGroupsParam,
+    db: TsDbParam,
+) -> TagDigest:
+    """
+    Loads tags for a tx hash, address (subject_id),
+      label (label), actor (actor_id) or cluster id (cluster_id)
+    """
+    return compute_tag_digest(await db.get_tags_by_id(subject_id, None, None, groups))
+
+
+@router.get(
+    "/best-tag/{cluster_id}",
+    tags=["Cluster"],
+    name="Get the 'best' tag for a given cluster_id.",
+)
+async def get_best_cluster_tag(
+    cluster_id: str,
+    groups: TsACLGroupsParam,
+    db: TsDbParam,
+) -> TagDigest:
+    """
+    Loads best cluster Tag.
+    """
+    return await db.get_best_cluster_tag(cluster_id, groups)
+
+
+get_best_cluster_tag
 
 
 @router.get("/actor/{actor}", tags=["Actor"], name="Get an Actor by its id.")
