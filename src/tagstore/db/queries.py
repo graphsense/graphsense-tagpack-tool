@@ -320,7 +320,7 @@ class TagstoreDbAsync:
         groups: List[str],
         session=None,
     ) -> TagPublic | None:
-        result = await self._get_tags_by_id(tag_id, groups, session=session)
+        result = await self._get_tag_by_id(tag_id, groups, session=session)
         if result is not None:
             t, tp = result
             return TagPublic.fromDB(t, tp)
@@ -350,7 +350,7 @@ class TagstoreDbAsync:
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
-        results = await self._get_tags_by_id(
+        results = await self._get_tags_by_subjectid(
             subject_id, offset, page_size, groups, session=session
         )
         return [TagPublic.fromDB(t, tp) for t, tp in results]
