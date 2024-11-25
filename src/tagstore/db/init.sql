@@ -1,9 +1,9 @@
-# PERFORMANCE TUNING
+-- # PERFORMANCE TUNING
 
-CREATE EXTENSION pg_trgm;
-CREATE INDEX tag_label_like_idx ON tag USING GIN (label gin_trgm_ops)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX tag_label_like_idx ON tag USING GIN (label gin_trgm_ops);
 
-# MATERIALIZED VIEWS
+-- # MATERIALIZED VIEWS
 
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
