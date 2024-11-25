@@ -247,7 +247,7 @@ class Actor(object):
         # This allows the context in the yaml file to be written in either
         # normal yaml syntax which is now converted to a json string
         # of directly as json string.
-        if type(self.contents.get("context", None)) == dict:
+        if isinstance(self.contents.get("context", None), dict):
             apply_to_dict_field(self.contents, "context", json.dumps, fail=True)
 
     @staticmethod

@@ -292,7 +292,6 @@ def _inject_session(f):
 
 
 class TagstoreDbAsync:
-
     engine = None
 
     def __init__(self, engine):

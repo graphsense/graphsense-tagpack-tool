@@ -31,11 +31,11 @@ install:
 	pip install .
 
 lint:
-	flake8 tests src
+	ruff check tests src
 
 format:
-	isort --profile black src
-	black tests src
+	ruff check --select I --fix .
+	ruff format .
 
 pre-commit:
 	pre-commit run --all-files

@@ -73,7 +73,7 @@ async def _acl_groups(
     groups: Annotated[
         Optional[List[str]],
         Query(alias="groups", description="Which groups of tags to consider."),
-    ] = ["public"]
+    ] = ["public"],
 ) -> Optional[List[str]]:
     return groups
 

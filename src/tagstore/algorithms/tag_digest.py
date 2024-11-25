@@ -36,7 +36,6 @@ class TagDigest(BaseModel):
 
 
 class wCounter:
-
     def __init__(self):
         self.wctr = Counter()
         self.ctr = Counter()
@@ -122,7 +121,6 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
 
     def add_tag_data(t, tags_count, total_words):
         if not _skipTag(t):
-
             conf = t.confidence_level or 0.1
 
             tags_count += 1

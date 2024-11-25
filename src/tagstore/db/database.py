@@ -89,7 +89,6 @@ def init_database(engine):
     create_tables(engine)
 
     with Session(engine) as session:
-
         _add_fk_data(session)
 
         session.commit()
