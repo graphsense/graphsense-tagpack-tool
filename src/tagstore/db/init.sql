@@ -1,23 +1,23 @@
 -- # PERFORMANCE TUNING
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX tag_label_like_idx ON tag USING GIN (label gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS tag_label_like_idx ON tag USING GIN (label gin_trgm_ops);
 
 -- # MATERIALIZED VIEWS
 
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS statistics AS
     SELECT
         explicit.network,
-        no_labels,
-        explicit.no_tagged_addresses as no_explicit_tagged_addresses,
-        COALESCE(implicit.no_tagged_addresses, explicit.no_tagged_addresses) as no_implicit_tagged_addresses
+        nr_tags,
+        no_labels as nr_labels,
+        explicit.nr_identifiers as nr_identifiers_explicit,
+        COALESCE(implicit.nr_identifiers, explicit.nr_identifiers) as nr_identifiers_implicit
     FROM
         (SELECT
             network,
-            NULL,
+            COUNT(*) as nr_tags,
             COUNT(DISTINCT label) AS no_labels,
-            COUNT(DISTINCT identifier) AS no_tagged_addresses
+            COUNT(DISTINCT identifier) AS nr_identifiers
          FROM
             tag
          GROUP BY
@@ -25,7 +25,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS  statistics AS
         ) explicit
     LEFT JOIN
         (SELECT
-            SUM(gs_cluster_no_addr) AS no_tagged_addresses,
+            SUM(gs_cluster_no_addr) AS nr_identifiers,
             network
          FROM
             (SELECT DISTINCT ON (gs_cluster_id, network)

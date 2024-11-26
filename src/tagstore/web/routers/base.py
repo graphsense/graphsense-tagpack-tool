@@ -8,7 +8,6 @@ from ...db import (
     ActorPublic,
     TagPublic,
     TagstoreStatisticsPublic,
-    Taxonomies,
     TaxonomiesPublic,
 )
 from ..dependencies import TsACLGroupsParam, TsDbParam, TsPagingParam, TsTagsQueryParam
@@ -28,15 +27,7 @@ async def get_taxonomies(db: TsDbParam) -> TaxonomiesPublic:
     """
     Loads taxonomies (meta information and descriptions) used in this API.
     """
-    return await db.get_taxonomies(
-        {
-            Taxonomies.CONFIDENCE,
-            Taxonomies.CONCEPT,
-            Taxonomies.COUTRY,
-            Taxonomies.TAG_SUBJECT,
-            Taxonomies.TAG_TYPE,
-        }
-    )
+    return await db.get_taxonomies()
 
 
 @router.get(
@@ -46,7 +37,7 @@ async def get_statistics(db: TsDbParam) -> TagstoreStatisticsPublic:
     """
     Loads statistics on tag counts in the database.
     """
-    return await db.get_network_statistics()
+    return await db.get_network_statistics_cached()
 
 
 @router.get(

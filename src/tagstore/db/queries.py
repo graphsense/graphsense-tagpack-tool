@@ -8,14 +8,14 @@ from typing import Dict, List, Set
 from pydantic import BaseModel
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .database import get_db_engine_async
 from .models import (
     Actor,
     AddressClusterMapping,
-    BestClusterTag,
+    BestClusterTagView,
     Concept,
     Confidence,
     Country,
@@ -31,10 +31,18 @@ logger = logging.getLogger("uvicorn.error")
 class Taxonomies(IntEnum):
     CONCEPT = 1
     CONFIDENCE = 2
-    COUTRY = 3
+    COUNTRY = 3
     TAG_SUBJECT = 4
     TAG_TYPE = 5
 
+
+_ALL_TAXONOMIES = {
+    Taxonomies.CONFIDENCE,
+    Taxonomies.CONCEPT,
+    Taxonomies.COUNTRY,
+    Taxonomies.TAG_SUBJECT,
+    Taxonomies.TAG_TYPE,
+}
 
 # Output Classes
 
@@ -56,11 +64,11 @@ class ConceptsPublic(ItemDescriptionPublic):
 
 
 class TaxonomiesPublic(BaseModel):
-    confidences: List[ConfidencePublic] | None
-    coutries: List[ItemDescriptionPublic] | None
-    tag_subjects: List[ItemDescriptionPublic] | None
-    tag_types: List[ItemDescriptionPublic] | None
-    concepts: List[ConceptsPublic] | None
+    confidence: List[ConfidencePublic] | None
+    country: List[ItemDescriptionPublic] | None
+    tag_subject: List[ItemDescriptionPublic] | None
+    tag_type: List[ItemDescriptionPublic] | None
+    concept: List[ConceptsPublic] | None
 
 
 class ActorPublic(BaseModel):
@@ -76,6 +84,7 @@ class ActorPublic(BaseModel):
     coingecko_ids: List[str]
     defilama_ids: List[str]
     twitter_handles: List[str]
+    github_organisations: List[str]
     legal_name: str | None
 
     @classmethod
@@ -86,15 +95,23 @@ class ActorPublic(BaseModel):
         coingecko_ids = []
         defilama_ids = []
         twitter_handles = []
+        gh_handles = []
         legal_name = None
 
         try:
             data = json.loads(a.context)
 
             # muliple twitter handles are string concatendated at the moment
-            twitter_handles = [
+            twitter_handles_t = [
                 x.strip()
                 for x in data.get("twitter_handle", "").split(",")
+                if x.strip()
+            ]
+
+            # muliple gh orgas are string concatendated at the moment
+            gh_orgas = [
+                x.strip()
+                for x in data.get("github_organisation", "").split(",")
                 if x.strip()
             ]
 
@@ -103,7 +120,8 @@ class ActorPublic(BaseModel):
             online_references.extend(data.get("refs", []))
             coingecko_ids.extend(data.get("coingecko_ids", []))
             defilama_ids.extend(data.get("defilama_ids", []))
-            twitter_handles.extend(twitter_handles)
+            twitter_handles.extend(twitter_handles_t)
+            gh_handles.extend(gh_orgas)
             legal_name = data.get("legal_name", None)
 
         except JSONDecodeError:
@@ -121,6 +139,7 @@ class ActorPublic(BaseModel):
             coingecko_ids=coingecko_ids,
             defilama_ids=defilama_ids,
             twitter_handles=twitter_handles,
+            github_organisations=gh_handles,
             legal_name=legal_name,
             nr_tags=tag_count,
         )
@@ -128,7 +147,8 @@ class ActorPublic(BaseModel):
 
 class NetworkStatisticsPublic(BaseModel):
     nr_tags: int
-    nr_identifiers: int
+    nr_identifiers_explicit: int
+    nr_identifiers_implicit: int | None
     nr_labels: int
 
 
@@ -148,6 +168,7 @@ class TagPublic(BaseModel):
     actor: str | None
     primary_concept: str | None
     additional_concepts: List[str]
+    is_cluster_definer: bool
     network: str
     lastmod: int
     group: str
@@ -170,6 +191,7 @@ class TagPublic(BaseModel):
             actor=t.actor_id,
             primary_concept=mainc.concept_id if mainc else None,
             additional_concepts=[x.concept_id for x in c if x != mainc],
+            is_cluster_definer=t.is_cluster_definer,
             network=t.network,
             lastmod=int(round(t.lastmod.timestamp())),
             group=tp.acl_group,
@@ -206,11 +228,11 @@ def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
 
 def _get_best_cluster_tag_stmt(cluster_id: int, groups: List[str]):
     return (
-        select(Tag, TagPack, BestClusterTag)
+        select(Tag, TagPack, BestClusterTagView)
         .options(selectinload(Tag.confidence))
-        .where(BestClusterTag.cluster_id == cluster_id)
+        .where(BestClusterTagView.cluster_id == cluster_id)
         .where(Tag.tagpack_id == TagPack.id)
-        .where(BestClusterTag.tag_id == Tag.id)
+        .where(BestClusterTagView.tag_id == Tag.id)
         .where(TagPack.acl_group.in_(groups))
         .limit(1)
     )
@@ -273,6 +295,12 @@ def _get_per_network_statistics_stmt():
         func.count(distinct(Tag.identifier)),
         func.count(distinct(Tag.label)),
     ).group_by(Tag.network)
+
+
+def _get_per_network_statistics_cached_stmt():
+    return text(
+        "select network, nr_labels, nr_tags, nr_identifiers_explicit, nr_identifiers_implicit from statistics"
+    )
 
 
 # Facades
@@ -474,10 +502,10 @@ class TagstoreDbAsync:
     # Other
     @_inject_session
     async def get_taxonomies(
-        self, include: Set[Taxonomies], session=None
+        self, include: Set[Taxonomies] = _ALL_TAXONOMIES, session=None
     ) -> TaxonomiesPublic:
         return TaxonomiesPublic(
-            confidences=(
+            confidence=(
                 None
                 if Taxonomies.CONFIDENCE not in include
                 else (
@@ -487,9 +515,9 @@ class TagstoreDbAsync:
                     ]
                 )
             ),
-            coutries=(
+            country=(
                 None
-                if Taxonomies.COUTRY not in include
+                if Taxonomies.COUNTRY not in include
                 else (
                     [
                         ItemDescriptionPublic(**(x.model_dump()))
@@ -497,7 +525,7 @@ class TagstoreDbAsync:
                     ]
                 )
             ),
-            tag_subjects=(
+            tag_subject=(
                 None
                 if Taxonomies.TAG_SUBJECT not in include
                 else (
@@ -507,7 +535,7 @@ class TagstoreDbAsync:
                     ]
                 )
             ),
-            tag_types=(
+            tag_type=(
                 None
                 if Taxonomies.TAG_TYPE not in include
                 else (
@@ -517,7 +545,7 @@ class TagstoreDbAsync:
                     ]
                 )
             ),
-            concepts=(
+            concept=(
                 None
                 if Taxonomies.CONCEPT not in include
                 else (
@@ -534,9 +562,27 @@ class TagstoreDbAsync:
         results = await session.exec(_get_per_network_statistics_stmt())
         return TagstoreStatisticsPublic(
             by_network={
-                net: NetworkStatisticsPublic(
-                    nr_tags=nr_tags, nr_identifiers=nr_identifiers, nr_labels=nr_labels
+                net.upper(): NetworkStatisticsPublic(
+                    nr_tags=nr_tags,
+                    nr_identifiers_explicit=nr_identifiers,
+                    nr_labels=nr_labels,
+                    nr_identifiers_implicit=None,
                 )
                 for net, nr_tags, nr_identifiers, nr_labels in results
+            }
+        )
+
+    @_inject_session
+    async def get_network_statistics_cached(self, session=None):
+        results = await session.exec(_get_per_network_statistics_cached_stmt())
+        return TagstoreStatisticsPublic(
+            by_network={
+                net.upper(): NetworkStatisticsPublic(
+                    nr_tags=nr_tags,
+                    nr_identifiers_explicit=nr_i_explicit,
+                    nr_identifiers_implicit=nr_i_impicit,
+                    nr_labels=nr_labels,
+                )
+                for net, nr_labels, nr_tags, nr_i_explicit, nr_i_impicit in results
             }
         )

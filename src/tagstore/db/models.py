@@ -272,8 +272,18 @@ class AddressClusterMapping(SQLModel, table=True):
 # Materialized views only to make access uniform
 
 
-class BestClusterTag(SQLModel):
+class BestClusterTagView(SQLModel):
     __tablename__ = "best_cluster_tag"
     cluster_id: int
     network: str
     tag_id: int
+
+
+class NetworkStatisticsView(SQLModel):
+    __tablename__ = "statistics"
+
+    network: str
+    nr_identifiers_explicit: int
+    nr_identifiers_implicit: int
+    nr_labels: int
+    nr_tags: int
