@@ -6,6 +6,7 @@ from ....tagpack import __version__
 from ...algorithms.tag_digest import TagDigest, compute_tag_digest
 from ...db import (
     ActorPublic,
+    LabelSearchResultPublic,
     TagPublic,
     TagstoreStatisticsPublic,
     TaxonomiesPublic,
@@ -115,3 +116,15 @@ async def get_actor_by_id(
     Loads actor by id
     """
     return await db.get_actor_by_id(actor, include_tag_count)
+
+
+@router.get(
+    "/search/{keyword}", tags=["Search"], name="Search labels in tags and actors"
+)
+async def search_labels(
+    keyword: str, db: TsDbParam, groups: TsACLGroupsParam, limit: int = 5
+) -> LabelSearchResultPublic:
+    """
+    Searches matching labels
+    """
+    return await db.search_labels(keyword, limit, groups)

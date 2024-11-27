@@ -2,6 +2,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS tag_label_like_idx ON tag USING GIN (label gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS actor_label_like_idx ON actor USING GIN (label gin_trgm_ops);
 
 -- # MATERIALIZED VIEWS
 

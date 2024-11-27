@@ -6,7 +6,7 @@ from json import JSONDecodeError
 from typing import Dict, List, Set
 
 from pydantic import BaseModel
-from sqlalchemy import distinct, func
+from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -47,12 +47,20 @@ _ALL_TAXONOMIES = {
 # Output Classes
 
 
-class ItemDescriptionPublic(BaseModel):
+class HumanReadableId(BaseModel):
     id: str  # noqa
     label: str
+
+
+class ItemDescriptionPublic(HumanReadableId):
     description: str
     source: str | None
     taxonomy: str
+
+
+class LabelSearchResultPublic(BaseModel):
+    actor_labels: List[HumanReadableId]
+    tag_labels: List[HumanReadableId]
 
 
 class ConfidencePublic(ItemDescriptionPublic):
@@ -499,6 +507,8 @@ class TagstoreDbAsync:
             t, tp, _ = result
             return TagPublic.fromDB(t, tp)
 
+        return None
+
     # Other
     @_inject_session
     async def get_taxonomies(
@@ -558,7 +568,7 @@ class TagstoreDbAsync:
         )
 
     @_inject_session
-    async def get_network_statistics(self, session=None):
+    async def get_network_statistics(self, session=None) -> TagstoreStatisticsPublic:
         results = await session.exec(_get_per_network_statistics_stmt())
         return TagstoreStatisticsPublic(
             by_network={
@@ -573,7 +583,9 @@ class TagstoreDbAsync:
         )
 
     @_inject_session
-    async def get_network_statistics_cached(self, session=None):
+    async def get_network_statistics_cached(
+        self, session=None
+    ) -> TagstoreStatisticsPublic:
         results = await session.exec(_get_per_network_statistics_cached_stmt())
         return TagstoreStatisticsPublic(
             by_network={
@@ -585,4 +597,53 @@ class TagstoreDbAsync:
                 )
                 for net, nr_labels, nr_tags, nr_i_explicit, nr_i_impicit in results
             }
+        )
+
+    @_inject_session
+    async def search_tag_labels(
+        self, label: str, limit: int, groups: List[str], session=None
+    ) -> List[str]:
+        q = (
+            select(Tag.label, func.similarity(Tag.label, label).label("sim_score"))
+            .where(func.similarity(Tag.label, label) > 0.2)
+            .where(Tag.tagpack_id == TagPack.id)
+            .where(TagPack.acl_group.in_(groups))
+            .group_by(Tag.label, "sim_score")
+            .order_by(desc("sim_score"), Tag.label)
+            .limit(limit)
+        )
+        results = await session.exec(q)
+
+        return [a for a, _ in results]
+
+    @_inject_session
+    async def search_actor_labels(
+        self, label: str, limit: int, session=None
+    ) -> List[HumanReadableId]:
+        q = (
+            select(
+                Actor.label,
+                Actor.id,
+                func.similarity(Actor.label, label).label("sim_score"),
+            )
+            .where(func.similarity(Actor.label, label) > 0.2)
+            .order_by(desc("sim_score"))
+            .limit(limit)
+            .distinct()
+        )
+        results = await session.exec(q)
+
+        return [HumanReadableId(id=itm, label=lbl) for lbl, itm, _ in results]
+
+    async def search_labels(
+        self, label: str, limit: int, groups: List[str], session=None
+    ) -> LabelSearchResultPublic:
+        return LabelSearchResultPublic(
+            actor_labels=await self.search_actor_labels(label, limit, session=session),
+            tag_labels=[
+                HumanReadableId(id=x, label=x)
+                for x in (
+                    await self.search_tag_labels(label, limit, groups, session=session)
+                )
+            ],
         )
