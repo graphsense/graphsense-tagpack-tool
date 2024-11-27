@@ -36,6 +36,7 @@ class TagsQueryParams(BaseModel):
     actor_id: str | None = None
     cluster_id: int | None = None
     subject_id: str | None = None
+    network: str | None = None
 
 
 def _get_tags_query_params(
@@ -43,6 +44,7 @@ def _get_tags_query_params(
     actor_id: str | None = None,
     cluster_id: int | None = None,
     subject_id: str | None = None,
+    network: str | None = None,
 ) -> TagsQueryParams:
     if sum(i is not None for i in [label, actor_id, cluster_id, subject_id]) != 1:
         raise HTTPException(
@@ -50,9 +52,18 @@ def _get_tags_query_params(
             "Please provide exactly one of either"
             " label, actor_id, cluster_id or subject_id",
         )
+    elif cluster_id is not None and network is None:
+        raise HTTPException(
+            400,
+            "network is mandatory for clusters",
+        )
     else:
         return TagsQueryParams(
-            label=label, actor_id=actor_id, cluster_id=cluster_id, subject_id=subject_id
+            label=label,
+            actor_id=actor_id,
+            cluster_id=cluster_id,
+            subject_id=subject_id,
+            network=network.upper() if network else None,
         )
 
 

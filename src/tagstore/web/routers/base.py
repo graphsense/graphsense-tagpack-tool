@@ -57,18 +57,20 @@ async def get_tags(
       label (label), actor (actor_id) or cluster id (cluster_id)
     """
     if query.label is not None:
-        return await db.get_tags_by_label(query.label, page.offset, page.limit, groups)
+        return await db.get_tags_by_label(
+            query.label, page.offset, page.limit, groups, network=query.network
+        )
     elif query.actor_id is not None:
         return await db.get_tags_by_actorid(
-            query.actor_id, page.offset, page.limit, groups
+            query.actor_id, page.offset, page.limit, groups, network=query.network
         )
     elif query.subject_id is not None:
         return await db.get_tags_by_subjectid(
-            query.subject_id, page.offset, page.limit, groups
+            query.subject_id, page.offset, page.limit, groups, network=query.network
         )
     elif query.cluster_id is not None:
         return await db.get_tags_by_clusterid(
-            query.cluster_id, page.offset, page.limit, groups
+            query.cluster_id, query.network, page.offset, page.limit, groups
         )
 
 

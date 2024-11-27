@@ -279,6 +279,14 @@ class BestClusterTagView(SQLModel):
     tag_id: int
 
 
+class TagCountByClusterView(SQLModel):
+    __tablename__ = "tag_count_by_cluster"
+    gs_cluster_id: int
+    network: str
+    acl_group: str
+    count: int
+
+
 class NetworkStatisticsView(SQLModel):
     __tablename__ = "statistics"
 
