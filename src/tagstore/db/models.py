@@ -272,25 +272,25 @@ class AddressClusterMapping(SQLModel, table=True):
 # Materialized views only to make access uniform
 
 
-class BestClusterTagView(SQLModel):
+class BestClusterTagView(SQLModel, table=True):
     __tablename__ = "best_cluster_tag"
-    cluster_id: int
-    network: str
-    tag_id: int
+    cluster_id: int = Field(primary_key=True)
+    network: str = Field(primary_key=True)
+    tag_id: int = Field(primary_key=True)
 
 
-class TagCountByClusterView(SQLModel):
+class TagCountByClusterView(SQLModel, table=True):
     __tablename__ = "tag_count_by_cluster"
-    gs_cluster_id: int
-    network: str
-    acl_group: str
+    gs_cluster_id: int = Field(primary_key=True)
+    network: str = Field(primary_key=True)
+    acl_group: str = Field(primary_key=True)
     count: int
 
 
-class NetworkStatisticsView(SQLModel):
+class NetworkStatisticsView(SQLModel, tabel=True):
     __tablename__ = "statistics"
 
-    network: str
+    network: str = Field(primary_key=True)
     nr_identifiers_explicit: int
     nr_identifiers_implicit: int
     nr_labels: int

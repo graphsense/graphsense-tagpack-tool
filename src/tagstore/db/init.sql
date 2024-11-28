@@ -61,7 +61,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS  tag_count_by_cluster AS
         acm.gs_cluster_id,
         tp.acl_group;
 
-CREATE UNIQUE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id);
+CREATE UNIQUE INDEX IF NOT EXISTS tag_count_curr_cluster_index ON tag_count_by_cluster (network, gs_cluster_id, acl_group);
 
 /* In the end this view fulfils the following requirements in junction with
  * REST's `list_entity_tags_by_entity`:

@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-from ..db import TagPublic
+from ..db import InheritedFrom, TagPublic
 
 _FILTER_WORDS = dict.fromkeys(["to", "in", "the", "by", "of", "at", "", "vault"], True)
 
@@ -115,7 +115,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
             "creators": set(),
             "concepts": set(),
             "lastmod": 0,
-            "inherited": True,
+            "inherited": False,
         }
     )
 
@@ -143,7 +143,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
                 actor_lables[t.actor].add(t.label, weight=conf)
                 actor_counter.add(t.actor, weight=conf)
 
-            elif t.concepts:
+            if t.concepts:
                 for x in t.concepts:
                     concepts_counter.add(x, weight=conf * _get_concept_weight(x))
 
@@ -156,7 +156,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
             ls["sumConfidence"] += conf
             ls["lastmod"] = max(ls["lastmod"], t.lastmod)
             ls["inherited"] = (
-                False  # t.inherited_from == "cluster" and (ls["inherited"])
+                t.inherited_from == InheritedFrom.CLUSTER and (ls["inherited"])
             )
 
         return tags_count, total_words

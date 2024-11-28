@@ -88,7 +88,9 @@ async def get_tag_digest(
     Loads tags for a tx hash, address (subject_id),
       label (label), actor (actor_id) or cluster id (cluster_id)
     """
-    return compute_tag_digest(await db.get_tags_by_id(subject_id, None, None, groups))
+    return compute_tag_digest(
+        await db.get_tags_by_subjectid(subject_id, None, None, groups)
+    )
 
 
 @router.get(

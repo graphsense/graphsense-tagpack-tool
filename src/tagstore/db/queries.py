@@ -5,7 +5,7 @@ from functools import wraps
 from json import JSONDecodeError
 from typing import Dict, List, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, text
@@ -35,6 +35,10 @@ class Taxonomies(IntEnum):
     COUNTRY = 3
     TAG_SUBJECT = 4
     TAG_TYPE = 5
+
+
+class InheritedFrom(IntEnum):
+    CLUSTER = 1
 
 
 _ALL_TAXONOMIES = {
@@ -70,6 +74,7 @@ class ConfidencePublic(ItemDescriptionPublic):
 
 class ConceptsPublic(ItemDescriptionPublic):
     parent: str | None
+    is_abuse: bool
 
 
 class TaxonomiesPublic(BaseModel):
@@ -108,7 +113,7 @@ class ActorPublic(BaseModel):
         legal_name = None
 
         try:
-            data = json.loads(a.context)
+            data = json.loads(a.context) if a.context is not None else {}
 
             # muliple twitter handles are string concatendated at the moment
             twitter_handles_t = [
@@ -181,9 +186,21 @@ class TagPublic(BaseModel):
     network: str
     lastmod: int
     group: str
+    inherited_from: InheritedFrom | None
+    tagpack_title: str
+    tagpack_uri: str | None
+
+    @computed_field
+    @property
+    def concepts(self) -> List[str]:
+        return (
+            [self.primary_concept] + self.additional_concepts
+            if (self.primary_concept)
+            else self.additional_concepts
+        )
 
     @classmethod
-    def fromDB(cls, t: Tag, tp: TagPack) -> "TagPublic":
+    def fromDB(cls, t: Tag, tp: TagPack, inherited_from=None) -> "TagPublic":
         c = t.concepts
         mainc = next(
             (x for x in c if x.concept_relation_annotation_id == "primary"), None
@@ -204,6 +221,9 @@ class TagPublic(BaseModel):
             network=t.network,
             lastmod=int(round(t.lastmod.timestamp())),
             group=tp.acl_group,
+            inherited_from=inherited_from,
+            tagpack_title=tp.title,
+            tagpack_uri=tp.uri,
         )
 
 
@@ -245,7 +265,7 @@ def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
 
 def _get_best_cluster_tag_stmt(cluster_id: int, network: str, groups: List[str]):
     return (
-        select(Tag, TagPack, BestClusterTagView)
+        select(Tag, TagPack)
         .options(selectinload(Tag.confidence))
         .where(BestClusterTagView.cluster_id == cluster_id)
         .where(BestClusterTagView.network == network)
@@ -598,6 +618,7 @@ class TagstoreDbAsync:
         )
         return [TagPublic.fromDB(t, tp) for t, tp, _ in results]
 
+    @_inject_session
     async def get_nr_tags_by_clusterid(
         self, cluster_id: int, network: str, groups: List[str], session=None
     ) -> int:
@@ -670,12 +691,12 @@ class TagstoreDbAsync:
     async def get_best_cluster_tag(
         self, cluster_id: int, network: str, groups: List[str], session=False
     ) -> TagPublic | None:
-        result = await session.exec(
-            _get_best_cluster_tag_stmt(cluster_id, network, groups, session=session)
+        result = (
+            await session.exec(_get_best_cluster_tag_stmt(cluster_id, network, groups))
         ).first()
         if result is not None:
-            t, tp, _ = result
-            return TagPublic.fromDB(t, tp)
+            t, tp = result
+            return TagPublic.fromDB(t, tp, inherited_from=InheritedFrom.CLUSTER)
 
         return None
 
