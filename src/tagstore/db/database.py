@@ -1,3 +1,4 @@
+import contextlib
 import sys
 from datetime import datetime
 from functools import cache, partial
@@ -83,6 +84,12 @@ def create_tables(engine):
         engine,
         tables=_MAIN_TABLES,
     )
+
+
+@contextlib.contextmanager
+def with_session(engine):
+    with Session(engine) as session:
+        yield session
 
 
 def init_database(engine):

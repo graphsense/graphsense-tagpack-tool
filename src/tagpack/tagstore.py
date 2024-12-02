@@ -1192,7 +1192,7 @@ def _get_tag_concepts(tag):
 
 
 def _get_tag(tag, tagpack_id, tag_type_default):
-    label = tag.all_fields.get("label").lower().strip()
+    label = tag.all_fields.get("label").strip()
     lastmod = tag.all_fields.get("lastmod", datetime.now().isoformat())
 
     _, address = _get_network_and_address(tag)
@@ -1200,8 +1200,6 @@ def _get_tag(tag, tagpack_id, tag_type_default):
     return (
         label,
         tag.all_fields.get("source"),
-        # tag.all_fields.get("category", None),
-        # tag.all_fields.get("abuse", None),
         address,
         tag.all_fields.get("currency").upper(),
         tag.all_fields.get("network").upper(),

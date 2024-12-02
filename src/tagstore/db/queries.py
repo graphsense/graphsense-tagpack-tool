@@ -6,7 +6,7 @@ from json import JSONDecodeError
 from typing import Dict, List, Set
 
 from pydantic import BaseModel, computed_field
-from sqlalchemy import desc, distinct, func
+from sqlalchemy import asc, desc, distinct, func
 from sqlalchemy.orm import selectinload
 from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -165,6 +165,12 @@ class NetworkStatisticsPublic(BaseModel):
     nr_identifiers_implicit: int | None
     nr_labels: int
 
+    @classmethod
+    def zero(Cls) -> "NetworkStatisticsPublic":
+        return Cls(
+            nr_tags=0, nr_identifiers_explicit=0, nr_identifiers_implicit=0, nr_labels=0
+        )
+
 
 class TagstoreStatisticsPublic(BaseModel):
     by_network: Dict[str, NetworkStatisticsPublic]
@@ -238,13 +244,15 @@ def _get_tags_by_subjectid_stmt(
     network: str | None,
 ):
     q = (
-        select(Tag, TagPack)
+        select(Tag, TagPack, Confidence)
         .options(selectinload(Tag.confidence))
         .where(Tag.identifier == identifier)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
+        .where(Confidence.id == Tag.confidence_id)
         .offset(offset)
         .limit(page_size)
+        .order_by(desc(Confidence.level))
     )
 
     if network is not None:
@@ -284,13 +292,15 @@ def _get_tags_by_actorid_stmt(
     network: str | None,
 ):
     q = (
-        select(Tag, TagPack)
+        select(Tag, TagPack, Confidence)
         .options(selectinload(Tag.confidence))
         .where(Tag.actor_id == actor)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
+        .where(Confidence.id == Tag.confidence_id)
         .offset(offset)
         .limit(page_size)
+        .order_by(desc(Confidence.level))
     )
     if network is not None:
         q = q.where(Tag.network == network)
@@ -305,15 +315,18 @@ def _get_tags_by_clusterid_stmt(
     groups: List[str],
 ):
     return (
-        select(Tag, TagPack, AddressClusterMapping)
+        select(Tag, TagPack, AddressClusterMapping, Confidence)
         .options(selectinload(Tag.confidence))
         .where(AddressClusterMapping.gs_cluster_id == cluster_id)
         .where(AddressClusterMapping.address == Tag.identifier)
-        .where(AddressClusterMapping.network == network)
+        .where(AddressClusterMapping.network == Tag.network)
+        .where(Tag.network == network)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
+        .where(Confidence.id == Tag.confidence_id)
         .offset(offset)
         .limit(page_size)
+        .order_by(desc(Confidence.level))
     )
 
 
@@ -430,7 +443,7 @@ def _get_labels_by_subjectid_stmt(subject_id: str, groups: List[str]):
         .where(Tag.identifier == subject_id)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
-        .order_by(desc(Tag.label))
+        .order_by(asc(Tag.label))
         .distinct()
     )
 
@@ -442,7 +455,7 @@ def _get_labels_by_clusterid_stmt(cluster_id: str, groups: List[str]):
         .where(AddressClusterMapping.address == Tag.identifier)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
-        .order_by(desc(Tag.label))
+        .order_by(asc(Tag.label))
         .distinct()
     )
 
@@ -488,7 +501,7 @@ class TagstoreDbAsync:
     @_inject_session
     async def get_tag_by_id(
         self,
-        tag_id: str,
+        tag_id: int,
         groups: List[str],
         session=None,
     ) -> TagPublic | None:
@@ -527,27 +540,31 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_subjectid(
-            subject_id,
+            subject_id.strip(),
             offset,
             page_size,
             groups,
             network=network,
             session=session,
         )
-        return [TagPublic.fromDB(t, tp) for t, tp in results]
+        return [TagPublic.fromDB(t, tp) for t, tp, _ in results]
 
     @_inject_session
     async def get_actors_by_subjectid(
         self, subject_id: str, groups: List[str], session=None
     ) -> List[HumanReadableId]:
-        results = await session.exec(_get_actors_for_subject_stmt(subject_id, groups))
+        results = await session.exec(
+            _get_actors_for_subject_stmt(subject_id.strip(), groups)
+        )
         return [HumanReadableId(id=idt, label=lbl) for idt, lbl in results]
 
     @_inject_session
     async def get_labels_by_subjectid(
         self, subject_id: str, groups: List[str], session=None
     ) -> List[str]:
-        results = await session.exec(_get_labels_by_subjectid_stmt(subject_id, groups))
+        results = await session.exec(
+            _get_labels_by_subjectid_stmt(subject_id.strip(), groups)
+        )
         return [x for x in results]
 
     @_inject_session
@@ -569,7 +586,9 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[Tag]:
         return await session.exec(
-            _get_tags_by_label_stmt(label, offset, page_size, groups, network=network)
+            _get_tags_by_label_stmt(
+                label.strip(), offset, page_size, groups, network=network
+            )
         )
 
     @_inject_session
@@ -583,7 +602,7 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_label(
-            label, offset, page_size, groups, network=network, session=session
+            label.strip(), offset, page_size, groups, network=network, session=session
         )
         return [TagPublic.fromDB(t, tp) for t, tp in results]
 
@@ -616,7 +635,7 @@ class TagstoreDbAsync:
         results = await self._get_tags_by_clusterid(
             cluster_id, network, offset, page_size, groups, session=session
         )
-        return [TagPublic.fromDB(t, tp) for t, tp, _ in results]
+        return [TagPublic.fromDB(t, tp) for t, tp, _, _ in results]
 
     @_inject_session
     async def get_nr_tags_by_clusterid(
@@ -648,7 +667,7 @@ class TagstoreDbAsync:
         tag_count = None
         if include_tag_count:
             tag_count = (
-                await session.exec(_get_actor_tag_count_stmt(identifier))
+                await session.exec(_get_actor_tag_count_stmt(identifier.strip()))
             ).first()
 
         if actor is not None:
@@ -667,7 +686,9 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[Tag]:
         return await session.exec(
-            _get_tags_by_actorid_stmt(actor, offset, page_size, groups, network=network)
+            _get_tags_by_actorid_stmt(
+                actor.strip(), offset, page_size, groups, network=network
+            )
         )
 
     @_inject_session
@@ -681,9 +702,9 @@ class TagstoreDbAsync:
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_actorid(
-            actor, offset, page_size, groups, network=network, session=session
+            actor.strip(), offset, page_size, groups, network=network, session=session
         )
-        return [TagPublic.fromDB(t, tp) for t, tp in results]
+        return [TagPublic.fromDB(t, tp) for t, tp, _ in results]
 
     # Other tag stuff
 
@@ -794,14 +815,16 @@ class TagstoreDbAsync:
     async def search_tag_labels(
         self, label: str, limit: int, groups: List[str], session=None
     ) -> List[str]:
-        results = await session.exec(_get_similar_tag_labels_stmt(label, limit, groups))
+        results = await session.exec(
+            _get_similar_tag_labels_stmt(label.strip(), limit, groups)
+        )
         return [a for a, _ in results]
 
     @_inject_session
     async def search_actor_labels(
         self, label: str, limit: int, session=None
     ) -> List[HumanReadableId]:
-        results = await session.exec(_get_similar_actors_stmt(label, limit))
+        results = await session.exec(_get_similar_actors_stmt(label.strip(), limit))
         return [HumanReadableId(id=itm, label=lbl) for lbl, itm, _ in results]
 
     @_inject_session
@@ -809,7 +832,9 @@ class TagstoreDbAsync:
         self, label: str, limit: int, groups: List[str], session=None
     ) -> LabelSearchResultPublic:
         return LabelSearchResultPublic(
-            actor_labels=await self.search_actor_labels(label, limit, session=session),
+            actor_labels=await self.search_actor_labels(
+                label.strip(), limit, session=session
+            ),
             tag_labels=[
                 HumanReadableId(id=x, label=x)
                 for x in (
