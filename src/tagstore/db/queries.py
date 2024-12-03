@@ -5,6 +5,8 @@ from functools import wraps
 from json import JSONDecodeError
 from typing import Dict, List, Optional, Set
 
+from datetime import timezone
+
 from pydantic import BaseModel, computed_field
 from sqlalchemy import asc, desc, distinct, func
 from sqlalchemy.orm import selectinload
@@ -225,7 +227,7 @@ class TagPublic(BaseModel):
             additional_concepts=[x.concept_id for x in c if x != mainc],
             is_cluster_definer=t.is_cluster_definer,
             network=t.network,
-            lastmod=int(round(t.lastmod.timestamp())),
+            lastmod=int(round(t.lastmod.replace(tzinfo=timezone.utc).timestamp())),
             group=tp.acl_group,
             inherited_from=inherited_from,
             tagpack_title=tp.title,

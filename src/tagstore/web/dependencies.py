@@ -32,19 +32,19 @@ class PageingState(BaseModel):
 
 
 class TagsQueryParams(BaseModel):
-    label: str | None = None
-    actor_id: str | None = None
-    cluster_id: int | None = None
-    subject_id: str | None = None
-    network: str | None = None
+    label: Optional[str] = None
+    actor_id: Optional[str] = None
+    cluster_id: Optional[int] = None
+    subject_id: Optional[str] = None
+    network: Optional[str] = None
 
 
 def _get_tags_query_params(
-    label: str | None = None,
-    actor_id: str | None = None,
-    cluster_id: int | None = None,
-    subject_id: str | None = None,
-    network: str | None = None,
+    label: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    cluster_id: Optional[int] = None,
+    subject_id: Optional[str] = None,
+    network: Optional[str] = None,
 ) -> TagsQueryParams:
     if sum(i is not None for i in [label, actor_id, cluster_id, subject_id]) != 1:
         raise HTTPException(
