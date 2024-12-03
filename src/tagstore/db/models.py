@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import Column, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.sql import func
@@ -15,7 +15,7 @@ class Taxonomy(SQLModel, table=True):
 
     id: str = Field(primary_key=True)  # noqa
     source: str
-    description: str | None = Field(default=None)  # noqa
+    description: Optional[str] = Field(default=None)  # noqa
 
 
 class Concept(SQLModel, table=True):
@@ -26,7 +26,7 @@ class Concept(SQLModel, table=True):
     label: str
     source: str
     description: str
-    parent: str | None = Field(foreign_key="concept.id")
+    parent: Optional[str] = Field(foreign_key="concept.id")
     is_abuse: str
     taxonomy: str = Field(foreign_key="taxonomy.id")
 
@@ -90,11 +90,11 @@ class ActorPack(SQLModel, table=True):
     __tablename__ = "actorpack"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
+    id: Optional[str] = Field(default=None, primary_key=True)  # noqa
     title: str
     creator: str
     description: str
-    uri: str | None
+    uri: Optional[str]
     lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
 
 
@@ -102,10 +102,10 @@ class Actor(SQLModel, table=True):
     __tablename__ = "actor"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
-    uri: str | None
+    id: Optional[str] = Field(default=None, primary_key=True)  # noqa
+    uri: Optional[str]
     label: str
-    context: str | None
+    context: Optional[str]
     lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
 
     # FK data
@@ -129,11 +129,11 @@ class TagPack(SQLModel, table=True):
     __tablename__ = "tagpack"
     __table_args__ = _SHARED_TABLE_ARGS
 
-    id: str | None = Field(default=None, primary_key=True)  # noqa
+    id: Optional[str] = Field(default=None, primary_key=True)  # noqa
     title: str
     description: str
     creator: str
-    uri: str | None
+    uri: Optional[str]
     acl_group: str = Field(sa_column_kwargs={"server_default": "public"})
     lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
 
@@ -147,16 +147,16 @@ class Tag(SQLModel, table=True):
         _SHARED_TABLE_ARGS,
     )
 
-    id: int | None = Field(default=None, primary_key=True)  # noqa
+    id: Optional[int] = Field(default=None, primary_key=True)  # noqa
     label: str = Field(index=True)
-    source: str | None
-    context: str | None
+    source: Optional[str]
+    context: Optional[str]
     is_cluster_definer: bool = Field(
         default=False, index=True, sa_column_kwargs={"server_default": "false"}
     )
     lastmod: datetime = Field(sa_column_kwargs={"server_default": func.now()})
     identifier: str = Field(index=True)
-    asset: str | None
+    asset: Optional[str]
     network: str
 
     # FK data
@@ -194,12 +194,12 @@ class Tag(SQLModel, table=True):
         )
     )
     tagpack: TagPack = Relationship()
-    actor_id: str | None = Field(
+    actor_id: Optional[str] = Field(
         sa_column=Column(
             "actor", String, ForeignKey("actor.id"), nullable=True, index=True
         )
     )
-    actor: Actor | None = Relationship()
+    actor: Optional[Actor] = Relationship()
     concepts: List["TagConcept"] = Relationship(
         cascade_delete=True, sa_relationship_kwargs={"lazy": "subquery"}
     )
@@ -213,7 +213,7 @@ class TagConcept(SQLModel, table=True):
     )
 
     tag_id: int = Field(foreign_key="tag.id", primary_key=True, ondelete="CASCADE")
-    concept_relation_annotation_id: str | None = Field(
+    concept_relation_annotation_id: Optional[str] = Field(
         foreign_key="concept_relation_annotation.id"
     )
     concept_relation_annotation: ConceptRelationAnnotation = Relationship()
@@ -266,7 +266,7 @@ class AddressClusterMapping(SQLModel, table=True):
     network: str = Field(primary_key=True)
     gs_cluster_id: int
     gs_cluster_def_addr: str
-    gs_cluster_no_addr: int | None
+    gs_cluster_no_addr: Optional[int]
 
 
 # Materialized views only to make access uniform

@@ -3,7 +3,7 @@ import logging
 from enum import IntEnum
 from functools import wraps
 from json import JSONDecodeError
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, computed_field
 from sqlalchemy import asc, desc, distinct, func
@@ -59,7 +59,7 @@ class HumanReadableId(BaseModel):
 
 class ItemDescriptionPublic(HumanReadableId):
     description: str
-    source: str | None
+    source: Optional[str]
     taxonomy: str
 
 
@@ -73,23 +73,23 @@ class ConfidencePublic(ItemDescriptionPublic):
 
 
 class ConceptsPublic(ItemDescriptionPublic):
-    parent: str | None
+    parent: Optional[str]
     is_abuse: bool
 
 
 class TaxonomiesPublic(BaseModel):
-    confidence: List[ConfidencePublic] | None
-    country: List[ItemDescriptionPublic] | None
-    tag_subject: List[ItemDescriptionPublic] | None
-    tag_type: List[ItemDescriptionPublic] | None
-    concept: List[ConceptsPublic] | None
+    confidence: Optional[List[ConfidencePublic]]
+    country: Optional[List[ItemDescriptionPublic]]
+    tag_subject: Optional[List[ItemDescriptionPublic]]
+    tag_type: Optional[List[ItemDescriptionPublic]]
+    concept: Optional[List[ConceptsPublic]]
 
 
 class ActorPublic(BaseModel):
     id: str  # noqa
     label: str
     primary_uri: str
-    nr_tags: int | None
+    nr_tags: Optional[int]
     concepts: List[str]
     jurisdictions: List[str]
     additional_uris: List[str]
@@ -99,10 +99,10 @@ class ActorPublic(BaseModel):
     defilama_ids: List[str]
     twitter_handles: List[str]
     github_organisations: List[str]
-    legal_name: str | None
+    legal_name: Optional[str]
 
     @classmethod
-    def fromDB(cls, a: Actor, tag_count: int | None = None) -> "TagPublic":
+    def fromDB(cls, a: Actor, tag_count: Optional[int] = None) -> "TagPublic":
         additional_uris = []
         image_links = []
         online_references = []
@@ -162,7 +162,7 @@ class ActorPublic(BaseModel):
 class NetworkStatisticsPublic(BaseModel):
     nr_tags: int
     nr_identifiers_explicit: int
-    nr_identifiers_implicit: int | None
+    nr_identifiers_implicit: Optional[int]
     nr_labels: int
 
     @classmethod
@@ -185,16 +185,16 @@ class TagPublic(BaseModel):
     confidence_level: int
     tag_subject: str
     tag_type: str
-    actor: str | None
-    primary_concept: str | None
+    actor: Optional[str]
+    primary_concept: Optional[str]
     additional_concepts: List[str]
     is_cluster_definer: bool
     network: str
     lastmod: int
     group: str
-    inherited_from: InheritedFrom | None
+    inherited_from: Optional[InheritedFrom]
     tagpack_title: str
-    tagpack_uri: str | None
+    tagpack_uri: Optional[str]
 
     @computed_field
     @property
@@ -238,10 +238,10 @@ class TagPublic(BaseModel):
 
 def _get_tags_by_subjectid_stmt(
     identifier: str,
-    offset: int | None,
-    page_size: int | None,
+    offset: Optional[int],
+    page_size: Optional[int],
     groups: List[str],
-    network: str | None,
+    network: Optional[str],
 ):
     q = (
         select(Tag, TagPack, Confidence)
@@ -286,10 +286,10 @@ def _get_best_cluster_tag_stmt(cluster_id: int, network: str, groups: List[str])
 
 def _get_tags_by_actorid_stmt(
     actor: str,
-    offset: int | None,
-    page_size: int | None,
+    offset: Optional[int],
+    page_size: Optional[int],
     groups: List[str],
-    network: str | None,
+    network: Optional[str],
 ):
     q = (
         select(Tag, TagPack, Confidence)
@@ -310,8 +310,8 @@ def _get_tags_by_actorid_stmt(
 def _get_tags_by_clusterid_stmt(
     cluster_id: int,
     network: str,
-    offset: int | None,
-    page_size: int | None,
+    offset: Optional[int],
+    page_size: Optional[int],
     groups: List[str],
 ):
     return (
@@ -332,10 +332,10 @@ def _get_tags_by_clusterid_stmt(
 
 def _get_tags_by_label_stmt(
     label: str,
-    offset: int | None,
-    page_size: int | None,
+    offset: Optional[int],
+    page_size: Optional[int],
     groups: List[str],
-    network: str | None,
+    network: Optional[str],
 ):
     q = (
         select(Tag, TagPack)
@@ -495,7 +495,7 @@ class TagstoreDbAsync:
         tag_id: int,
         groups: List[str],
         session=None,
-    ) -> Tag | None:
+    ) -> Optional[Tag]:
         return await session.exec(_get_tag_by_id_stmt(tag_id, groups)).first()
 
     @_inject_session
@@ -504,7 +504,7 @@ class TagstoreDbAsync:
         tag_id: int,
         groups: List[str],
         session=None,
-    ) -> TagPublic | None:
+    ) -> Optional[TagPublic]:
         result = await self._get_tag_by_id(tag_id, groups, session=session)
         if result is not None:
             t, tp = result
@@ -520,7 +520,7 @@ class TagstoreDbAsync:
         offset: int,
         page_size: int,
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
         return await session.exec(
@@ -533,10 +533,10 @@ class TagstoreDbAsync:
     async def get_tags_by_subjectid(
         self,
         subject_id: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_subjectid(
@@ -579,10 +579,10 @@ class TagstoreDbAsync:
     async def _get_tags_by_label(
         self,
         label: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
         return await session.exec(
@@ -595,10 +595,10 @@ class TagstoreDbAsync:
     async def get_tags_by_label(
         self,
         label: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_label(
@@ -613,8 +613,8 @@ class TagstoreDbAsync:
         self,
         cluster_id: int,
         network: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
         session=None,
     ) -> List[Tag]:
@@ -627,8 +627,8 @@ class TagstoreDbAsync:
         self,
         cluster_id: int,
         network: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
         session=None,
     ) -> List[TagPublic]:
@@ -661,7 +661,7 @@ class TagstoreDbAsync:
     @_inject_session
     async def get_actor_by_id(
         self, identifier: str, include_tag_count: bool, session=None
-    ) -> ActorPublic | None:
+    ) -> Optional[ActorPublic]:
         actor = (await session.exec(_get_actor_by_id_stmt(identifier))).first()
 
         tag_count = None
@@ -679,10 +679,10 @@ class TagstoreDbAsync:
     async def _get_tags_by_actorid(
         self,
         actor: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
         return await session.exec(
@@ -695,10 +695,10 @@ class TagstoreDbAsync:
     async def get_tags_by_actorid(
         self,
         actor: str,
-        offset: int | None,
-        page_size: int | None,
+        offset: Optional[int],
+        page_size: Optional[int],
         groups: List[str],
-        network: str | None = None,
+        network: Optional[str] = None,
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_actorid(
@@ -711,7 +711,7 @@ class TagstoreDbAsync:
     @_inject_session
     async def get_best_cluster_tag(
         self, cluster_id: int, network: str, groups: List[str], session=False
-    ) -> TagPublic | None:
+    ) -> Optional[TagPublic]:
         result = (
             await session.exec(_get_best_cluster_tag_stmt(cluster_id, network, groups))
         ).first()

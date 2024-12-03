@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter
 
@@ -115,7 +115,7 @@ get_best_cluster_tag
 @router.get("/actor/{actor}", tags=["Actor"], name="Get an Actor by its id.")
 async def get_actor_by_id(
     actor: str, db: TsDbParam, include_tag_count: bool = False
-) -> ActorPublic | None:
+) -> Optional[ActorPublic]:
     """
     Loads actor by id
     """
