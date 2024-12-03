@@ -446,8 +446,8 @@ def insert_tagpack(args):
     public, force = args.public, args.force
 
     # supported = tagstore.supported_currencies
-    for i, tp in enumerate(sorted(prepared_packs), start=1):
-        tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
+    # for i, tp in enumerate(sorted(prepared_packs), start=1):
+    #     tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
 
     packs = enumerate(sorted(prepared_packs), start=1)
 
@@ -469,6 +469,7 @@ def insert_tagpack(args):
         force,
         validate_tagpack=not args.no_validation,
         tag_type_default=args.tag_type_default,
+        no_git=args.no_git,
     )
 
     if n_processes != 1:

@@ -32,6 +32,7 @@ class InsertTagpackWorker:
         force,
         validate_tagpack=False,
         tag_type_default="actor",
+        no_git: bool = False,
     ):
         self.url = url
         self.db_schema = db_schema
@@ -42,6 +43,7 @@ class InsertTagpackWorker:
         self.force = force
         self.tagstore = None
         self.validate_tagpack = validate_tagpack
+        self.no_git = no_git
 
     def __call__(self, data):
         i, tp = data
@@ -49,7 +51,11 @@ class InsertTagpackWorker:
             self.tagstore = TagStore(self.url, self.db_schema)
         tagpack_file, headerfile_dir, uri, relpath, default_prefix = tp
         tagpack = TagPack.load_from_file(
-            uri, tagpack_file, self.tp_schema, self.taxonomies, headerfile_dir
+            uri if not self.no_git else relpath,
+            tagpack_file,
+            self.tp_schema,
+            self.taxonomies,
+            headerfile_dir,
         )
 
         try:
