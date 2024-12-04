@@ -1,14 +1,12 @@
 """ActorPack - A wrappers ActorPack Schema"""
 
-import importlib.resources as pkg_resources
-
 import pandas as pd
 import yaml
 
 from tagpack import ValidationError
 from tagpack.schema import check_type
 
-from . import conf, db
+from .utils import open_pkgresource_file
 
 ACTORPACK_SCHEMA_FILE = "actorpack_schema.yaml"
 COUNTRIES_FILE = "countries.csv"
@@ -18,10 +16,11 @@ class ActorPackSchema(object):
     """Defines the structure of an ActorPack and supports validation"""
 
     def __init__(self):
-        schema = pkg_resources.read_text(conf, ACTORPACK_SCHEMA_FILE)
+        with open_pkgresource_file(ACTORPACK_SCHEMA_FILE) as f:
+            schema = f.read()
         self.schema = yaml.safe_load(schema)
-        countries = pkg_resources.open_text(db, COUNTRIES_FILE)
-        self.countries = pd.read_csv(countries, index_col="id")
+        with open_pkgresource_file(COUNTRIES_FILE) as countries:
+            self.countries = pd.read_csv(countries, index_col="id")
         self.definition = ACTORPACK_SCHEMA_FILE
 
     @property

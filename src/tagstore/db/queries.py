@@ -1,11 +1,10 @@
 import json
 import logging
+from datetime import timezone
 from enum import IntEnum
 from functools import wraps
 from json import JSONDecodeError
 from typing import Dict, List, Optional, Set
-
-from datetime import timezone
 
 from pydantic import BaseModel, computed_field
 from sqlalchemy import asc, desc, distinct, func

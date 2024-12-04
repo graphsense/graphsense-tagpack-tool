@@ -1,4 +1,3 @@
-import importlib.resources as pkg_resources
 import sys
 
 if sys.version_info >= (3, 9):
@@ -105,7 +104,18 @@ def open_localfile_with_pkgresource_fallback(path):
     else:
         filename = os.path.basename(path)
         for res_dir in [conf, db]:
-            if pkg_resources.is_resource(res_dir, filename):
-                return imprtlb_files(res_dir).joinpath(filename).open("r")
+            resource = imprtlb_files(res_dir).joinpath(filename)
+            if resource.is_file():
+                return resource.open("r")
 
     raise Exception(f"File {path} was not found on disk or in package resources.")
+
+
+def open_pkgresource_file(path):
+    filename = os.path.basename(path)
+    for res_dir in [conf, db]:
+        resource = imprtlb_files(res_dir).joinpath(filename)
+        if resource.is_file():
+            return resource.open("r")
+
+    return None

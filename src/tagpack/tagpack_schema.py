@@ -1,14 +1,12 @@
 """TagPack - A wrappers TagPack Schema"""
 
-import importlib.resources as pkg_resources
-
 import pandas as pd
 import yaml
 
 from tagpack import ValidationError
 from tagpack.schema import check_type
 
-from . import conf, db
+from .utils import open_pkgresource_file
 
 TAGPACK_SCHEMA_FILE = "tagpack_schema.yaml"
 CONFIDENCE_FILE = "confidence.csv"
@@ -18,10 +16,12 @@ class TagPackSchema(object):
     """Defines the structure of a TagPack and supports validation"""
 
     def __init__(self):
-        schema = pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
+        with open_pkgresource_file(TAGPACK_SCHEMA_FILE) as f:
+            schema = f.read()  # pkg_resources.read_text(conf, TAGPACK_SCHEMA_FILE)
         self.schema = yaml.safe_load(schema)
-        confidence = pkg_resources.open_text(db, CONFIDENCE_FILE)
-        self.confidences = pd.read_csv(confidence, index_col="id")
+        with open_pkgresource_file(CONFIDENCE_FILE) as confidence:
+            # confidence = pkg_resources.open_text(db, CONFIDENCE_FILE)
+            self.confidences = pd.read_csv(confidence, index_col="id")
         self.definition = TAGPACK_SCHEMA_FILE
 
     @property
