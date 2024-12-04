@@ -1,6 +1,6 @@
 import re
 from collections import Counter, defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ class LabelDigest(BaseModel):
     sources: List[str]
     concepts: List[str]
     lastmod: int
-    inherited_from: str | None
+    inherited_from: Optional[str]
 
 
 class TagCloudEntry(BaseModel):
@@ -29,8 +29,8 @@ class TagCloudEntry(BaseModel):
 class TagDigest(BaseModel):
     broad_concept: str
     nr_tags: int
-    best_actor: str | None
-    best_label: str | None
+    best_actor: Optional[str]
+    best_label: Optional[str]
     label_digest: Dict[str, LabelDigest]
     concept_tag_cloud: Dict[str, TagCloudEntry]
 
