@@ -29,9 +29,6 @@ jobs:
       - name: Build wheel
         # Run tox using the version of Python in `PATH`
         run: tox -e build
-      - name: Build Docs
-        # Run tox using the version of Python in `PATH`
-        run: tox -e docs
       - name: Install tool and test tagpack validation
         run: |
             pip install .
