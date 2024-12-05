@@ -330,7 +330,7 @@ ransomware:
     Ransomware is a type of malware from cryptovirology that threatens to publish the
     victim's data or perpetually block access to it unless a ransom is paid.
   seeAlso: https://en.wikipedia.org/wiki/Ransomware
-  broader: abuse
+  broader: extortion
 
 sanction:
   id: sanction
@@ -353,7 +353,7 @@ counterfeit:
 extremism:
   id: extremism
   type: concept
-  prefLabel: Violent Extremism
+  prefLabel: Extremism
   description: >
     Serially or systematically dehumanize others, frequently express hate speech towards opponents,
     perform selective/ individual acts of violence, actively separate targets from society, active
