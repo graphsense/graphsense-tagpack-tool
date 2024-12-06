@@ -1,10 +1,10 @@
 SHELL := /bin/bash
 PROJECT := tagpack-tool
 VENV := .venv
-RELEASE := 'v24.12.0-dev1'
+RELEASE := 'v25.01.0-dev1'
 # RELEASESEM := 'v1.9.0'
 
-include .env
+-include .env
 
 all: format lint test build
 

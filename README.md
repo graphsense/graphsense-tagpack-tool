@@ -122,9 +122,9 @@ List configured taxonomy keys and URIs
 
     tagpack-tool taxonomy list
 
-Fetch and show concepts of a specific remote/local taxonomy (referenced by key: abuse, entity, confidence, country)
+Fetch and show concepts of a specific remote/local taxonomy (referenced by key: concept, confidence, country)
 
-    tagpack-tool taxonomy show entity
+    tagpack-tool taxonomy show concept
 
 ## Ingest TagPacks and related data into a TagStore <a name="tagstore"></a>
 
@@ -152,17 +152,14 @@ Start a PostgreSQL instance using Docker Compose:
 
 This will automatically create the database with the nessesary permissions for the `POSTGRES_USER_TAGSTORE`.
 
-    tagstore init
+    GS_TAGSTORE_DB_URL='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@{HOST}:{PORT}/{DBNAME}' tagstore init
 
 then generates the nessesary tables, views etc. and populates the database with some default entries.
 
 
-
 #### Option 2: Use an existing PostgreSQL database
 
-Create the schema and tables in a PostgreSQL instance of your choice
-
-    psql -h $POSTGRES_HOST -d $POSTGRES_DB -U $POSTGRES_USER --password -f src/tagpack/db/tagstore_schema.sql
+Create the schema and tables in a PostgreSQL instance of your choice also use `tagstore init` as above, make sure the user specified in the tagstore url has the permission to create tables and views.
 
 ### Export .env variables
 
@@ -177,6 +174,8 @@ Or just export each variable using:
     export POSTGRES_PASSWORD=VALUE
     export POSTGRES_HOST=VALUE
     export POSTGRES_DB=VALUE
+
+    GS_TAGSTORE_DB_URL=value # For the newer tagstore cli
 
 Then call tagpack-tool.
 
@@ -202,18 +201,16 @@ To initialize the database with all the taxonomies needed for ingesting the tagp
 
     tagpack-tool tagstore init
 
+set the db to connect to via the environment variable
+
+    GS_TAGSTORE_DB_URL='postgresql://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore'
+
 ### Ingest taxonomies and confidence scores
-
-To insert individual taxonomies into database, use:
-
-    tagpack-tool taxonomy insert abuse
-    tagpack-tool taxonomy insert entity
-    tagpack-tool taxonomy insert confidence
-    tagpack-tool taxonomy insert country
-
 To insert all configured taxonomies at once, simply omit taxonomy name
 
     tagpack-tool taxonomy insert
+
+Not tagpack-tool sync inserts taxonomies automatically
 
 ### Ingest TagPacks
 
@@ -290,14 +287,6 @@ After all required tagpacks have been ingested, run
 to update all materialized views.
 Depending on the amount of tags contained in the tagstore, this may take a while.
 
-### Connection Pooling for PostgreSQL
-
-For setups which expect many parallel connections to the tagstore it can be a good option to run all connections over a dedicated connection-pooler (to avoid exhausting the connections). The docker-compose file used to start the postgres instance automatically starts a pg-bounce container as well. The pg-bounce instance runs on port 6432 and can be used as a drop in replacement for the standard pgsql connections over port 5432. To use pg-bounce as connection-pooler configure the additional environment variables
-
-    POSTGRES_USER_TAGSTORE=<user that is used to connect to the tagstore>
-    POSTGRES_PASSWORD_TAGSTORE=<PASSWORD>
-
-for example in the your local .env file. Currently, the pg-bounce setup only allows connections with this specific user configured in POSTGRES_USER_TAGSTORE.
 
 ## Calculate the quality of the tags in the TagStore <a name="quality"></a>
 

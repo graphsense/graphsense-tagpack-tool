@@ -3,8 +3,6 @@
 # apply custom settings
 psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /tmp/postgres-conf.sql
 
-# create schema
-# psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /tmp/schema.sql
 # create user
 psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" << EOF
 CREATE USER $POSTGRES_USER_TAGSTORE WITH PASSWORD '$POSTGRES_PASSWORD_TAGSTORE';

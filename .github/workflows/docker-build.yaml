@@ -1,0 +1,11 @@
+on:
+  push:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Docker Image smoke test
+        run: |
+          docker build .
