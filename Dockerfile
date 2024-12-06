@@ -38,5 +38,5 @@ RUN rm -rf /opt/graphsense/
 
 # RUN useradd -r -m -u 10000 graphsense
 # USER graphsense
-RUN mkdir /opt/graphsense
+RUN mkdir -p /opt/graphsense/
 WORKDIR /opt/graphsense/
