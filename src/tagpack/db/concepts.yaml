@@ -37,6 +37,29 @@ source:
     Attributes about the source of the information
   broader: concept
 
+mention:
+  id: mention
+  type: concept
+  prefLabel: Mention
+  description: >
+    Tag originates from an mention
+  broader: source
+
+website_mention:
+  id: website_mention
+  type: concept
+  prefLabel: Website Mention
+  description: >
+    Tag originating from a website mention
+  broader: mention
+
+forum_mention:
+  id: forum_mention
+  type: concept
+  prefLabel: Forum Mention
+  description: >
+    Tag originating from a forum mention
+  broader: website_mention
 
 abuse:
   id: abuse
