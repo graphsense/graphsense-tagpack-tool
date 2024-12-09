@@ -363,9 +363,6 @@ class TagPack(object):
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
 
-        # if len(self.tags) < 1:
-        #     raise ValidationError("no tags found.")
-
         # iterate over all tags, check types, taxonomy and mandatory use
         e2 = "Mandatory tag field {} missing in {}"
         e3 = "Field {} not allowed in {}"

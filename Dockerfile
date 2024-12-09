@@ -36,7 +36,6 @@ RUN pip install .
 RUN apk del buld-deps
 RUN rm -rf /opt/graphsense/
 
-# RUN useradd -r -m -u 10000 graphsense
-# USER graphsense
-RUN mkdir -p /opt/graphsense/
-WORKDIR /opt/graphsense/
+RUN useradd -r -m -u 1000 graphsense
+USER graphsense
+WORKDIR /home/graphsense/

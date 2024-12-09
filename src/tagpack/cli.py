@@ -867,14 +867,9 @@ def exec_cli_command(arguments):
 
 
 def sync_repos(args):
-    from shutil import rmtree
-
     if os.path.isfile(args.repos):
         with open(args.repos, "r") as f:
             repos = [x.strip() for x in f.readlines() if not x.startswith("#")]
-
-        temp_dir = tempfile.gettempdir()
-        temp_dir_tt = os.path.join(temp_dir, "tagpacks_to_sync")
 
         print_line("Init db and add taxonomies ...")
         subprocess.call(["gs-tagstore", "init", "--db-url", args.url])
@@ -883,9 +878,9 @@ def sync_repos(args):
         extra_option = "--add_new" if extra_option is None else extra_option
 
         for repo_url in repos:
-            print(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
+            with tempfile.TemporaryDirectory(suffix="tagstore_sync") as temp_dir_tt:
+                print(f"Syncing {repo_url}. Temp files in: {temp_dir_tt}")
 
-            try:
                 print_info("Cloning...")
                 repo_url, *branch_etc = repo_url.split(" ")
                 repo = Repo.clone_from(repo_url, temp_dir_tt)
@@ -930,10 +925,6 @@ def sync_repos(args):
                         ]
                     )
                 )
-            finally:
-                if os.path.isdir(temp_dir_tt):
-                    print_info(f"Removing temp files in: {temp_dir_tt}")
-                    rmtree(temp_dir_tt)
 
         print("Removing duplicates ...")
         exec_cli_command(["tagstore", "remove_duplicates", "-u", args.url])
@@ -941,8 +932,9 @@ def sync_repos(args):
         print("Refreshing db views ...")
         exec_cli_command(["tagstore", "refresh_views", "-u", args.url])
 
-        print("Calc Quality metrics ...")
-        exec_cli_command(["quality", "calculate", "-u", args.url])
+        if not args.dont_update_quality_metrics:
+            print("Calc Quality metrics ...")
+            exec_cli_command(["quality", "calculate", "-u", args.url])
 
         if args.run_cluster_mapping_with_env or args.rerun_cluster_mapping_with_env:
             print("Import cluster mappings ...")
@@ -1134,6 +1126,11 @@ def main():
         "--no-validation",
         action="store_true",
         help="Do not validate tagpacks before insert. (better insert speed)",
+    )
+    parser_syc.add_argument(
+        "--dont-update-quality-metrics",
+        action="store_true",
+        help="Do update quality metrinc. (better insert speed)",
     )
     parser_syc.set_defaults(func=sync_repos, url=def_url)
 

@@ -109,9 +109,6 @@ async def get_best_cluster_tag(
     return await db.get_best_cluster_tag(cluster_id, groups)
 
 
-get_best_cluster_tag
-
-
 @router.get("/actor/{actor}", tags=["Actor"], name="Get an Actor by its id.")
 async def get_actor_by_id(
     actor: str, db: TsDbParam, include_tag_count: bool = False
