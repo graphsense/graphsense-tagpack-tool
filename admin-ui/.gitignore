@@ -5,3 +5,4 @@ elm-stuff
 repl-temp-*
 
 dist/
+.elm-land/
