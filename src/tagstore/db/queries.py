@@ -391,7 +391,7 @@ def _get_similar_actors_stmt(query: str, limit: int):
             Actor.id,
             func.similarity(Actor.label, query).label("sim_score"),
         )
-        .where(func.similarity(Actor.label, query) > 0.2)
+        .where(Actor.label.op("%")(query))
         .order_by(desc("sim_score"))
         .limit(limit)
         .distinct()
@@ -401,7 +401,7 @@ def _get_similar_actors_stmt(query: str, limit: int):
 def _get_similar_tag_labels_stmt(query: str, limit: int, groups: List[str]):
     return (
         select(Tag.label, func.similarity(Tag.label, query).label("sim_score"))
-        .where(func.similarity(Tag.label, query) > 0.2)
+        .where(Tag.label.op("%")(query))
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
         .group_by(Tag.label, "sim_score")
