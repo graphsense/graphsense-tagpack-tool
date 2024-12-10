@@ -53,4 +53,9 @@ publish: build version
 version:
 	python -m setuptools_scm
 
-.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config serve
+
+package-ui:
+	- rm -rf ui/dist
+	cd admin-ui; npx elm-land build && cp -r dist/* ../src/tagstore/web/statics/
+
+.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config serve package-ui

@@ -33,7 +33,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(packages=["tagstore.web"], html=True), name="static")
 
 app.include_router(base_router)
 app.include_router(admin_router, prefix="/admin", include_in_schema=True)
+
+app.mount("/", StaticFiles(packages=["tagstore.web"], html=True), name="static")
