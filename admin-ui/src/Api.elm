@@ -1,6 +1,11 @@
-module Api exposing (Data(..))
+module Api exposing (Data(..), baseUrl)
 
 import Http
+
+
+baseUrl : String
+baseUrl =
+    ""
 
 
 type Data value

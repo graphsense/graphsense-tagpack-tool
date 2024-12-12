@@ -1,5 +1,6 @@
-module Api.Stats exposing (Stats, loadTagstoreStats, tagstoreStatsDecoder)
+module Api.Stats exposing (Stats, loadTagstoreStats)
 
+import Api exposing (baseUrl)
 import Dict
 import Http
 import Json.Decode
@@ -39,6 +40,6 @@ loadTagstoreStats :
     -> Cmd msg
 loadTagstoreStats options =
     Http.get
-        { url = "/statistics"
+        { url = baseUrl ++ "/statistics"
         , expect = Http.expectJson options.onResponse tagstoreStatsDecoder
         }
