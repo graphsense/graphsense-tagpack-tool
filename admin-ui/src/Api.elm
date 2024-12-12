@@ -5,7 +5,7 @@ import Http
 
 baseUrl : String
 baseUrl =
-    ""
+    "/api"
 
 
 type Data value
