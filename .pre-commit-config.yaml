@@ -34,3 +34,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+    -   id: package-ui
+        name: Build  & Package Admin UI
+        entry: make package-ui
+        language: system
+        pass_filenames: false
+        always_run: true
