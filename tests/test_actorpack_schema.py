@@ -44,16 +44,14 @@ def schema(monkeypatch):
 
 @pytest.fixture
 def taxonomies():
-    tax_entity = Taxonomy("entity", "http://example.com/entity")
-    tax_entity.add_concept("exchange", "Exchange", None, "Some description")
-
-    abuse_entity = Taxonomy("abuse", "http://example.com/abuse")
-    abuse_entity.add_concept("scam", "Scam", None, "Some description")
+    tax_concept = Taxonomy("concept", "http://example.com/concept")
+    tax_concept.add_concept("scam", "Scam", None, "Some description")
+    tax_concept.add_concept("exchange", "Exchange", None, "Some description")
 
     tax_country = Taxonomy("country", "http://example.com/country")
     tax_country.add_concept("MX", "Mexico", None, None)
 
-    taxonomies = {"entity": tax_entity, "country": tax_country, "abuse": abuse_entity}
+    taxonomies = {"concept": tax_concept, "country": tax_country}
     return taxonomies
 
 
@@ -104,7 +102,7 @@ def test_field_type(schema):
 
 
 def test_field_taxonomy(schema):
-    assert sorted(schema.field_taxonomy("categories")) == ["abuse", "entity"]
+    assert sorted(schema.field_taxonomy("categories")) == ["concept"]
     assert schema.field_taxonomy("jurisdictions") == "country"
 
 
