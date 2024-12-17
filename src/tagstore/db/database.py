@@ -54,12 +54,12 @@ _MAIN_TABLES = [
 ]
 
 
-def get_db_engine(db_url):
-    return create_engine(db_url, echo=False)
+def get_db_engine(db_url, **kwargs):
+    return create_engine(db_url, **kwargs)
 
 
-def get_db_engine_async(db_url):
-    return create_async_engine(db_url, echo=False)
+def get_db_engine_async(db_url, **kwargs):
+    return create_async_engine(db_url, **kwargs)
 
 
 def get_table_ddl_sql():

@@ -484,7 +484,7 @@ class TagstoreDbAsync:
         self.engine = engine
 
     @staticmethod
-    def from_engine(db_url):
+    def from_url(db_url):
         return TagstoreDbAsync(get_db_engine_async(db_url))
 
     # get Tag by id
