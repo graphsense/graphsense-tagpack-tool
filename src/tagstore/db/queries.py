@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, computed_field
 from sqlalchemy import asc, desc, distinct, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -246,7 +246,10 @@ def _get_tags_by_subjectid_stmt(
 ):
     q = (
         select(Tag, TagPack, Confidence)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(Tag.identifier == identifier)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
@@ -264,7 +267,10 @@ def _get_tags_by_subjectid_stmt(
 def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
     return (
         select(Tag, TagPack)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(Tag.id == tag_id)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
@@ -275,7 +281,10 @@ def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
 def _get_best_cluster_tag_stmt(cluster_id: int, network: str, groups: List[str]):
     return (
         select(Tag, TagPack)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(BestClusterTagView.cluster_id == cluster_id)
         .where(BestClusterTagView.network == network)
         .where(Tag.tagpack_id == TagPack.id)
@@ -294,7 +303,10 @@ def _get_tags_by_actorid_stmt(
 ):
     q = (
         select(Tag, TagPack, Confidence)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(Tag.actor_id == actor)
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
@@ -317,7 +329,10 @@ def _get_tags_by_clusterid_stmt(
 ):
     return (
         select(Tag, TagPack, AddressClusterMapping, Confidence)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(AddressClusterMapping.gs_cluster_id == cluster_id)
         .where(AddressClusterMapping.address == Tag.identifier)
         .where(AddressClusterMapping.network == Tag.network)
@@ -340,7 +355,10 @@ def _get_tags_by_label_stmt(
 ):
     q = (
         select(Tag, TagPack)
-        .options(selectinload(Tag.confidence))
+        .options(joinedload(Tag.confidence))
+        .options(joinedload(Tag.concepts))
+        .options(joinedload(Tag.tag_type))
+        .options(joinedload(Tag.tag_subject))
         .where(Tag.label.like(f"%{label}%"))
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
@@ -524,11 +542,13 @@ class TagstoreDbAsync:
         network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
-        return await session.exec(
-            _get_tags_by_subjectid_stmt(
-                identifier, offset, page_size, groups, network=network
+        return (
+            await session.exec(
+                _get_tags_by_subjectid_stmt(
+                    identifier, offset, page_size, groups, network=network
+                )
             )
-        )
+        ).unique()
 
     @_inject_session
     async def get_tags_by_subjectid(
@@ -586,11 +606,13 @@ class TagstoreDbAsync:
         network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
-        return await session.exec(
-            _get_tags_by_label_stmt(
-                label.strip(), offset, page_size, groups, network=network
+        return (
+            await session.exec(
+                _get_tags_by_label_stmt(
+                    label.strip(), offset, page_size, groups, network=network
+                )
             )
-        )
+        ).unique()
 
     @_inject_session
     async def get_tags_by_label(
@@ -619,9 +641,13 @@ class TagstoreDbAsync:
         groups: List[str],
         session=None,
     ) -> List[Tag]:
-        return await session.exec(
-            _get_tags_by_clusterid_stmt(cluster_id, network, offset, page_size, groups)
-        )
+        return (
+            await session.exec(
+                _get_tags_by_clusterid_stmt(
+                    cluster_id, network, offset, page_size, groups
+                )
+            )
+        ).unique()
 
     @_inject_session
     async def get_tags_by_clusterid(
@@ -686,11 +712,13 @@ class TagstoreDbAsync:
         network: Optional[str] = None,
         session=None,
     ) -> List[Tag]:
-        return await session.exec(
-            _get_tags_by_actorid_stmt(
-                actor.strip(), offset, page_size, groups, network=network
+        return (
+            await session.exec(
+                _get_tags_by_actorid_stmt(
+                    actor.strip(), offset, page_size, groups, network=network
+                )
             )
-        )
+        ).unique()
 
     @_inject_session
     async def get_tags_by_actorid(

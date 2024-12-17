@@ -59,7 +59,7 @@ def get_db_engine(db_url, **kwargs):
 
 
 def get_db_engine_async(db_url, **kwargs):
-    return create_async_engine(db_url, **kwargs)
+    return create_async_engine(db_url, echo=True, **kwargs)
 
 
 def get_table_ddl_sql():
