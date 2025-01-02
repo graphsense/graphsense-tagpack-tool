@@ -200,11 +200,13 @@ class TagPublic(BaseModel):
     @computed_field
     @property
     def concepts(self) -> List[str]:
-        return (
-            [self.primary_concept] + self.additional_concepts
-            if (self.primary_concept)
-            else self.additional_concepts
-        )
+        return dict.fromkeys(
+            (
+                [self.primary_concept] + self.additional_concepts
+                if (self.primary_concept)
+                else self.additional_concepts
+            )
+        ).keys()
 
     @classmethod
     def fromDB(cls, t: Tag, tp: TagPack, inherited_from=None) -> "TagPublic":

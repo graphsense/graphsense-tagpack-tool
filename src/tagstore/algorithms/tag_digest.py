@@ -148,6 +148,12 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
                     concepts_counter.add(x, weight=conf * _get_concept_weight(x))
 
                     ls["concepts"].add(x)
+            else:
+                # tags without categorization are added to unknown category in wordcloud
+                x = "unknown"
+                concepts_counter.add(x, weight=conf * _get_concept_weight(x))
+
+                ls["concepts"].add(x)
 
             ls["cnt"] += 1
             ls["lbl"] = t.label
@@ -181,7 +187,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
             ].capitalize()
 
     # get broad category
-    broad_concept = "user"
+    broad_concept = "entity"
     if len(concepts_counter) > 0:
         broad_concept = _map_concept_to_broad_concept(
             concepts_counter.most_common(1, weighted=True)[0][0]

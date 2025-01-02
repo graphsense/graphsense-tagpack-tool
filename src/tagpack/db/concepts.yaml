@@ -20,6 +20,14 @@ concept:
     Anything that describes an actor in the Darknet- or Cryptoasset Ecosystems.
   narrower: [entity, behaviour]
 
+unknown:
+  id: unknown
+  type: concept
+  prefLabel: Unknown
+  description: >
+    Special category representing a tag with unknown categorization
+  broader: concept
+
 behaviour:
   id: behaviour
   type: concept
