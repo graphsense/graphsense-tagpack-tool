@@ -177,14 +177,12 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
     actor_mc = actor_counter.most_common(1, weighted=True)
     if len(actor_mc) > 0:
         p_actor = actor_mc[0][0]
-        best_label = (
-            actor_lables[p_actor].most_common(1, weighted=True)[0][0].capitalize()
-        )
+        key = actor_lables[p_actor].most_common(1, weighted=True)[0][0]
+        best_label = label_summary[key].label
     else:
         if len(full_label_counter) > 0:
-            best_label = full_label_counter.most_common(1, weighted=True)[0][
-                0
-            ].capitalize()
+            key = full_label_counter.most_common(1, weighted=True)[0][0]
+            best_label = label_summary[key].label
 
     # get broad category
     broad_concept = "entity"
@@ -199,9 +197,9 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
     for lbl, v in data:
         multiplier = sum(
             [
-                occurances
-                for word, occurances in label_word_counter.most_common()
-                if word in lbl and occurances > 1
+                occurrence
+                for word, occurrence in label_word_counter.most_common()
+                if word in lbl and occurrence > 1
             ]
         )
         n = 1 + multiplier / total_words
@@ -214,7 +212,6 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
         nr_tags=tags_count,
         best_actor=p_actor,
         best_label=best_label,
-        # label_tag_cloud=calcTagCloud(full_label_counter),
         concept_tag_cloud=_calcTagCloud(concepts_counter),
         label_digest={
             key: LabelDigest(
