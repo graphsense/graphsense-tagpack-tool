@@ -140,7 +140,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
 
             # add actor
             if t.actor:
-                actor_labels[t.actor].add(t.label, weight=conf)
+                actor_labels[t.actor].add(nlabel, weight=conf)
                 actor_counter.add(t.actor, weight=conf)
 
             if t.concepts:
@@ -170,27 +170,6 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
     for t in tags:
         tags_count, total_words = add_tag_data(t, tags_count, total_words)
 
-    # get most common actor (weighted by tag confidence)
-    # get best label (within actor if actor is specified)
-    p_actor = None
-    best_label = None
-    actor_mc = actor_counter.most_common(1, weighted=True)
-    if len(actor_mc) > 0:
-        p_actor = actor_mc[0][0]
-        key = actor_labels[p_actor].most_common(1, weighted=True)[0][0]
-        best_label = label_summary[key]["lbl"]
-    else:
-        if len(full_label_counter) > 0:
-            key = full_label_counter.most_common(1, weighted=True)[0][0]
-            best_label = label_summary[key]["lbl"]
-
-    # get broad category
-    broad_concept = "entity"
-    if len(concepts_counter) > 0:
-        broad_concept = _map_concept_to_broad_concept(
-            concepts_counter.most_common(1, weighted=True)[0][0]
-        )
-
     # create a relevance score, prefer items where similar labels exist.
     sw_full_label_counter = wCounter()
     data = full_label_counter.most_common(weighted=True)
@@ -207,24 +186,47 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
 
     ltc = _calcTagCloud(sw_full_label_counter)
 
+    label_digest = {
+        key: LabelDigest(
+            label=value["lbl"],
+            count=value["cnt"],
+            confidence=value["sumConfidence"] / (value["cnt"] * 100),
+            relevance=ltc[key].weighted,
+            creators=list(value["creators"]),
+            sources=list(value["src"]),
+            concepts=list(value["concepts"]),
+            lastmod=value["lastmod"],
+            inherited_from="cluster" if value["inherited"] else None,
+        )
+        for (key, value) in label_summary.items()
+    }
+
+    # get broad category
+    broad_concept = "entity"
+    if len(concepts_counter) > 0:
+        broad_concept = _map_concept_to_broad_concept(
+            concepts_counter.most_common(1, weighted=True)[0][0]
+        )
+
+    # get most common actor (weighted by tag confidence)
+    # get best label (within actor if actor is specified)
+    p_actor = None
+    best_label = None
+    actor_mc = actor_counter.most_common(1, weighted=True)
+    if len(actor_mc) > 0:
+        p_actor = actor_mc[0][0]
+        key = actor_labels[p_actor].most_common(1, weighted=True)[0][0]
+        best_label = label_digest[key].label
+    else:
+        if len(full_label_counter) > 0:
+            key = full_label_counter.most_common(1, weighted=True)[0][0]
+            best_label = label_digest[key].label
+
     return TagDigest(
         broad_concept=broad_concept,
         nr_tags=tags_count,
         best_actor=p_actor,
         best_label=best_label,
         concept_tag_cloud=_calcTagCloud(concepts_counter),
-        label_digest={
-            key: LabelDigest(
-                label=value["lbl"],
-                count=value["cnt"],
-                confidence=value["sumConfidence"] / (value["cnt"] * 100),
-                relevance=ltc[key].weighted,
-                creators=list(value["creators"]),
-                sources=list(value["src"]),
-                concepts=list(value["concepts"]),
-                lastmod=value["lastmod"],
-                inherited_from="cluster" if value["inherited"] else None,
-            )
-            for (key, value) in label_summary.items()
-        },
+        label_digest=label_digest,
     )

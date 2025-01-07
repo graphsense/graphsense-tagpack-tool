@@ -1,10 +1,12 @@
 SHELL := /bin/bash
 PROJECT := tagpack-tool
 VENV := .venv
-RELEASE := 'v25.01.0a12'
+RELEASE := 'v25.01.0a13'
 # RELEASESEM := 'v1.9.0'
 
 -include .env
+
+gs_tagstore_db_url ?= 'postgresql+asyncpg://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore'
 
 all: format lint test build
 
@@ -12,7 +14,7 @@ tag-version:
 	git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASE) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 
 serve:
-	gs_tagstore_db_url='postgresql+asyncpg://${POSTGRES_USER_TAGSTORE}:${POSTGRES_PASSWORD_TAGSTORE}@localhost:5432/tagstore' uvicorn --reload --log-level debug src.tagstore.web.main:app
+	@gs_tagstore_db_url=${gs_tagstore_db_url} uvicorn --reload --log-level debug src.tagstore.web.main:app
 
 test:
 	pytest -v -m "not slow" --cov=src
