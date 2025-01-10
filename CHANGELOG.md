@@ -1,5 +1,21 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.01.0] 2025-01-10
+BREAKING: Changes in the schema require a resync of the database, cli is compatible to the old one.
+### changed
+- new database layout, tables are now defined as sql alchemy classes
+- restructured taxonomies as one fk class per taxonomy, retired user defined taxonomies
+- currency is no handled in two field (asset and network)
+- introduced new tag fields tag_type (mention, actor, event)
+- introduced new tag field tag_subject to allow tax on tx too (address, tx)
+- refreshed dev stack (flake8, black -> ruff)
+### new
+- standalone REST interface for the tagstore
+- New module tagstore, meant to be integrated as lib in other tools
+- tables are now defined as sql alchemy classes
+- mvp UI for viewing tags delivered as SPA with the rest interface
+- better tests now parsing real tagpack yaml files
+- tag-digest algorithm to get a summary (weighted) out of a list of tags.
 
 ## [24.10.0] 2024-10-10
 ### changed
