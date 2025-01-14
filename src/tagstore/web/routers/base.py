@@ -99,14 +99,15 @@ async def get_tag_digest(
     name="Get the 'best' tag for a given cluster_id.",
 )
 async def get_best_cluster_tag(
-    cluster_id: str,
+    cluster_id: int,
+    network: str,
     groups: TsACLGroupsParam,
     db: TsDbParam,
-) -> TagDigest:
+) -> Optional[TagPublic]:
     """
     Loads best cluster Tag.
     """
-    return await db.get_best_cluster_tag(cluster_id, groups)
+    return await db.get_best_cluster_tag(cluster_id, network.upper(), groups)
 
 
 @router.get("/actor/{actor}", tags=["Actor"], name="Get an Actor by its id.")

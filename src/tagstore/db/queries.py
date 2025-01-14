@@ -284,7 +284,7 @@ def _get_tag_by_id_stmt(tag_id: int, groups: List[str]):
 
 def _get_best_cluster_tag_stmt(cluster_id: int, network: str, groups: List[str]):
     return (
-        select(Tag, TagPack)
+        select(Tag, TagPack, Confidence)
         .options(joinedload(Tag.confidence))
         .options(joinedload(Tag.concepts))
         .options(joinedload(Tag.tag_type))
@@ -294,6 +294,8 @@ def _get_best_cluster_tag_stmt(cluster_id: int, network: str, groups: List[str])
         .where(Tag.tagpack_id == TagPack.id)
         .where(BestClusterTagView.tag_id == Tag.id)
         .where(TagPack.acl_group.in_(groups))
+        .where(Confidence.id == Tag.confidence_id)
+        .order_by(Confidence.level.desc())
         .limit(1)
     )
 
@@ -749,7 +751,7 @@ class TagstoreDbAsync:
             await session.exec(_get_best_cluster_tag_stmt(cluster_id, network, groups))
         ).first()
         if result is not None:
-            t, tp = result
+            t, tp, _ = result
             return TagPublic.fromDB(t, tp, inherited_from=InheritedFrom.CLUSTER)
 
         return None

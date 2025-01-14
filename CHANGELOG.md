@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.01.1] 2025-01-14
+### fixed
+- best cluster tag selected wrong tag; missing order on confidence column.
+
 ## [25.01.0] 2025-01-10
 BREAKING: Changes in the schema require a resync of the database, cli is compatible to the old one.
 ### changed
