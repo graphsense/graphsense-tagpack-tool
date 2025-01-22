@@ -601,21 +601,21 @@ class TagStore(object):
         if by_network:
             self.cursor.execute(
                 "SELECT creator, "
-                "tp.grpup as grpup, "
+                "tp.acl_group as group, "
                 "t.network as network, "
                 "count(distinct t.label) as labels_count, "
                 "count(*) as tags_count "
                 "FROM tag t, tagpack tp where t.tagpack = tp.id "
-                "group by network, creator, grpup;"
+                "group by t.network, creator, tp.acl_group;"
             )
         else:
             self.cursor.execute(
                 "SELECT creator, "
-                "tp.group as grpup, "
+                "tp.acl_group as group, "
                 "count(distinct t.label) as labels_count, "
                 "count(*) as tags_count "
                 "FROM tag t, tagpack tp where t.tagpack = tp.id "
-                "group by creator, grpup;"
+                "group by creator, tp.acl_group;"
             )
 
         for record in self.cursor:

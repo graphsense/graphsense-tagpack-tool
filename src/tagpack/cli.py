@@ -642,9 +642,9 @@ def read_url_from_env():
 def show_tagstore_composition(args):
     tagstore = TagStore(args.url, args.schema)
     headers = (
-        ["creator", "category", "is_public", "network", "labels_count", "tags_count"]
+        ["creator", "group", "network", "labels_count", "tags_count"]
         if args.by_network
-        else ["creator", "category", "is_public", "labels_count", "tags_count"]
+        else ["creator", "group", "labels_count", "tags_count"]
     )
     df = pd.DataFrame(
         tagstore.get_tagstore_composition(by_network=args.by_network), columns=headers
