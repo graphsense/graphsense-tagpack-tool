@@ -120,7 +120,14 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
         u += ".git"
 
     g = gup.parse(u).url2https.replace(".git", "")
-    res = f"{g}/tree/{repo.active_branch.name}/{rel_path}"
+
+    try:
+        tree_name = repo.active_branch.name
+    except TypeError:
+        # needed if a tags is checked out eg. in ci
+        tree_name = repo.git.describe()
+
+    res = f"{g}/tree/{tree_name}/{rel_path}"
 
     default_prefix = hashlib.sha256(g.encode("utf-8")).hexdigest()[:16]
 
@@ -439,14 +446,15 @@ class TagPack(object):
             currency = tag.all_fields.get("currency", "").lower()
             cupper = currency.upper()
             address = tag.all_fields.get("address")
-            if len(address) != len(address.strip()):
-                print_warn(f"Address contains whitespace: {repr(address)}")
-            elif currency in self.verifiable_currencies:
-                v = coinaddrvalidator.validate(currency, address)
-                if not v.valid:
-                    print_warn(msg.format(cupper, address))
-            else:
-                unsupported[cupper].add(address)
+            if address is not None:
+                if len(address) != len(address.strip()):
+                    print_warn(f"Address contains whitespace: {repr(address)}")
+                elif currency in self.verifiable_currencies:
+                    v = coinaddrvalidator.validate(currency, address)
+                    if not v.valid:
+                        print_warn(msg.format(cupper, address))
+                else:
+                    unsupported[cupper].add(address)
 
         for c, addrs in unsupported.items():
             print_warn(f"Address verification is not supported for {c}:")
