@@ -88,7 +88,7 @@ gs-tagstore = "tagstore.cli.main:main"
 legacy_tox_ini = """
 [tox]
 skipsdist=True
-envlist = py310,py311,py312
+envlist = py39,py310,py311,py312
 ;requires=tox-venv
 
 [gh-actions]
