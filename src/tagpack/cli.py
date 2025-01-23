@@ -194,15 +194,13 @@ def print_quality_measures(qm):
         tca = qm["tag_count_with_actors"]
         print(f"\t{'#Tags:':<35} {tc:10}")
         if tc > 0:
-            print(f"\t{' with actors:':<35} {tca:10} ({ (100*tca)/tc:6.2f}%)")
+            print(f"\t{' with actors:':<35} {tca:10} ({(100 * tca) / tc:6.2f}%)")
 
         au = qm["nr_actors_used"]
         auj = qm["nr_actors_used_with_jurisdictions"]
         print(f"\n\t{'#Actors used:':<35} {au:10}")
         if au > 0:
-            print(
-                f"\t{' with jurisdictions:':<35} " f"{auj:10} ({ (100*auj)/au:6.2f}%)"
-            )
+            print(f"\t{' with jurisdictions:':<35} {auj:10} ({(100 * auj) / au:6.2f}%)")
 
         au_ex = qm["nr_actors_used_exchange"]
         auj_ex = qm["nr_actors_used_with_jurisdictions_exchange"]
@@ -210,7 +208,7 @@ def print_quality_measures(qm):
         if au_ex > 0:
             print(
                 f"\t{' with jurisdictions:':<35} "
-                f"{auj_ex:10} ({ (100*auj_ex)/au_ex:6.2f}%)"
+                f"{auj_ex:10} ({(100 * auj_ex) / au_ex:6.2f}%)"
             )
 
         print("Tag Quality Statistics:")
@@ -861,7 +859,7 @@ def exec_cli_command(arguments):
     saved_argv = sys.argv
     try:
         sys.argv[1:] = arguments
-        main()
+        return main()
     finally:
         sys.argv = saved_argv
 
@@ -1754,7 +1752,7 @@ def main():
         print_warn(url_msg)
         parser.error("No postgresql URL connection was provided. Exiting.")
 
-    args.func(args)
+    return args.func(args)
 
 
 if __name__ == "__main__":

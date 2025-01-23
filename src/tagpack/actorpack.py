@@ -206,7 +206,7 @@ class ActorPack(object):
         for domain, actors in domain_overlap.items():
             if len(actors) > 1:
                 print_warn(
-                    f"Actors share the same domain {domain}: {actors}." " Please merge!"
+                    f"Actors share the same domain {domain}: {actors}. Please merge!"
                 )
 
         for twitter_handle, actors in twitter_handle_overlap.items():

@@ -114,7 +114,7 @@ def retry_on_deadlock(times=1):
                     return function(*args, **kwargs)
                 except DeadlockDetected:
                     time.sleep(1)
-                    print_warn(f"Deadlock Detected retrying, n={times-attempt} times")
+                    print_warn(f"Deadlock Detected retrying, n={times - attempt} times")
                     attempt += 1
             return function(*args, **kwargs)
 
@@ -473,7 +473,7 @@ class TagStore(object):
     def _result(self, query, params=None, page=0, pagesize=None):
         if pagesize:
             query += f" LIMIT {pagesize}"
-        query += f" OFFSET {page*pagesize if pagesize else 0}"
+        query += f" OFFSET {page * pagesize if pagesize else 0}"
         print(query, params)
         self.cursor.execute(query, params)
 
@@ -584,9 +584,7 @@ class TagStore(object):
         self.cursor.execute(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY tag_count_by_cluster"
         )
-        self.cursor.execute(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY " "best_cluster_tag"
-        )  # noqa
+        self.cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY best_cluster_tag")  # noqa
 
     def get_addresses(self, update_existing):
         if update_existing:
@@ -685,9 +683,7 @@ class TagStore(object):
             network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
-            cat_join = (
-                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
-            )
+            cat_join = "INNER JOIN actor_concept on tag.actor = actor_concept.actor_id"
             cat_filter = "AND actor_concept.concept_id = %(category)s"
             params["category"] = category.strip()
 
@@ -711,9 +707,7 @@ class TagStore(object):
             network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
-            cat_join = (
-                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
-            )
+            cat_join = "INNER JOIN actor_concept on tag.actor = actor_concept.actor_id"
             cat_filter = "AND actor_concept.concept_id = %(category)s"
             params["category"] = category.strip()
 

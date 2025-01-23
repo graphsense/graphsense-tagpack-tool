@@ -17,47 +17,43 @@ serve:
 	@gs_tagstore_db_url=${gs_tagstore_db_url} uvicorn --reload --log-level debug src.tagstore.web.main:app
 
 test:
-	pytest -v -m "not slow" --cov=src
+	uv run pytest -x -rx -vv -m "not slow" --cov=tagpack --cov=tagstore --capture=no
 
 dev:
-	 pip install -e .[dev]
+	 uv sync --all-extras --dev
 	 pre-commit install
 
 test-all:
-	pytest --cov=src
+	uv run pytest -x -rx -vv --cov=tagpack --cov=tagstore --capture=no
 
 install-dev: dev
-	pip install -e .
+	uv pip install -e .
 
 install:
-	pip install .
+	uv pip install .
 
 lint:
-	ruff check tests src
+	uv run ruff check tests src
 
 format:
-	ruff check --select I --fix .
-	ruff format .
+	uv run ruff check --select I --fix .
+	uv run ruff format .
 
 pre-commit:
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 build:
-	tox -e clean
-	tox -e build
-
-tpublish: build version
-	tox -e publish
-
-publish: build version
-	tox -e publish -- --repository pypi
+	uv run tox -e clean
+	uv run tox -e build
 
 version:
-	python -m setuptools_scm
-
+	uv run python -m setuptools_scm
 
 package-ui:
 	- rm -rf admin-ui/dist
 	cd admin-ui; npx elm-land build && cp  dist/assets/index-*.js ../src/tagstore/web/statics/assets/index.js
 
-.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config serve package-ui
+build-docker:
+	docker build -t tagpack-tool .
+
+.PHONY: all test install lint format build pre-commit docs test-all docs-latex publish tpublish tag-version postgres-reapply-config serve package-ui build-docker

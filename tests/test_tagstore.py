@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from tagpack.tagstore import _perform_address_modifications
+from tagpack.tagstore import _perform_address_modifications, TagStore
 
 
 def test_bch_conversion():
@@ -20,3 +20,29 @@ def test_eth_conversion():
     result = _perform_address_modifications(checksumaddr, "ETH")
 
     assert expected == result
+
+
+def test_db_consistency(db_setup):
+    # this is all based on the tagpacks inserted in conftest.py
+
+    ts = TagStore(db_setup["db_connection_string"], 'public')
+
+    repos = ts.tagstore_source_repos()
+
+    assert(len(repos) == 5)
+
+    addresses = ts.get_addresses(update_existing=True)
+
+    assert list(addresses) == [('3bacadsfg3sdfafd2deddg32', 'BTC'), ('1bacdeddg32dsfk5692dmn23', 'BTC')]
+
+    composition = ts.get_tagstore_composition(by_network=True)
+
+    assert list(composition) == [('GraphSense Team', 'private', 'BTC', 1, 1), ('GraphSense Team', 'public', 'BTC', 2, 6)]
+
+    actorc = ts.get_tags_with_actors_count()
+
+    assert actorc == 1
+
+    usedActorC = ts.get_used_actors_count()
+
+    assert usedActorC == 1

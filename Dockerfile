@@ -1,4 +1,5 @@
 FROM  python:3.11-alpine3.20
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 LABEL org.opencontainers.image.title="graphsense-tagpack-tool"
 LABEL org.opencontainers.image.maintainer="contact@ikna.io"
 LABEL org.opencontainers.image.url="https://www.ikna.io/"
@@ -25,13 +26,11 @@ ADD ./src/ /opt/graphsense/tool/src
 ADD ./.git/ /opt/graphsense/tool/.git
 ADD ./Makefile /opt/graphsense/tool/
 ADD ./pyproject.toml /opt/graphsense/tool/
-ADD ./setup.py /opt/graphsense/tool/
-ADD ./setup.cfg /opt/graphsense/tool/
-ADD ./tox.ini /opt/graphsense/tool/
-
+ADD ./uv.lock /opt/graphsense/tool/
 
 WORKDIR /opt/graphsense/tool/
-RUN pip install .
+RUN make build
+RUN pip install dist/tagpack_tool-*.whl
 
 RUN apk del buld-deps
 RUN rm -rf /opt/graphsense/
