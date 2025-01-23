@@ -125,7 +125,9 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
         tree_name = repo.active_branch.name
     except TypeError:
         # needed if a tags is checked out eg. in ci
-        tree_name = repo.git.describe()
+        # tree_name = repo.git.describe()
+        tag = next((tag for tag in repo.tags if tag.commit == repo.head.commit), None)
+        tree_name = tag.name
 
     res = f"{g}/tree/{tree_name}/{rel_path}"
 
