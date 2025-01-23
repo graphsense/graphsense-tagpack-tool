@@ -638,7 +638,7 @@ def test_duplicate_does_not_raise_only_inform(capsys, taxonomies):
     captured = capsys.readouterr()
 
     assert "1 duplicate(s) found" in captured.out
-    assert len(tagpack.get_unique_tags()) == 1
+    assert len(tagpack.get_unique_tags()) == 2
 
 
 def test_conf_level_mandatory_if_not_set_default(tagpack):

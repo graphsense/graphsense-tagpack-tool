@@ -379,6 +379,15 @@ class TagPack(object):
             if actor is None:
                 nr_no_actors += 1
 
+            address = tag.all_fields.get("address", None)
+            tx_hash = tag.all_fields.get("tx_hash", None)
+            if address is None and tx_hash is None:
+                raise ValidationError(e2.format("address", tag))
+            elif address is not None and tx_hash is not None:
+                raise ValidationError(
+                    "The fields tx_hash and address are mutually exclusive but both are set."
+                )
+
             for schema_field in self.schema.mandatory_tag_fields:
                 if (
                     schema_field not in tag.explicit_fields

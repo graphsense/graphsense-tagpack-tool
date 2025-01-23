@@ -1,5 +1,15 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.01.2] 2025-01-23
+### fixed
+- fixed commandline list tags
+
+### changed
+- dependency mgmt. and development now based on uv instead of pyscaffold
+- tx tags now possible via tx_hash field, which is mutually exclusive with address
+- better unit testing via testcontainers
+- removed upper bounds on dependencies where possible to make lib more compatible
+
 ## [25.01.1] 2025-01-14
 ### fixed
 - best cluster tag selected wrong tag; missing order on confidence column.

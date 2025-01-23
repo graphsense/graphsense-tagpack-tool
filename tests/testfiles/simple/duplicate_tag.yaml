@@ -10,3 +10,5 @@ tags:
   label: sometag.info
 - address: 3bacadsfg3sdfafd2deddg32
   label: SomeTag.info
+- tx_hash: '0xdeadbeef'
+  label: test
