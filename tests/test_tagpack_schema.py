@@ -60,7 +60,7 @@ def test_tag_fields(schema):
 
 def test_mandatory_tag_fields(schema):
     assert isinstance(schema.mandatory_tag_fields, dict)
-    assert "address" in schema.mandatory_tag_fields
+    # assert "address" in schema.mandatory_tag_fields
     assert "label" in schema.mandatory_tag_fields
     assert "source" in schema.mandatory_tag_fields
     assert "currency" in schema.mandatory_tag_fields

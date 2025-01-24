@@ -120,7 +120,16 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
         u += ".git"
 
     g = gup.parse(u).url2https.replace(".git", "")
-    res = f"{g}/tree/{repo.active_branch.name}/{rel_path}"
+
+    try:
+        tree_name = repo.active_branch.name
+    except TypeError:
+        # needed if a tags is checked out eg. in ci
+        # tree_name = repo.git.describe()
+        tag = next((tag for tag in repo.tags if tag.commit == repo.head.commit), None)
+        tree_name = tag.name
+
+    res = f"{g}/tree/{tree_name}/{rel_path}"
 
     default_prefix = hashlib.sha256(g.encode("utf-8")).hexdigest()[:16]
 
@@ -379,6 +388,15 @@ class TagPack(object):
             if actor is None:
                 nr_no_actors += 1
 
+            address = tag.all_fields.get("address", None)
+            tx_hash = tag.all_fields.get("tx_hash", None)
+            if address is None and tx_hash is None:
+                raise ValidationError(e2.format("address", tag))
+            elif address is not None and tx_hash is not None:
+                raise ValidationError(
+                    "The fields tx_hash and address are mutually exclusive but both are set."
+                )
+
             for schema_field in self.schema.mandatory_tag_fields:
                 if (
                     schema_field not in tag.explicit_fields
@@ -430,14 +448,15 @@ class TagPack(object):
             currency = tag.all_fields.get("currency", "").lower()
             cupper = currency.upper()
             address = tag.all_fields.get("address")
-            if len(address) != len(address.strip()):
-                print_warn(f"Address contains whitespace: {repr(address)}")
-            elif currency in self.verifiable_currencies:
-                v = coinaddrvalidator.validate(currency, address)
-                if not v.valid:
-                    print_warn(msg.format(cupper, address))
-            else:
-                unsupported[cupper].add(address)
+            if address is not None:
+                if len(address) != len(address.strip()):
+                    print_warn(f"Address contains whitespace: {repr(address)}")
+                elif currency in self.verifiable_currencies:
+                    v = coinaddrvalidator.validate(currency, address)
+                    if not v.valid:
+                        print_warn(msg.format(cupper, address))
+                else:
+                    unsupported[cupper].add(address)
 
         for c, addrs in unsupported.items():
             print_warn(f"Address verification is not supported for {c}:")

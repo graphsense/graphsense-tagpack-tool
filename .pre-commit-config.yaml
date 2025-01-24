@@ -19,6 +19,10 @@ repos:
         id: check-yaml
         exclude: tests/testfiles
     -   id: check-added-large-files
+        exclude: |
+            (?x)^(
+                uv.lock
+            )$
     -
         id: name-tests-test
         args: [--pytest-test-first]
@@ -30,12 +34,12 @@ repos:
     hooks:
     -   id: pytest-check
         name: pytest-check
-        entry: pytest -v -m "not slow"
+        entry: make test
         language: system
         pass_filenames: false
         always_run: true
     -   id: package-ui
-        name: Build  & Package Admin UI
+        name: Build & Package Admin UI
         entry: make package-ui
         language: system
         pass_filenames: false

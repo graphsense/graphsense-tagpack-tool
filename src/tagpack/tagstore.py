@@ -114,7 +114,7 @@ def retry_on_deadlock(times=1):
                     return function(*args, **kwargs)
                 except DeadlockDetected:
                     time.sleep(1)
-                    print_warn(f"Deadlock Detected retrying, n={times-attempt} times")
+                    print_warn(f"Deadlock Detected retrying, n={times - attempt} times")
                     attempt += 1
             return function(*args, **kwargs)
 
@@ -209,7 +209,9 @@ class TagStore(object):
         tag_concepts = []
         for tag in tagpack.get_unique_tags():
             tag_data.append(_get_tag(tag, tagpack_id, tag_type_default))
-            address_data.append(_get_network_and_address(tag))
+            adr_and_net = _get_network_and_address(tag)
+            if adr_and_net is not None:
+                address_data.append(adr_and_net)
             tag_concepts.append(_get_tag_concepts(tag))
 
             if len(tag_data) > batch:
@@ -473,7 +475,7 @@ class TagStore(object):
     def _result(self, query, params=None, page=0, pagesize=None):
         if pagesize:
             query += f" LIMIT {pagesize}"
-        query += f" OFFSET {page*pagesize if pagesize else 0}"
+        query += f" OFFSET {page * pagesize if pagesize else 0}"
         print(query, params)
         self.cursor.execute(query, params)
 
@@ -584,9 +586,7 @@ class TagStore(object):
         self.cursor.execute(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY tag_count_by_cluster"
         )
-        self.cursor.execute(
-            "REFRESH MATERIALIZED VIEW CONCURRENTLY " "best_cluster_tag"
-        )  # noqa
+        self.cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY best_cluster_tag")  # noqa
 
     def get_addresses(self, update_existing):
         if update_existing:
@@ -685,9 +685,7 @@ class TagStore(object):
             network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
-            cat_join = (
-                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
-            )
+            cat_join = "INNER JOIN actor_concept on tag.actor = actor_concept.actor_id"
             cat_filter = "AND actor_concept.concept_id = %(category)s"
             params["category"] = category.strip()
 
@@ -711,9 +709,7 @@ class TagStore(object):
             network_filter = "AND network=%(network)s"
 
         if len(category) > 0:
-            cat_join = (
-                "INNER JOIN actor_concept " "on tag.actor = actor_concept.actor_id"
-            )
+            cat_join = "INNER JOIN actor_concept on tag.actor = actor_concept.actor_id"
             cat_filter = "AND actor_concept.concept_id = %(category)s"
             params["category"] = category.strip()
 
@@ -777,17 +773,33 @@ class TagStore(object):
     def list_tags(self, unique=False, category="", network=""):
         validate_network(network)
         network = network if network else "%"
-        category = category if category else "%"
 
-        q = (
-            f"SELECT {'DISTINCT' if unique else ''} "
-            "t.network, tp.title, t.label "
-            "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
-            "AND t.category ILIKE %s AND t.network LIKE %s "
-            "ORDER BY t.network, tp.title, t.label ASC"
-        )
-        v = (category, network)
+        if category:
+            q = (
+                f"SELECT {'DISTINCT' if unique else ''} "
+                "t.network, tp.title, t.label "
+                "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
+                "AND EXISTS (Select tag_concept.concept_id from tag_concept where tag_concept.tag_id = t.id and tag_concept.concept_id ILIKE %s) AND t.network LIKE %s "
+                "ORDER BY t.network, tp.title, t.label ASC"
+            )
+            v = (category, network)
+        else:
+            q = (
+                f"SELECT {'DISTINCT' if unique else ''} "
+                "t.network, tp.title, t.label "
+                "FROM tagpack tp, tag t WHERE t.tagpack = tp.id "
+                "AND t.network LIKE %s "
+                "ORDER BY t.network, tp.title, t.label ASC"
+            )
+            v = network
+
         self.cursor.execute(q, v)
+        return self.cursor.fetchall()
+
+    def dump_tags(self):
+        self.cursor.execute(
+            "SELECT * FROM tagpack tp, tag t WHERE t.tagpack = tp.id", ()
+        )
         return self.cursor.fetchall()
 
     def list_actors(self, category=""):
@@ -846,12 +858,18 @@ def _get_tag(tag, tagpack_id, tag_type_default):
     label = tag.all_fields.get("label").strip()
     lastmod = tag.all_fields.get("lastmod", datetime.now().isoformat())
 
-    _, address = _get_network_and_address(tag)
+    addr_and_net = _get_network_and_address(tag)
+    if addr_and_net is not None:
+        _, identifier = _get_network_and_address(tag)
+        tag_subject = "address"
+    else:
+        identifier = tag.all_fields.get("tx_hash")
+        tag_subject = "tx"
 
     return (
         label,
         tag.all_fields.get("source"),
-        address,
+        identifier,
         tag.all_fields.get("currency").upper(),
         tag.all_fields.get("network").upper(),
         tag.all_fields.get("is_cluster_definer") or False,
@@ -861,7 +879,7 @@ def _get_tag(tag, tagpack_id, tag_type_default):
         tagpack_id,
         tag.all_fields.get("actor", None),
         tag.all_fields.get("tag_type", tag_type_default),
-        "address",
+        tag_subject,
     )
 
 
@@ -876,12 +894,15 @@ def _perform_address_modifications(address, network):
 
 
 def _get_network_and_address(tag):
-    net = tag.all_fields.get("network").upper()
-    addr = tag.all_fields.get("address")
+    if "address" in tag.all_fields:
+        net = tag.all_fields.get("network").upper()
+        addr = tag.all_fields.get("address")
 
-    addr = _perform_address_modifications(addr, net)
+        addr = _perform_address_modifications(addr, net)
 
-    return net, addr
+        return net, addr
+    else:
+        return None
 
 
 def _get_header(tagpack, tid):

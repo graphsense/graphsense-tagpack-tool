@@ -54,7 +54,10 @@ tag:
     taxonomy: concept
   address:
     type: text
-    mandatory: true
+    mandatory: false
+  tx_hash:
+    type: text
+    mandatory: false
   actor:
     type: text
     mandatory: false
