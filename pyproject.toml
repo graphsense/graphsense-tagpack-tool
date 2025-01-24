@@ -63,6 +63,12 @@ version_scheme = "no-guess-dev"
 where = "src"
 exclude = "tests"
 
+[tool.setuptools.packages.find]
+where = ["src"]  # list of folders that contain the packages (["."] by default)
+include = ["tagstore*","tagpack"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["tagstore.tests*", "tagpack.tests*"]  # exclude packages matching these glob patterns (empty by default)
+namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
 [dependency-groups]
 dev = [
     "build>=1.2.2.post1",
