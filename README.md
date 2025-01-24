@@ -372,7 +372,7 @@ Run tests
 
 Or via tox
 
-    tox
+    uv run tox
 
 Check test coverage (optional)
 
