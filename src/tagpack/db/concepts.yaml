@@ -729,7 +729,7 @@ defi:
 defi_token:
   id: defi_token
   type: concept
-  prefLabel: An address responsible to manage the holdings of a user defined asset.
+  prefLabel: Token
   description: >
     A Token lets users create assets that enable safe exchange within the ecosystem and beyond.
     Examples are ERC20, BRC20, BTC20, TRC20 tokens implemented as smart contracts or TRC10 implemented as protocol extensions.
