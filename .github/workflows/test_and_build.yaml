@@ -11,25 +11,37 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12"]
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Install tox and any other packages
-        run: pip install tox tox-uv
-      - name: Run Unit Test via tox
-        # Run tox using the version of Python in `PATH`
-        run: tox -e py
-      - name: Run Lint via tox
-        run: tox -e lint
+      - name: install libev
+        run: |
+          sudo apt-get install libev4 libev-dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint with ruff
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          make lint
+
+      - name: Test with pytest
+        run: make test
+
       - name: Build wheel
         # Run tox using the version of Python in `PATH`
-        run: tox -e build
-      - name: Install tool and test tagpack validation
+        run: make build
+
+      - name: Test tagpack validation
         run: |
-            pip install .
-            tagpack-tool tagpack validate tests/testfiles/
+            uv run tagpack-tool tagpack validate tests/testfiles/
