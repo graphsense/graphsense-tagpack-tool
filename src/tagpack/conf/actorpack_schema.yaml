@@ -42,6 +42,10 @@ actor:
     type: json_text
     item_type: '@context'
     mandatory: false
+  aliases:
+    type: list
+    item_type: text
+    mandatory: false
 context:
   uris:
     type: list

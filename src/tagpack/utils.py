@@ -1,4 +1,5 @@
 import sys
+import re
 
 if sys.version_info >= (3, 9):
     from importlib.resources import files as imprtlb_files
@@ -119,3 +120,13 @@ def open_pkgresource_file(path):
             return resource.open("r")
 
     return None
+
+
+def normalize_id(id_txt):
+    return normalize_protocol_name(id_txt.strip().lower())
+
+
+def normalize_protocol_name(name):
+    regex = re.compile("[^a-zA-Z0-9]")
+    # First parameter is the replacement, second parameter is your input string
+    return regex.sub("", name).lower()

@@ -4,6 +4,7 @@ description: A collection of actors commonly used for demonstrating GraphSense f
 lastmod: 2022-11-29
 actors:
 - id: internet_archive
+  aliases: ["internetarchive"]
   uri: https://archive.org
   label: Internet Archive
   jurisdictions: [US]

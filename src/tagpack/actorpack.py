@@ -8,14 +8,16 @@ from collections import defaultdict
 
 import yaml
 from yamlinclude import YamlIncludeConstructor
+from typing import Optional
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
-from tagpack.cmd_utils import print_info, print_warn
+from tagpack.cmd_utils import print_warn
 from tagpack.utils import (
     apply_to_dict_field,
     get_secondlevel_domain,
     strip_empty,
     try_parse_date,
+    normalize_id,
 )
 
 LBL_BLACKLIST = re.compile(r"[@_!#$%^*<>?\|}{~:;]")
@@ -110,6 +112,16 @@ class ActorPack(object):
         self._duplicates = duplicates
         return self._unique_actors
 
+    def resolve_actor(self, identifier) -> Optional[str]:
+        """Uses id and alias to map a given identifier to an actor id"""
+        unique_actors = self.get_unique_actors()
+        mapping = {actor.id: actor.id for actor in unique_actors}
+        for actor in unique_actors:
+            for alias in actor.all_fields.get("aliases", []):
+                mapping[alias] = actor.id
+
+        return mapping.get(identifier, None)
+
     def validate(self):
         """Validates an ActorPack against its schema and used taxonomies"""
 
@@ -203,6 +215,35 @@ class ActorPack(object):
                         actor.identifier
                     )
 
+        unique_actors = self.get_unique_actors()
+        missing_mappings = []
+        global_aliases = []
+        for actor in unique_actors:
+            normalized_id = normalize_id(actor.identifier)
+            aliases = actor.all_fields.get("aliases", [])
+            global_aliases.extend(aliases)
+
+            if normalized_id != actor.identifier and normalized_id not in aliases:
+                missing_mappings.append((actor.identifier, normalized_id))
+
+        if missing_mappings:
+            error_message = (
+                "For the following actor ids, the normalized id must either replace the original id "
+                "or be added to the aliases: \n"
+                + "\n".join(
+                    f"'{orig}' normalized to '{norm}'"
+                    for orig, norm in missing_mappings
+                )
+            )
+            raise ValidationError(error_message)
+
+        actor_ids = {actor.identifier for actor in unique_actors}
+        collision = actor_ids & set(global_aliases)
+        if collision:
+            raise ValidationError(
+                f"Collision detected: Actor ids and aliases share the following values: {collision}"
+            )
+
         for domain, actors in domain_overlap.items():
             if len(actors) > 1:
                 print_warn(
@@ -221,7 +262,7 @@ class ActorPack(object):
                 f"{len(self._duplicates)} duplicate(s) found, starting "
                 f"with {self._duplicates[0]}\n"
             )
-            print_info(msg)
+            raise ValidationError(msg)
         return True
 
     def to_json(self):
