@@ -1,5 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.03.0] 2025-03-26
+### added
+- Added field `aliases` in actor schema to store aliases of actors
+- Validation of aliases and ids
+
 ## [25.01.2] 2025-01-23
 ### fixed
 - fixed commandline list tags
