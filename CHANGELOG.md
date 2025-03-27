@@ -1,5 +1,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.03.1] 2025-03-27
+### added
+- Added concepts
+
+### fixed
+- Fixed resolve mapping of actors
+
 ## [25.03.0] 2025-03-26
 ### added
 - Added field `aliases` in actor schema to store aliases of actors
