@@ -33,6 +33,7 @@ class ActorPack(object):
         self.taxonomies = taxonomies
         self._unique_actors = []
         self._duplicates = []
+        self._resolve_mapping = {}
 
         # the yaml parser does not deal with string quoted dates.
         # so '2022-10-1' is not interpreted as a date. This line fixes this.
@@ -112,13 +113,25 @@ class ActorPack(object):
         self._duplicates = duplicates
         return self._unique_actors
 
-    def resolve_actor(self, identifier) -> Optional[str]:
-        """Uses id and alias to map a given identifier to an actor id"""
+    def get_resolve_mapping(self):
+        """Returns a mapping of aliases to actor ids"""
+        if self._resolve_mapping:
+            return self._resolve_mapping
+
         unique_actors = self.get_unique_actors()
-        mapping = {actor.id: actor.id for actor in unique_actors}
+
+        mapping = {actor.identifier: actor.identifier for actor in unique_actors}
+
         for actor in unique_actors:
             for alias in actor.all_fields.get("aliases", []):
-                mapping[alias] = actor.id
+                mapping[alias] = actor.identifier
+
+        self._resolve_mapping = mapping
+        return mapping
+
+    def resolve_actor(self, identifier) -> Optional[str]:
+        """Uses id and alias to map a given identifier to an actor id"""
+        mapping = self.get_resolve_mapping()
 
         return mapping.get(identifier, None)
 
