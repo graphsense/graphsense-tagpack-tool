@@ -718,6 +718,16 @@ vpn:
   seeAlso: https://en.wikipedia.org/wiki/VPN_service
   broader: service
 
+nameservice:
+  id: nameservice
+  type: concept
+  prefLabel: Name Service
+  description: >
+    A blockchain-based service that maps human-readable identifiers (such as domain names or usernames)
+    to machine-readable blockchain addresses, simplifying interaction with decentralized services.
+  broader: service
+  example: [ens.domains, unstoppabledomains.com]
+
 defi:
   id: defi
   type: concept
@@ -773,6 +783,35 @@ defi_bridge:
     A cryptocurreny service that allows to move assets to another distributed ledger in a (semi-) automated fashion, without losing custody of the asset.
   broader: defi
   example: [renproject.org]
+
+defi_dao:
+  id: defi_dao
+  type: concept
+  prefLabel: DAO
+  description: >
+    A decentralized autonomous organization (DAO) is a collectively-owned, blockchain-governed entity with no central leadership, used to coordinate decisions and resources.
+  broader: defi
+  example: [makerdao.com]
+
+defi_staking:
+  id: defi_staking
+  type: concept
+  prefLabel: Staking
+  description: >
+    A DeFi service that allows users to lock up assets in a smart contract to support network operations,
+    such as consensus or governance, in return for rewards.
+  broader: defi
+  example: [lido.fi, rocketpool.net]
+
+defi_custody:
+  id: defi_custody
+  type: concept
+  prefLabel: Custody
+  description: >
+    A DeFi mechanism or service that enables secure management and storage of digital assets,
+    typically through smart contracts that preserve user control or use of multi-signature wallets.
+  broader: defi
+  example: [gnosis-safe.io]
 
 # Specific concepts: items
 
