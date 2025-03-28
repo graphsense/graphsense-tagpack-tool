@@ -5,19 +5,19 @@ import os
 import re
 import sys
 from collections import defaultdict
+from typing import Optional
 
 import yaml
 from yamlinclude import YamlIncludeConstructor
-from typing import Optional
 
 from tagpack import TagPackFileError, UniqueKeyLoader, ValidationError
 from tagpack.cmd_utils import print_warn
 from tagpack.utils import (
     apply_to_dict_field,
     get_secondlevel_domain,
+    normalize_id,
     strip_empty,
     try_parse_date,
-    normalize_id,
 )
 
 LBL_BLACKLIST = re.compile(r"[@_!#$%^*<>?\|}{~:;]")

@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 
 from tagpack import ValidationError
-from tagpack.tagpack import Tag, TagPack, collect_tagpack_files
+from tagpack.tagpack import Tag, TagPack, collect_tagpack_files, TagPackContents
 from tagpack.tagpack_schema import TagPackSchema
 from tagpack.taxonomy import Taxonomy
 
@@ -242,7 +242,7 @@ def test_tag_overrides_header(tagpack):
 
 def test_init(tagpack):
     assert tagpack.uri == "http://example.com"
-    assert isinstance(tagpack.contents, dict)
+    assert isinstance(tagpack.contents, TagPackContents)
     assert tagpack.contents["title"] == "Test TagPack"
     assert isinstance(tagpack.schema, TagPackSchema)
     assert "title" in tagpack.schema.header_fields

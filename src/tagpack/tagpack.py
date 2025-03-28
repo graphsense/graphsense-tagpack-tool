@@ -6,7 +6,7 @@ import json
 import os
 import pathlib
 import sys
-from collections import defaultdict
+from collections import UserDict, defaultdict
 from datetime import date
 
 import coinaddrvalidator
@@ -26,30 +26,45 @@ from tagpack.constants import (
 from tagpack.utils import apply_to_dict_field, try_parse_date
 
 
-def warn_on_possibly_inconsistent_currency_or_network(field, value):
-    if field == "currency" and not is_known_currency(value):
-        print_warn(
-            (
-                f"{value} is not a known currency. "
-                "Be careful to avoid introducing ambiguity into the dataset."
-            )
-        )
+class InconsistencyChecker:
+    def __init__(self):
+        self.currency_seen = dict()
+        self.network_seen = dict()
 
-    if field == "network" and not is_known_network(value):
-        suggestions = suggest_networks_from_currency(value)
-        print_warn(
-            (
+    def warn_on_possibly_inconsistent_currency_or_network(self, field, value):
+        if (
+            field == "currency"
+            and not self.currency_seen.get(value, False)
+            and not is_known_currency(value)
+        ):
+            print_warn(
                 (
-                    f"{value} is not a known network. "
-                    "Be careful to avoid introducing ambiguity into the dataset. "
-                )
-                + (
-                    f"Did you mean on of: {', '.join(suggestions)}"
-                    if len(suggestions) > 0
-                    else ""
+                    f"{value} is not a known currency. "
+                    "Be careful to avoid introducing ambiguity into the dataset."
                 )
             )
-        )
+            self.currency_seen[value] = True
+
+        if (
+            field == "network"
+            and not self.network_seen.get(value, False)
+            and not is_known_network(value)
+        ):
+            suggestions = suggest_networks_from_currency(value)
+            print_warn(
+                (
+                    (
+                        f"{value} is not a known network. "
+                        "Be careful to avoid introducing ambiguity into the dataset. "
+                    )
+                    + (
+                        f"Did you mean on of: {', '.join(suggestions)}"
+                        if len(suggestions) > 0
+                        else ""
+                    )
+                )
+            )
+            self.network_seen[value] = True
 
 
 def get_repository(path: str) -> pathlib.Path:
@@ -208,16 +223,60 @@ def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
     return tagpack_files
 
 
+class TagPackContents(UserDict):
+    def __init__(self, contents, schema):
+        super().__init__(contents)
+        self.schema = schema
+        self._tag_fields_cache = None
+
+    def _invalidate_cache(self):
+        """Invalidate the cached tag_fields."""
+        self._tag_fields_cache = None
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self._invalidate_cache()
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._invalidate_cache()
+
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+        self._invalidate_cache()
+
+    def clear(self):
+        super().clear()
+        self._invalidate_cache()
+
+    def rebuild_cache(self):
+        self._tag_fields_cache = {
+            k: v for k, v in self.data.items() if k in self.schema.tag_fields
+        }
+
+    @property
+    def tag_fields(self):
+        """
+        Return a cached dictionary of items where keys are in the schema's tag_fields.
+        The cache is invalidated whenever the dictionary is modified.
+        """
+        if self._tag_fields_cache is None:
+            self.rebuild_cache()
+        return self._tag_fields_cache
+
+
 class TagPack(object):
     """Represents a TagPack"""
 
     def __init__(self, uri, contents, schema, taxonomies):
         self.uri = uri
-        self.contents = contents
+        self.contents = TagPackContents(contents, schema)
         self.schema = schema
         self.taxonomies = taxonomies
         self._unique_tags = []
         self._duplicates = []
+        self.tag_fields_dict = None
+
         self.init_default_values()
 
         # the yaml parser does not deal with string quoted dates.
@@ -295,11 +354,7 @@ class TagPack(object):
     def tag_fields(self):
         """Returns tag fields defined in the TagPack header"""
         try:
-            return {
-                k: v
-                for k, v in self.contents.items()
-                if k != "tags" and k in self.schema.tag_fields
-            }
+            return self.contents.tag_fields
         except AttributeError:
             raise TagPackFileError("Cannot extract TagPack fields")
 
@@ -315,25 +370,18 @@ class TagPack(object):
         if self._unique_tags:
             return self._unique_tags
 
+        keys = ("address", "currency", "network", "label", "source")
         seen = set()
         duplicates = []
+        self._unique_tags = []
 
         for tag in self.tags:
-            # check if duplicate entry
-            t = tuple(
-                [
-                    (
-                        str(tag.all_fields.get(k)).lower()
-                        if k in tag.all_fields.keys()
-                        else ""
-                    )
-                    for k in ["address", "currency", "network", "label", "source"]
-                ]
-            )
-            if t in seen:
-                duplicates.append(t)
+            fields = tag.all_fields
+            key_tuple = tuple(str(fields.get(k, "")).lower() for k in keys)
+            if key_tuple in seen:
+                duplicates.append(key_tuple)
             else:
-                seen.add(t)
+                seen.add(key_tuple)
                 self._unique_tags.append(tag)
 
         self._duplicates = duplicates
@@ -341,7 +389,7 @@ class TagPack(object):
 
     def validate(self):
         """Validates a TagPack against its schema and used taxonomies"""
-
+        inconsistency_checker = InconsistencyChecker()
         # check if mandatory header fields are used by a TagPack
         for schema_field in self.schema.mandatory_header_fields:
             if schema_field not in self.header_fields:
@@ -367,7 +415,9 @@ class TagPack(object):
                     "are inserted with access set to private."
                 )
 
-            warn_on_possibly_inconsistent_currency_or_network(field, value)
+            inconsistency_checker.warn_on_possibly_inconsistent_currency_or_network(
+                field, value
+            )
 
             self.schema.check_type(field, value)
             self.schema.check_taxonomies(field, value, self.taxonomies)
@@ -413,7 +463,9 @@ class TagPack(object):
                 if value is None:
                     raise ValidationError(e4.format(field, tag))
 
-                warn_on_possibly_inconsistent_currency_or_network(field, value)
+                inconsistency_checker.warn_on_possibly_inconsistent_currency_or_network(
+                    field, value
+                )
 
                 # check types and taxomomy use
                 try:
@@ -633,7 +685,7 @@ class Tag(object):
     @property
     def explicit_fields(self):
         """Return only explicitly defined tag fields"""
-        return {k: v for k, v in self.contents.items()}  # noqa: C416
+        return self.contents  # noqa: C416
 
     @property
     def all_fields(self):
