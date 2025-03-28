@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.03.2] 2025-03-28
+### fixed
+- Improved validation performance issues
+
 ## [25.03.1] 2025-03-27
 ### added
 - Added concepts
