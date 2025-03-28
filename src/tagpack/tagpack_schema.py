@@ -26,7 +26,7 @@ class TagPackSchema(object):
 
     @property
     def header_fields(self):
-        return {k: v for k, v in self.schema["header"].items()}  # noqa: C416
+        return self.schema["header"]
 
     @property
     def mandatory_header_fields(self):
@@ -34,7 +34,7 @@ class TagPackSchema(object):
 
     @property
     def tag_fields(self):
-        return {k: v for k, v in self.schema["tag"].items()}  # noqa: C416
+        return self.schema["tag"]
 
     @property
     def mandatory_tag_fields(self):
@@ -63,29 +63,30 @@ class TagPackSchema(object):
         return check_type(self.schema, field, field_def, value)
 
     def check_taxonomies(self, field, value, taxonomies):
-        """Checks whether a field uses values from given taxonomies"""
-        if not self.field_taxonomy(field):
-            # No taxonomy was requested
+        """Checks whether a field uses values from given taxonomies, with performance improvements."""
+        # Retrieve the taxonomy information once
+        taxonomy = self.field_taxonomy(field)
+        if not taxonomy:
             return True
-        elif not taxonomies:
+        if not taxonomies:
             raise ValidationError("No taxonomies loaded")
 
-        expected_taxonomy_ids = self.field_taxonomy(field)
-        if type(expected_taxonomy_ids) is str:
-            expected_taxonomy_ids = [expected_taxonomy_ids]
+        if isinstance(taxonomy, str):
+            taxonomy = [taxonomy]
 
-        expected_taxonomies = [taxonomies.get(i) for i in expected_taxonomy_ids]
+        expected_taxonomies = [taxonomies.get(tid) for tid in taxonomy]
         if None in expected_taxonomies:
-            raise ValidationError(f"Unknown taxonomy {expected_taxonomy_ids}")
+            raise ValidationError(f"Unknown taxonomy {taxonomy}")
 
-        for v in value if isinstance(value, list) else [value]:
-            in_one_tax = False
-            for t in expected_taxonomies:
-                if v in t.concept_ids:
-                    in_one_tax = True
-                    break
-            if not in_one_tax:
-                msg = f"Undefined concept {v} for {field} field"
-                raise ValidationError(msg)
+        valid_concepts = set()
+        for t in expected_taxonomies:
+            valid_concepts.update(t.concept_ids)
+
+        values = value if isinstance(value, list) else [value]
+
+        # Check each provided value against the union of valid concept IDs
+        for v in values:
+            if v not in valid_concepts:
+                raise ValidationError(f"Undefined concept {v} for {field} field")
 
         return True
