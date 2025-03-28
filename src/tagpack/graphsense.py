@@ -250,11 +250,12 @@ class GraphSense(object):
 
         result = self._execute_query(statement, parameters)
 
-        if network == "ETH":
-            result["address"] = result["address"].apply(eth_address_to_hex_str)
-        elif network == "TRX":
-            # convert evm to t-style address
-            result["address"] = result["address"].apply(try_convert_to_tron)
+        if len(result) > 0:
+            if network == "ETH":
+                result["address"] = result["address"].apply(eth_address_to_hex_str)
+            elif network == "TRX":
+                # convert evm to t-style address
+                result["address"] = result["address"].apply(try_convert_to_tron)
 
         return result
 
