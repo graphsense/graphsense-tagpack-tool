@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.03.3] 2025-03-28
+### fixed
+- bug when all addresses in a cluster mapping batch are not found in the gs db
+
 ## [25.03.2] 2025-03-28
 ### fixed
 - Improved validation performance issues
