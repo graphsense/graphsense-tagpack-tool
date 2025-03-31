@@ -69,4 +69,4 @@ tag:
   tag_type:
     type: text
     mandatory: false
-    taxonomy: tag_types
+    taxonomy: tag_type
