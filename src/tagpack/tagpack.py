@@ -195,7 +195,8 @@ def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
 
     # Files without headers
     if files:
-        tagpack_files[None] = files
+        files_ = sorted(files, key=lambda x: (-len(x.split(os.sep)), x))
+        tagpack_files[None] = files_
 
     # Avoid to include header files without files
     for t, fs in tagpack_files.items():
