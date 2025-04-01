@@ -176,8 +176,7 @@ def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
     else:
         files = {f for f in files if not f.endswith("actorpack.yaml")}
 
-    # Sort files, deepest first
-    sfiles = sorted(files, key=lambda x: len(x.split(os.sep)), reverse=True)
+    sfiles = sorted(files, key=lambda x: (-len(x.split(os.sep)), x))
     # Select headers
     hfiles = [f for f in sfiles if f.endswith("header.yaml")]
     # Remove header files from the search
