@@ -480,6 +480,19 @@ class TagPack(object):
                 "Please consider connecting the tag to an actor."
             )
 
+        address_counts = defaultdict(int)
+        for tag in ut:
+            address = tag.all_fields.get("address")
+            if address is not None:
+                address_counts[address] += 1
+
+        for address, count in address_counts.items():
+            if count > 100:
+                print_warn(
+                    f"{count} tags with the same address {address} found. "
+                    "Consider aggregating them."
+                )
+
         if self._duplicates:
             msg = f"{len(self._duplicates)} duplicate(s) found, starting "
             msg += f"with {self._duplicates[0]}\n"
