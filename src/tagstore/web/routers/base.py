@@ -21,6 +21,14 @@ async def get_version() -> str:
     return __version__
 
 
+@router.get("/acl_groups", tags=["General"], name="Get acl groups present in the db.")
+async def get_acl_groups(db: TsDbParam) -> List[str]:
+    """
+    Loads ACL Groups available in the db..
+    """
+    return await db.get_acl_groups()
+
+
 @router.get(
     "/taxonomy", tags=["General"], name="Get a labels and description for id values."
 )

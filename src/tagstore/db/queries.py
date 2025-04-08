@@ -332,8 +332,9 @@ def _get_tags_by_clusterid_stmt(
     offset: Optional[int],
     page_size: Optional[int],
     groups: List[str],
+    exclude_identifiers: Optional[List[str]],
 ):
-    return (
+    q = (
         select(Tag, TagPack, AddressClusterMapping, Confidence)
         .options(joinedload(Tag.confidence))
         .options(joinedload(Tag.concepts))
@@ -346,10 +347,12 @@ def _get_tags_by_clusterid_stmt(
         .where(Tag.tagpack_id == TagPack.id)
         .where(TagPack.acl_group.in_(groups))
         .where(Confidence.id == Tag.confidence_id)
-        .offset(offset)
-        .limit(page_size)
-        .order_by(desc(Confidence.level))
     )
+
+    if exclude_identifiers is not None:
+        q = q.where(Tag.identifier.not_in(exclude_identifiers))
+
+    return q.offset(offset).limit(page_size).order_by(desc(Confidence.level))
 
 
 def _get_tags_by_label_stmt(
@@ -473,6 +476,26 @@ def _get_labels_by_subjectid_stmt(subject_id: str, groups: List[str]):
     )
 
 
+def _get_tag_count_by_subjectid_stmt(
+    subject_id: str, network: Optional[str], groups: List[str]
+):
+    q = (
+        select(func.count())
+        .where(Tag.identifier == subject_id)
+        .where(Tag.tagpack_id == TagPack.id)
+        .where(TagPack.acl_group.in_(groups))
+    )
+
+    if network is not None:
+        q = q.where(Tag.network == network)
+
+    return q
+
+
+def _get_acl_groups_statement():
+    return select(TagPack.acl_group).distinct()
+
+
 def _get_labels_by_clusterid_stmt(cluster_id: str, groups: List[str]):
     return (
         select(Tag.label)
@@ -537,6 +560,13 @@ class TagstoreDbAsync:
 
         return None
 
+    @_inject_session
+    async def get_acl_groups(
+        self,
+        session=None,
+    ) -> List[str]:
+        return await session.exec(_get_acl_groups_statement())
+
     # Get Tags by subject id
     @_inject_session
     async def _get_tags_by_subjectid(
@@ -595,6 +625,16 @@ class TagstoreDbAsync:
         return [x for x in results]
 
     @_inject_session
+    async def get_tag_count_by_subjectid(
+        self, subject_id: str, network: str, groups: List[str], session=None
+    ) -> int:
+        results = await session.exec(
+            _get_tag_count_by_subjectid_stmt(subject_id, network, groups)
+        )
+
+        return sum(x for x in results)
+
+    @_inject_session
     async def get_labels_by_clusterid(
         self, cluster_id: str, groups: List[str], session=None
     ) -> List[str]:
@@ -645,12 +685,13 @@ class TagstoreDbAsync:
         offset: Optional[int],
         page_size: Optional[int],
         groups: List[str],
+        exclude_identifiers: Optional[List[str]],
         session=None,
     ) -> List[Tag]:
         return (
             await session.exec(
                 _get_tags_by_clusterid_stmt(
-                    cluster_id, network, offset, page_size, groups
+                    cluster_id, network, offset, page_size, groups, exclude_identifiers
                 )
             )
         ).unique()
@@ -663,10 +704,17 @@ class TagstoreDbAsync:
         offset: Optional[int],
         page_size: Optional[int],
         groups: List[str],
+        exclude_identifiers: Optional[List[str]] = None,
         session=None,
     ) -> List[TagPublic]:
         results = await self._get_tags_by_clusterid(
-            cluster_id, network, offset, page_size, groups, session=session
+            cluster_id,
+            network,
+            offset,
+            page_size,
+            groups,
+            exclude_identifiers=exclude_identifiers,
+            session=session,
         )
         return [TagPublic.fromDB(t, tp) for t, tp, _, _ in results]
 

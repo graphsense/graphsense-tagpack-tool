@@ -49,7 +49,7 @@ class SinglePageApplication(StaticFiles):
 async def lifespan(app: FastAPI):
     global background_executor
     settings = _gs_tagstore_settings()
-    app.state.db_engine = get_db_engine_async(settings.db_url)
+    app.state.db_engine = get_db_engine_async(settings.db_url, echo=True)
     yield
 
 

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-
+import pytest
 from tagpack.tagstore import _perform_address_modifications, TagStore
+
+from tagstore.db import TagstoreDbAsync
 
 
 def test_bch_conversion():
@@ -72,3 +74,30 @@ def test_db_consistency(db_setup):
     actor_id_index = 1
 
     assert {x[actor_id_index] for x in actors} == {"binance","internet_archive"}
+
+@pytest.mark.asyncio
+async def test_db_url(db_setup):
+    db = TagstoreDbAsync.from_url(db_setup["db_connection_string_async"])
+    assert list(await db.get_acl_groups()) == ['private', 'public']
+
+    tags = await db.get_tags_by_subjectid("1bacdeddg32dsfk5692dmn23", offset=None, page_size=None, groups=['private', 'public'])
+
+    tags_pub = await db.get_tags_by_subjectid("1bacdeddg32dsfk5692dmn23", offset=None, page_size=None, groups=['private'])
+
+    assert len(tags) == 5
+    assert len(tags_pub) == 0
+
+
+    addr = {t.identifier for t in tags }
+    assert  addr == {"1bacdeddg32dsfk5692dmn23"}
+
+    tags = await db.get_tags_by_subjectid("0xdeadbeef", offset=None, page_size=None, groups=['private', 'public'])
+
+    tags_pub = await db.get_tags_by_subjectid("0xdeadbeef", offset=None, page_size=None, groups=['public'])
+
+
+    assert len(tags) == 1
+    assert len(tags_pub) == 0
+
+    addr = {t.identifier for t in tags }
+    assert  addr == {"0xdeadbeef"}

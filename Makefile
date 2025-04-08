@@ -14,7 +14,7 @@ tag-version:
 	git diff --exit-code && git diff --staged --exit-code && git tag -a $(RELEASE) -m 'Release $(RELEASE)' || (echo "Repo is dirty please commit first" && exit 1)
 
 serve:
-	@gs_tagstore_db_url=${gs_tagstore_db_url} uvicorn --reload --log-level debug src.tagstore.web.main:app
+	@gs_tagstore_db_url=${gs_tagstore_db_url} uv run uvicorn --reload --log-level debug src.tagstore.web.main:app
 
 test:
 	uv run pytest -x -rx -vv -m "not slow" --cov=tagpack --cov=tagstore --capture=no

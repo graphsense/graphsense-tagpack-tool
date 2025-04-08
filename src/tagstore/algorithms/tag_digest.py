@@ -29,6 +29,7 @@ class TagCloudEntry(BaseModel):
 class TagDigest(BaseModel):
     broad_concept: str
     nr_tags: int
+    nr_tags_indirect: int
     best_actor: Optional[str]
     best_label: Optional[str]
     label_digest: Dict[str, LabelDigest]
@@ -101,6 +102,7 @@ def _calcTagCloud(wctr: wCounter, at_most=None) -> Dict[str, TagCloudEntry]:
 def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
     tags_count = 0
     total_words = 0
+    tags_count_cluster = 0
     actor_counter = wCounter()
     label_word_counter = wCounter()
     full_label_counter = wCounter()
@@ -119,11 +121,14 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
         }
     )
 
-    def add_tag_data(t, tags_count, total_words):
+    def add_tag_data(t, tags_count: int, total_words: int, tags_count_cluster: int):
         if not _skipTag(t):
             conf = t.confidence_level or 0.1
 
             tags_count += 1
+
+            if t.inherited_from == InheritedFrom.CLUSTER:
+                tags_count_cluster += 1
 
             # compute words
             norm_words = [_normalizeWord(w) for w in _normalizeWord(t.label).split(" ")]
@@ -165,10 +170,12 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
                 t.inherited_from == InheritedFrom.CLUSTER and (ls["inherited"])
             )
 
-        return tags_count, total_words
+        return tags_count, total_words, tags_count_cluster
 
     for t in tags:
-        tags_count, total_words = add_tag_data(t, tags_count, total_words)
+        tags_count, total_words, tags_count_cluster = add_tag_data(
+            t, tags_count, total_words, tags_count_cluster
+        )
 
     # create a relevance score, prefer items where similar labels exist.
     sw_full_label_counter = wCounter()
@@ -225,6 +232,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
     return TagDigest(
         broad_concept=broad_concept,
         nr_tags=tags_count,
+        nr_tags_indirect=tags_count_cluster,
         best_actor=p_actor,
         best_label=best_label,
         concept_tag_cloud=_calcTagCloud(concepts_counter),
