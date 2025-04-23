@@ -188,7 +188,7 @@ def compute_tag_digest(tags: List[TagPublic]) -> TagDigest:
                 if word in lbl and occurrence > 1
             ]
         )
-        n = 1 + multiplier / total_words
+        n = 1 + multiplier / total_words if total_words > 0 else 1
         sw_full_label_counter.add(lbl, v * n)
 
     ltc = _calcTagCloud(sw_full_label_counter)
