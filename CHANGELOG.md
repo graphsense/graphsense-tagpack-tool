@@ -1,5 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.04.0] 2025-04-23
+### fixed
+- division by zero on tag digest word count
+
+
 ## [25.03.4] 2025-04-01
 ### fixed
 - Fixed typo that caused an issue when adding a tag_type
