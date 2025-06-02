@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.06.0] 2025-04-23
+### changed
+- exchange tags get slight confidence boost in tag digest
+
 ## [25.04.0] 2025-04-23
 ### fixed
 - division by zero on tag digest word count
