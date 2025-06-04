@@ -83,6 +83,8 @@ def _normalizeWord(istr: str) -> str:
 def _get_concept_weight(c: str) -> float:
     if c == "defi":
         return 0.5
+    elif c == "exchange":
+        return 1.1
 
     return 1.0
 
