@@ -1,6 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [25.06.0] 2025-04-23
+## [25.07.0] 2025-06-04
+### added
+- Added new category `defi_dex_pair`
+
+## [25.06.0] 2025-06-02
 ### changed
 - exchange tags get slight confidence boost in tag digest
 
