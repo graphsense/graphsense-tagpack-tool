@@ -766,6 +766,16 @@ defi_dex:
   broader: defi
   example: [curve.fi, uniswap.org]
 
+defi_dex_pair:
+    id: defi_dex_pair
+    type: concept
+    prefLabel: DEX Pair
+    description: >
+        A trading pair on a decentralized exchange (DEX) that allows users to trade one cryptoasset for another.
+        It is typically represented as two tokens, such as ETH/USDC or BTC/ETH.
+    broader: defi_dex
+    example: [uniswap.org ETH/USDC]
+
 defi_derivatives:
   id: defi_derivative
   type: concept
