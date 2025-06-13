@@ -3,6 +3,7 @@ import pytest
 from tagpack.tagstore import _perform_address_modifications, TagStore
 
 from tagstore.db import TagstoreDbAsync
+from tagstore.db.queries import UserReportedAddressTag
 
 
 def test_bch_conversion():
@@ -101,3 +102,67 @@ async def test_db_url(db_setup):
 
     addr = {t.identifier for t in tags }
     assert  addr == {"0xdeadbeef"}
+
+
+@pytest.mark.asyncio
+async def test_insert_user_tag(db_setup):
+    db = TagstoreDbAsync.from_url(db_setup["db_connection_string_async"])
+    address = "ABC-insert-user-test"
+
+
+    tagsBefore = await db.get_tags_by_subjectid(address, offset=None, page_size=None, groups=['public'])
+    taxonomiesBefore = await db.get_taxonomies()
+
+    tag = UserReportedAddressTag(address = address, network="Btc", actor='binance', label="binance", description="this is helpful")
+
+    await db.add_user_reported_tag(tag)
+
+    tagsAfter = await db.get_tags_by_subjectid(address, offset=None, page_size=None, groups=['public'])
+
+    assert len(tagsBefore) == 0
+
+    assert len(tagsAfter) == 1
+
+    tagNew = tagsAfter[0]
+
+    assert tagNew.identifier == address
+    assert tagNew.network == "BTC"
+    assert tagNew.source == tag.description
+    assert tagNew.confidence_level == 5
+    assert tagNew.tag_type == "actor"
+    assert tagNew.tag_subject == "address"
+    assert tagNew.additional_concepts == ["exchange"]
+    assert tagNew.actor == tag.actor
+    assert tagNew.label == tag.label
+
+
+    tag2 = UserReportedAddressTag(address = address, network="Btc", actor='binanceblub', label="binanceblub", description="this is helpfuld")
+
+    await db.add_user_reported_tag(tag2)
+
+    tagsAfter2 = await db.get_tags_by_subjectid(address, offset=None, page_size=None, groups=['public'])
+
+    del tag, tagsAfter
+
+    assert len(tagsAfter2) == 2
+
+    tagNew2 = tagsAfter2[1]
+
+    assert tagNew2.identifier == address
+    assert tagNew2.network == "BTC"
+    assert tagNew2.source == tag2.description
+    assert tagNew2.confidence_level == 5
+    assert tagNew2.tag_type == "actor"
+    assert tagNew2.tag_subject == "address"
+    assert tagNew2.additional_concepts == []
+    assert tagNew2.actor is None
+    assert tagNew2.label == tag2.label
+
+
+    taxonomiesAfter = await db.get_taxonomies()
+
+    assert len(taxonomiesAfter.concept) == len(taxonomiesBefore.concept)
+    assert len(taxonomiesAfter.country) == len(taxonomiesBefore.country)
+    assert len(taxonomiesAfter.tag_subject) == len(taxonomiesBefore.tag_subject)
+    assert len(taxonomiesAfter.country) == len(taxonomiesBefore.country)
+    assert len(taxonomiesAfter.confidence) == len(taxonomiesBefore.confidence)

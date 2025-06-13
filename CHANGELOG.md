@@ -1,5 +1,9 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.07.1rc1] 2025-06-13
+### added
+- function to add simple tags by users.
+
 ## [25.07.0] 2025-06-04
 ### added
 - Added new category `defi_dex_pair`

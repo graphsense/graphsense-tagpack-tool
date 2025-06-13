@@ -25,6 +25,7 @@ from .models import (
     TagPack,
     TagSubject,
     TagType,
+    TagConcept,
 )
 
 logger = logging.getLogger("uvicorn.error")
@@ -219,7 +220,7 @@ class TagPublic(BaseModel):
         return cls(
             identifier=t.identifier,
             label=t.label,
-            source=t.source,
+            source=t.source or "unknown",
             creator=tp.creator,
             confidence=t.confidence_id,
             confidence_level=t.confidence.level,
@@ -236,6 +237,14 @@ class TagPublic(BaseModel):
             tagpack_title=tp.title,
             tagpack_uri=tp.uri,
         )
+
+
+class UserReportedAddressTag(BaseModel):
+    address: str
+    network: str
+    actor: Optional[str]
+    label: str
+    description: str
 
 
 # Statements
@@ -925,3 +934,42 @@ class TagstoreDbAsync:
                 )
             ],
         )
+
+    @_inject_session
+    async def add_user_reported_tag(self, tag: UserReportedAddressTag, session=None):
+        IDUserReportedTagpack = "manual-user-reported-tagpack"
+        q = select(TagPack).where(TagPack.id == IDUserReportedTagpack)
+        tp = (await session.exec(q)).one_or_none()
+
+        if tp is None:
+            tpN = TagPack(
+                id=IDUserReportedTagpack,
+                title="User Reported Tags",
+                description="Tagpack of tags reported by end-users via the dashboard UI",
+                creator="The Graphsense Community",
+                acl_group="public",
+            )
+
+            session.add(tpN)
+            await session.commit()
+
+        actor = await self.get_actor_by_id(tag.actor, False)
+
+        tagN = Tag(
+            label=tag.label,
+            identifier=tag.address,
+            network=tag.network.upper(),
+            tag_subject_id="address",
+            tag_type_id="actor",
+            confidence_id="unknown",
+            source=tag.description,
+            tagpack_id=IDUserReportedTagpack,
+            concepts=[],
+        )
+
+        if actor is not None:
+            tagN.actor_id = actor.id
+            tagN.concepts = [TagConcept(concept_id=c) for c in actor.concepts]
+
+        session.add(tagN)
+        await session.commit()
