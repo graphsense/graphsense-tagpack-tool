@@ -33,6 +33,14 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO readaccess;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readaccess;
 GRANT readaccess TO read_user;
 
+-- grant read-only access to do at least basic tag inserts
+CREATE ROLE userinsertedtags;
+GRANT INSERT ON TABLE public.tag TO userinsertedtags;
+GRANT INSERT ON TABLE public.tagpack TO userinsertedtags;
+GRANT INSERT ON TABLE public.tag_concept TO userinsertedtags;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO userinsertedtags;
+GRANT userinsertedtags TO read_user;
+
 ALTER SCHEMA public OWNER TO "$POSTGRES_USER_TAGSTORE";
 
 EOF
