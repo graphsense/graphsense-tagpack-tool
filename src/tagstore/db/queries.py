@@ -939,7 +939,7 @@ class TagstoreDbAsync:
     async def add_user_reported_tag(
         self, tag: UserReportedAddressTag, acl_group: str = "public", session=None
     ):
-        IDUserReportedTagpack = f"manual-user-reported-tagpack-${acl_group}"
+        IDUserReportedTagpack = f"manual-user-reported-tagpack-{acl_group}"
         q = select(TagPack).where(TagPack.id == IDUserReportedTagpack)
         tp = (await session.exec(q)).one_or_none()
 
