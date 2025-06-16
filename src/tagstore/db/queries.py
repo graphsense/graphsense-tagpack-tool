@@ -936,8 +936,10 @@ class TagstoreDbAsync:
         )
 
     @_inject_session
-    async def add_user_reported_tag(self, tag: UserReportedAddressTag, session=None):
-        IDUserReportedTagpack = "manual-user-reported-tagpack"
+    async def add_user_reported_tag(
+        self, tag: UserReportedAddressTag, acl_group: str = "public", session=None
+    ):
+        IDUserReportedTagpack = f"manual-user-reported-tagpack-${acl_group}"
         q = select(TagPack).where(TagPack.id == IDUserReportedTagpack)
         tp = (await session.exec(q)).one_or_none()
 
@@ -947,7 +949,7 @@ class TagstoreDbAsync:
                 title="User Reported Tags",
                 description="Tagpack of tags reported by end-users via the dashboard UI",
                 creator="The Graphsense Community",
-                acl_group="public",
+                acl_group=acl_group,
             )
 
             session.add(tpN)
