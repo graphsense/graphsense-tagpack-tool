@@ -7,7 +7,7 @@ authors = [
   {name = "GraphSense Core Team", email = "tech@ikna.io"}
 ]
 readme = "README.md"
-license = {file = "LICENSE"}
+license-files = ["LICENSE"]
 # long-description = "file: README.md"
 # long-description-content-type = "text/markdown; charset=UTF-8; variant=GFM"
 # url = "https://graphsense.github.io/"
@@ -65,8 +65,8 @@ exclude = "tests"
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
-include = ["tagstore*","tagpack"]  # package names should match these glob patterns (["*"] by default)
-exclude = ["tagstore.tests*", "tagpack.tests*"]  # exclude packages matching these glob patterns (empty by default)
+include = ["tagstore*","tagpack*","tagstore.web.statics"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["tagstore.tests*", "tagpack.tests*", "tests*", "admin-ui*"]  # exclude packages matching these glob patterns (empty by default)
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 
 [dependency-groups]
