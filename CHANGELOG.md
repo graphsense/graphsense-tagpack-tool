@@ -1,6 +1,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [25.07.1rc1] 2025-06-13
+## [25.07.1] 2025-06-16
 ### added
 - function to add simple tags by users.
 
