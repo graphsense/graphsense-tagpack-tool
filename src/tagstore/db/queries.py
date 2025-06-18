@@ -11,6 +11,8 @@ from sqlalchemy import asc, desc, distinct, func
 from sqlalchemy.orm import joinedload
 from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from psycopg2.errors import UniqueViolation
 
 from .database import get_db_engine_async
 from .models import (
@@ -27,6 +29,7 @@ from .models import (
     TagType,
     TagConcept,
 )
+from .errors import TagAlreadyExistsException
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -974,4 +977,11 @@ class TagstoreDbAsync:
             tagN.concepts = [TagConcept(concept_id=c) for c in actor.concepts]
 
         session.add(tagN)
-        await session.commit()
+
+        try:
+            await session.commit()
+        except IntegrityError as e:
+            if isinstance(e.orig, UniqueViolation):
+                raise TagAlreadyExistsException()
+            else:
+                raise e
