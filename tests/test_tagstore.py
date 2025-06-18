@@ -4,7 +4,7 @@ from tagpack.tagstore import _perform_address_modifications, TagStore
 
 from tagstore.db import TagstoreDbAsync
 from tagstore.db.queries import UserReportedAddressTag
-from tagstore.db.errors import TagAlreadyExistsException
+from tagstore.db import TagAlreadyExistsException
 
 
 def test_bch_conversion():

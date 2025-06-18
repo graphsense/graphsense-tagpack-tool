@@ -9,3 +9,4 @@ from .queries import TagstoreDbAsync as TagstoreDbAsync
 from .queries import TagstoreStatisticsPublic as TagstoreStatisticsPublic
 from .queries import Taxonomies as Taxonomies
 from .queries import TaxonomiesPublic as TaxonomiesPublic
+from .errors import TagAlreadyExistsException as TagAlreadyExistsException
