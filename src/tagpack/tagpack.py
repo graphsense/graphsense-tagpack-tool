@@ -123,7 +123,8 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
         sys.exit(0)
 
     if len(repo.remotes) > 1:
-        msg = "Multiple remotes present, cannot decide on backlink."
+        msg = (f"Multiple remotes present, cannot "
+               f"decide on backlink. Remotes: {repo.remotes}")
         raise ValidationError(msg)
 
     rel_path = str(pathlib.Path(tagpack_file).relative_to(repo_path))
