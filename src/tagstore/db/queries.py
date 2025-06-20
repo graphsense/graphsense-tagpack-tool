@@ -8,13 +8,13 @@ from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel, computed_field
 from sqlalchemy import asc, desc, distinct, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.exc import IntegrityError
-from psycopg2.errors import UniqueViolation
 
 from .database import get_db_engine_async
+from .errors import TagAlreadyExistsException
 from .models import (
     Actor,
     AddressClusterMapping,
@@ -23,13 +23,12 @@ from .models import (
     Confidence,
     Country,
     Tag,
+    TagConcept,
     TagCountByClusterView,
     TagPack,
     TagSubject,
     TagType,
-    TagConcept,
 )
-from .errors import TagAlreadyExistsException
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -981,7 +980,13 @@ class TagstoreDbAsync:
         try:
             await session.commit()
         except IntegrityError as e:
-            if isinstance(e.orig, UniqueViolation):
+            if (
+                hasattr(e, "orig")
+                and hasattr(e.orig, "pgcode")
+                and e.orig.pgcode == "23505"
+            ):
+                # 23505 is UNIQUE KEY VIOLATION
+                # https://stackoverflow.com/questions/58740043/how-do-i-catch-a-psycopg2-errors-uniqueviolation-error-in-a-python-flask-app
                 raise TagAlreadyExistsException()
             else:
                 raise e

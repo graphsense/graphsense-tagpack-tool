@@ -1,6 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [25.07.4] 2025-06-20
+### fixed
+- Special handling of unique key violations of add-user-reported-tag
+
 ## [25.07.3] 2025-06-18
 ### fixed
 - exports of errors

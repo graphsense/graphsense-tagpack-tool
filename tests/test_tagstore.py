@@ -141,7 +141,7 @@ async def test_insert_user_tag(db_setup):
 
     await db.add_user_reported_tag(tag2)
 
-    with pytest.raises(Exception):
+    with pytest.raises(TagAlreadyExistsException):
         await db.add_user_reported_tag(tag2)
 
     tagsAfter2 = await db.get_tags_by_subjectid(address, offset=None, page_size=None, groups=['public'])
