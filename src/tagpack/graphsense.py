@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+from typing import Optional
 
 import base58
 import numpy as np
+from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster
 from cassandra.concurrent import execute_concurrent_with_args
 from cassandra.query import dict_factory
@@ -125,10 +127,21 @@ _CONCURRENCY = 100
 
 
 class GraphSense(object):
-    def __init__(self, hosts: list, ks_map: dict):
+    def __init__(
+        self,
+        hosts: list,
+        ks_map: dict,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+    ):
         self.hosts = hosts
         self.ks_map = ks_map
-        self.cluster = Cluster(hosts)
+
+        auth_provider = None
+        if username is not None:
+            auth_provider = PlainTextAuthProvider(username=username, password=password)
+
+        self.cluster = Cluster(hosts, auth_provider=auth_provider)
         self.session = self.cluster.connect()
         self.session.row_factory = dict_factory
 

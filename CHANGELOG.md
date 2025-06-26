@@ -1,6 +1,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [25.07.6] 2025-06-20
+### fixed
+- enable user and password authentication for cassandra
+
+## [25.07.5] 2025-06-20
+### fixed
+- fix: Special handling of unique key violations of add-user-reported-tag
+
 ## [25.07.4] 2025-06-20
 ### fixed
 - Special handling of unique key violations of add-user-reported-tag

@@ -51,7 +51,7 @@ dependencies = [
 
 
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm>=8"]
+requires = ["setuptools>=80.8.0, <81", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
@@ -78,7 +78,7 @@ dev = [
     "pytest>=8.3.4",
     "ruff>=0.9.2",
     "setuptools-scm>=8.1.0",
-    "setuptools>=75.8.0",
+    "setuptools>=80.8.0",
     "testcontainers[postgres]>=4.9.1",
     "tox-uv>=1.16.0",
     "tox>=4.24.1",
@@ -87,7 +87,7 @@ dev = [
 
 [project.scripts]
 tagpack-tool = "tagpack.cli:main"
-gs-tagstore = "tagstore.cli.main:main"
+gs-tagstore-cli = "tagstore.cli.main:main"
 
 
 

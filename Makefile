@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PROJECT := tagpack-tool
 VENV := .venv
-RELEASE := 'v25.07.5'
+RELEASE := 'v25.07.6'
 # RELEASESEM := 'v1.9.0'
 
 -include .env

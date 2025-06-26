@@ -499,7 +499,12 @@ def _split_into_chunks(seq, size):
 
 def insert_cluster_mapping_wp(network, ks_mapping, args, batch):
     tagstore = TagStore(args.url, args.schema)
-    gs = GraphSense(args.db_nodes, ks_mapping)
+    gs = GraphSense(
+        args.db_nodes,
+        ks_mapping,
+        username=args.cassandra_username,
+        password=args.cassandra_password,
+    )
     if gs.keyspace_for_network_exists(network):
         clusters = gs.get_address_clusters(batch, network)
         clusters["network"] = network
@@ -522,6 +527,12 @@ def load_ks_mapping(args):
                 if args.use_gs_lib_config_env in yml["environments"]:
                     env = yml["environments"][args.use_gs_lib_config_env]
                     args.db_nodes = env["cassandra_nodes"]
+                    args.cassandra_password = env.get(
+                        "readonly_password", None
+                    ) or env.get("password", None)
+                    args.cassandra_username = env.get(
+                        "readonly_username", None
+                    ) or env.get("username", None)
                     ret = {
                         k.upper(): {
                             "raw": v["raw_keyspace_name"],
@@ -557,7 +568,12 @@ def insert_cluster_mapping(args, batch_size=5_000):
     ks_mapping = load_ks_mapping(args)
     print("Importing with mapping config: ", ks_mapping)
     networks = ks_mapping.keys()
-    gs = GraphSense(args.db_nodes, ks_mapping)
+    gs = GraphSense(
+        args.db_nodes,
+        ks_mapping,
+        username=args.cassandra_username,
+        password=args.cassandra_password,
+    )
 
     workpackages = []
     for network, data in df.groupby("network"):
@@ -1504,6 +1520,18 @@ def main():
         default=["localhost"],
         metavar="DB_NODE",
         help='Cassandra node(s); default "localhost")',
+    )
+    pc.add_argument(
+        "--cassandra-username",
+        default=None,
+        metavar="USERNAME",
+        help="Cassandra Username",
+    )
+    pc.add_argument(
+        "--cassandra-password",
+        default=None,
+        metavar="PASSWORD",
+        help="Cassandra password",
     )
     pc.add_argument(
         "-f",
