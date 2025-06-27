@@ -1,6 +1,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [25.07.7] 2025-06-20
+### fixed
+- error on multiple git remotes
+
 ## [25.07.6] 2025-06-20
 ### fixed
 - enable user and password authentication for cassandra
