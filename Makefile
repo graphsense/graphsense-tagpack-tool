@@ -20,7 +20,7 @@ test:
 	uv run pytest -x -rx -vv -m "not slow" --cov=tagpack --cov=tagstore --capture=no
 
 dev:
-	 uv sync --all-extras --dev
+	 uv sync --all-extras
 	 pre-commit install
 
 test-all:
