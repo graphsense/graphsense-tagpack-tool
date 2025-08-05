@@ -804,7 +804,7 @@ class TagstoreDbAsync:
 
     @_inject_session
     async def get_best_cluster_tag(
-        self, cluster_id: int, network: str, groups: List[str], session=False
+        self, cluster_id: int, network: str, groups: List[str], session=None
     ) -> Optional[TagPublic]:
         result = (
             await session.exec(_get_best_cluster_tag_stmt(cluster_id, network, groups))
