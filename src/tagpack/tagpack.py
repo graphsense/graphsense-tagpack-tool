@@ -123,8 +123,10 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
         sys.exit(0)
 
     if len(repo.remotes) > 1:
-        msg = (f"Multiple remotes present, cannot "
-               f"decide on backlink. Remotes: {repo.remotes}")
+        msg = (
+            f"Multiple remotes present, cannot "
+            f"decide on backlink. Remotes: {repo.remotes}"
+        )
         raise ValidationError(msg)
 
     rel_path = str(pathlib.Path(tagpack_file).relative_to(repo_path))
@@ -150,6 +152,33 @@ def get_uri_for_tagpack(repo_path, tagpack_file, strict_check, no_git):
     default_prefix = hashlib.sha256(g.encode("utf-8")).hexdigest()[:16]
 
     return res, rel_path, default_prefix
+
+
+def check_for_null_characters(field_name: str, value, context: str = "") -> None:
+    """
+    Check if a field value contains null characters (\x00 or \u0000).
+
+    Args:
+        field_name: Name of the field being checked
+        value: Value to check for null characters
+        context: Additional context for error messages (e.g., tag info)
+
+    Raises:
+        ValidationError: If null characters are found in the value
+    """
+    if isinstance(value, str):
+        if "\x00" in value or "\u0000" in value:
+            context_str = f" in {context}" if context else ""
+            raise ValidationError(
+                f"Field '{field_name}' contains null characters (\\x00 or \\u0000){context_str}"
+            )
+    elif isinstance(value, (list, tuple)):
+        for i, item in enumerate(value):
+            if isinstance(item, str) and ("\x00" in item or "\u0000" in item):
+                context_str = f" in {context}" if context else ""
+                raise ValidationError(
+                    f"Field '{field_name}' item at index {i} contains null characters (\\x00 or \\u0000){context_str}"
+                )
 
 
 def collect_tagpack_files(path, search_actorpacks=False, max_mb=200):
@@ -408,6 +437,9 @@ class TagPack(object):
                 raise ValidationError(
                     "Value of header field {} must not be empty (None)".format(field)
                 )
+
+            check_for_null_characters(field, value, "header")
+
             if field == "is_public":
                 print_warn(
                     "YAML field 'is_public' is DEPRECATED and will be removed "
@@ -463,6 +495,8 @@ class TagPack(object):
                 # check for None values
                 if value is None:
                     raise ValidationError(e4.format(field, tag))
+
+                check_for_null_characters(field, value, str(tag))
 
                 inconsistency_checker.warn_on_possibly_inconsistent_currency_or_network(
                     field, value

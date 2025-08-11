@@ -701,3 +701,65 @@ def test_network_from_currency(capsys, tagpack_w_network):
     assert "CCOIN is not a known currency." in captured.out
     assert "USDT is not a known network." in captured.out
     assert "Did you mean on of: ETH, ARB, ETC, BSC, TRX" in captured.out
+
+
+def test_validate_fail_null_characters_in_header(schema, taxonomies):
+    """Test that validation fails when header fields contain null characters"""
+    tagpack = TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack\x00",  # null character in title
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "tags": [{"label": "a", "address": "b"}],
+        },
+        schema,
+        taxonomies,
+    )
+
+    with pytest.raises(ValidationError, match="Field 'title' contains null characters"):
+        tagpack.validate()
+
+
+def test_validate_fail_null_characters_in_tag_field(schema, taxonomies):
+    """Test that validation fails when tag fields contain null characters"""
+    tagpack = TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "tags": [
+                {
+                    "label": "Some attribution\u0000tag",  # null character in label
+                    "address": "123Bitcoin45",
+                }
+            ],
+        },
+        schema,
+        taxonomies,
+    )
+
+    with pytest.raises(ValidationError, match="Field 'label' contains null characters"):
+        tagpack.validate()
+
+
+def test_validate_fail_null_characters_in_list_field(schema, taxonomies):
+    """Test that validation fails when list fields contain null characters"""
+    tagpack = TagPack(
+        "http://example.com",
+        {
+            "title": "Test TagPack",
+            "creator": "GraphSense Team",
+            "source": "http://example.com/my_addresses",
+            "currency": "BTC",
+            "tags": [{"label": "a\x00", "address": "b"}],
+        },
+        schema,
+        taxonomies,
+    )
+
+    with pytest.raises(ValidationError, match="Field 'label' contains null characters"):
+        tagpack.validate()

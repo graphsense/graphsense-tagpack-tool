@@ -70,3 +70,4 @@ MANIFEST
 .venv*/
 .conda*/
 .python-version
+local/
