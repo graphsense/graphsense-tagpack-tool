@@ -1,6 +1,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [25.08.0] 2025-08-11
+### added
+- assign unique id on tag creation
+- save user id in context
+
 ## [25.07.7] 2025-06-20
 ### fixed
 - error on multiple git remotes
