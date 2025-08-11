@@ -314,7 +314,7 @@ To list all tagpack creators and their contributions to a tagstore's content use
 To provide REST endpoints for accessing tags, start the service
 
 ```
-make run
+make serve
 ```
 
 and check out http://localhost:8000/docs
