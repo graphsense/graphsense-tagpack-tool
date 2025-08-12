@@ -1,6 +1,13 @@
 # GraphSense TagPack Management Tool
 
+
+
 [![Test and Build Status](https://github.com/graphsense/graphsense-tagpack-tool/actions/workflows/test_and_build.yaml/badge.svg)](https://github.com/graphsense/graphsense-tagpack-tool/actions) [![PyPI version](https://badge.fury.io/py/tagpack-tool.svg)](https://badge.fury.io/py/graphsense-lib) [![Python](https://img.shields.io/pypi/pyversions/tagpack-tool)](https://pypi.org/project/tagpack-tool/) [![Downloads](https://static.pepy.tech/badge/tagpack-tool)](https://pepy.tech/project/tagpack-tool)
+
+
+### Notice
+
+⚠️ **REPOSITORY MOVED**: This repository has been moved to [graphsense-lib](https://github.com/graphsense/graphsense-lib). Please use the new repository for all development and updates. This repository is now archived and no longer accepts commits.
 
 This repository provides a command line tool for managing [GraphSense TagPacks](https://github.com/graphsense/graphsense-tagpacks/wiki/GraphSense-TagPacks). It can be used for
 
