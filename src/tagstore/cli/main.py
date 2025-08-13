@@ -34,6 +34,14 @@ def get_ddl():
 
 
 def main():
+    # Deprecation warning
+    import sys
+    print("⚠️  DEPRECATION WARNING: gs-tagstore-cli is deprecated!", file=sys.stderr)
+    print("   This tool has been moved to graphsense-lib.", file=sys.stderr)
+    print("   Please install graphsense-lib and use: graphsense-cli tagstore", file=sys.stderr)
+    print("   For more information: https://github.com/graphsense/graphsense-lib", file=sys.stderr)
+    print("", file=sys.stderr)
+    
     app()
 
 

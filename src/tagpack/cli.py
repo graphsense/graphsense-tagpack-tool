@@ -1054,6 +1054,13 @@ def show_tagstore_source_repos(args):
 
 
 def main():
+    # Deprecation warning
+    print_warn("⚠️  DEPRECATION WARNING: tagpack-tool is deprecated!")
+    print_warn("   This tool has been moved to graphsense-lib.")
+    print_warn("   Please install graphsense-lib and use: graphsense-cli tagpack-tool")
+    print_warn("   For more information: https://github.com/graphsense/graphsense-lib")
+    print("")
+    
     if sys.version_info < (3, 7):
         sys.exit("This program requires python version 3.7 or later")
 
