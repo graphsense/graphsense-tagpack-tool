@@ -1,5 +1,8 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [25.08.1] 2025-09-04
+### added
+- deprecation warning (last release)
 
 ## [25.08.0] 2025-08-11
 ### added
